@@ -29,7 +29,14 @@ shop or many branches.
 * **Reports.** Dashboard, P&L, balance sheet, trial balance, cash flow, cash
   & bank books, ledgers, sales/purchases by day/month/product/customer/
   staff/branch/category, invoice profit, dues aging, tax, stock valuation,
-  slow movers — with CSV export and print/PDF.
+  slow movers — with CSV export, print/PDF, and one-click "download all
+  reports" as a ZIP of CSV files.
+* **Hosted shops (SaaS).** The site owner opens shops for clients from the
+  *Shops (clients)* panel, sets monthly/yearly prices and a free trial, and
+  records payments (bKash/Nagad/bank/cash) or approves the TrxIDs clients
+  submit. Clients log in on a branded email + password page, see only their
+  own shop, never wp-admin, and get a renewal screen when the paid period
+  (plus grace days) runs out. See [docs/PLATFORM.md](docs/PLATFORM.md).
 * **Modern app.** Full-screen PWA at `/bizledger/`, mobile-first (bottom
   navigation, touch targets, phone tables become cards), dark mode,
   English + বাংলা.
@@ -63,6 +70,7 @@ No build step: the front end is native ES modules in `assets/js`.
 * [Accounting rules](docs/ACCOUNTING.md)
 * [REST API](docs/API.md)
 * [Security](docs/SECURITY.md)
+* [Hosted shops / subscriptions](docs/PLATFORM.md)
 * [Roadmap](docs/ROADMAP.md)
 
 ## License

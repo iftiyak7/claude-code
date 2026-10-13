@@ -39,7 +39,7 @@ namespace BizLedger\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.0.1';
+	public const VERSION = '1.1.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -102,6 +102,9 @@ final class Schema {
 						'owner_id'          => 'fk',
 						'plan'              => 'str:40',
 						'status'            => 'str:20',
+						'paid_until'        => 'date_null',
+						'billing_cycle'     => 'str:10',
+						'platform_note'     => 'text',
 					),
 					self::stamps(),
 					self::soft()
@@ -813,6 +816,33 @@ final class Schema {
 					'business_date' => array( 'business_id', 'created_at' ),
 					'object'        => array( 'business_id', 'object_type', 'object_id' ),
 					'user'          => array( 'business_id', 'user_id', 'created_at' ),
+				),
+			),
+
+			/* --------------------------------------------------------- Platform */
+			'subscription_payments' => array(
+				'columns' => array_merge(
+					array(
+						'id'          => 'id',
+						'business_id' => 'fk',
+						'amount'      => 'money',
+						'cycle'       => 'str:10',
+						'months'      => 'int',
+						'method'      => 'str:40',
+						'reference'   => 'str:100',
+						'payer_phone' => 'str:40',
+						'note'        => 'text',
+						'status'      => 'str:20',
+						'period_from' => 'date_null',
+						'period_to'   => 'date_null',
+						'decided_by'  => 'fk',
+						'decided_at'  => 'datetime_null',
+					),
+					self::stamps()
+				),
+				'indexes' => array(
+					'business' => array( 'business_id', 'status' ),
+					'status'   => array( 'status', 'created_at' ),
 				),
 			),
 

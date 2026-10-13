@@ -49,6 +49,13 @@ final class AppRoute {
 		return admin_url( 'admin.php?page=bizledger' ) . $hash;
 	}
 
+	/**
+	 * Branded login page for shop owners and staff.
+	 */
+	public static function loginUrl(): string {
+		return self::url( 'login' );
+	}
+
 	public static function addRewrite(): void {
 		add_rewrite_rule( '^' . preg_quote( self::slug(), '#' ) . '(?:/(.*))?/?$', 'index.php?bizledger_app=/$matches[1]', 'top' );
 	}
@@ -119,6 +126,8 @@ final class AppRoute {
 			$this->manifest();
 		} elseif ( 'sw.js' === $path ) {
 			$this->serviceWorker();
+		} elseif ( 'login' === $path ) {
+			$this->login();
 		} elseif ( preg_match( '#^print/(sale|purchase|payment|return|statement)/(\d+)$#', $path, $m ) ) {
 			$this->print( $m[1], (int) $m[2] );
 		} else {
@@ -129,6 +138,10 @@ final class AppRoute {
 
 	private function shell( string $mode = 'front' ): void {
 		if ( ! is_user_logged_in() ) {
+			if ( 'front' === $mode ) {
+				wp_safe_redirect( self::loginUrl() );
+				exit;
+			}
 			auth_redirect();
 		}
 		nocache_headers();
@@ -148,6 +161,7 @@ final class AppRoute {
 			'lang'      => str_starts_with( $locale, 'bn' ) ? 'bn' : 'en',
 			'logoutUrl' => esc_url_raw( wp_logout_url( 'admin' === $mode ? self::adminUrl() : self::url() ) ),
 			'adminUrl'  => esc_url_raw( admin_url() ),
+			'appOnly'   => ( new ClientAccess( $this->k ) )->isAppOnly( (int) $user->ID ),
 			'userName'  => $user->display_name,
 		);
 		$asset  = static fn( string $p ) => esc_url( BIZLEDGER_URL . 'assets/' . $p . '?v=' . BIZLEDGER_VERSION );
@@ -174,6 +188,57 @@ final class AppRoute {
 </body>
 </html>
 		<?php
+	}
+
+	/**
+	 * Email + password login. Uses WordPress authentication (wp_signon), so
+	 * password hashing, lockout and 2FA plugins all keep working.
+	 */
+	private function login(): void {
+		$error = '';
+		$login = '';
+		// phpcs:disable WordPress.Security.NonceVerification -- verified below.
+		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			$login = isset( $_POST['log'] ) ? sanitize_text_field( wp_unslash( $_POST['log'] ) ) : '';
+			$pass  = isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			$nonce = isset( $_POST['_gh'] ) ? sanitize_text_field( wp_unslash( $_POST['_gh'] ) ) : '';
+			try {
+				$this->k->limiter->hit( 'login:' . Api::clientIp(), 10, 600 );
+				if ( ! wp_verify_nonce( $nonce, 'goriber_login' ) ) {
+					$error = __( 'The page expired. Please try again.', 'bizledger' ) . ' / পেজের মেয়াদ শেষ, আবার চেষ্টা করুন।';
+				} else {
+					$user = wp_signon(
+						array(
+							'user_login'    => $login,
+							'user_password' => $pass,
+							'remember'      => ! empty( $_POST['rememberme'] ),
+						),
+						''
+					);
+					if ( is_wp_error( $user ) ) {
+						$error = __( 'Wrong email or password.', 'bizledger' ) . ' / ইমেইল বা পাসওয়ার্ড ভুল।';
+					} else {
+						$to = isset( $_POST['redirect_to'] ) ? wp_validate_redirect( esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ), '' ) : '';
+						wp_safe_redirect( '' !== $to ? $to : self::url() );
+						exit;
+					}
+				}
+			} catch ( BizLedgerException $e ) {
+				$error = __( 'Too many attempts. Please wait 10 minutes.', 'bizledger' ) . ' / অনেকবার চেষ্টা হয়েছে, ১০ মিনিট পরে চেষ্টা করুন।';
+			}
+		} elseif ( is_user_logged_in() ) {
+			wp_safe_redirect( self::url() );
+			exit;
+		}
+		$redirect = isset( $_REQUEST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) ) : '';
+		// phpcs:enable
+		$platform = $this->k->platform->config();
+		$brand    = (string) $platform['brand'];
+		nocache_headers();
+		header( 'X-Frame-Options: SAMEORIGIN' );
+		header( 'Referrer-Policy: same-origin' );
+		status_header( '' !== $error ? 401 : 200 );
+		include BIZLEDGER_DIR . 'templates/login.php';
 	}
 
 	private function manifest(): void {

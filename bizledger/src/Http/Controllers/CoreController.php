@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace BizLedger\Http\Controllers;
 
 use BizLedger\Support\PermissionException;
+use BizLedger\Support\SubscriptionException;
 use BizLedger\Support\Text;
 use BizLedger\Tenancy\BusinessContext;
 use BizLedger\Tenancy\BusinessService;
@@ -72,6 +73,10 @@ final class CoreController extends Controller {
 			'can_setup'   => $this->canCreateBusiness(),
 			'types'       => BusinessService::TYPES,
 			'version'     => defined( 'BIZLEDGER_VERSION' ) ? BIZLEDGER_VERSION : 'dev',
+			'platform'    => array_merge(
+				array( 'admin' => current_user_can( 'manage_options' ) ),
+				array_intersect_key( $this->k->platform->config(), array_flip( array( 'brand', 'support_phone' ) ) )
+			),
 		);
 		if ( ! $businesses ) {
 			return $out;
@@ -79,12 +84,21 @@ final class CoreController extends Controller {
 		$business_id = (int) ( $request->get_header( 'x_bizledger_business' ) ?: ( $p['business'] ?? 0 ) );
 		$branch_id   = (int) ( $request->get_header( 'x_bizledger_branch' ) ?: ( $p['branch'] ?? 0 ) );
 		try {
-			$ctx = $this->k->contexts->forUser( (int) $user->ID, $business_id, $branch_id );
-		} catch ( PermissionException $e ) {
-			$ctx = $this->k->contexts->forUser( (int) $user->ID, 0 );
+			try {
+				$ctx = $this->k->contexts->forUser( (int) $user->ID, $business_id, $branch_id );
+			} catch ( PermissionException $e ) {
+				$ctx = $this->k->contexts->forUser( (int) $user->ID, 0 );
+			}
+		} catch ( SubscriptionException $e ) {
+			// Only the renewal screen is available until the shop is paid.
+			$out['blocked'] = array_merge( $e->subscription(), array( 'message' => $e->getMessage() ) );
+			return $out;
 		}
-		$out['context'] = array(
-			'business'    => $this->k->businesses->get( $ctx->business_id ),
+		$business = $this->k->businesses->get( $ctx->business_id );
+		unset( $business['platform_note'] );
+		$out['subscription'] = $ctx->subscription;
+		$out['context']      = array(
+			'business'    => $business,
 			'branch_id'   => $ctx->branch_id,
 			'branches'    => $this->k->businesses->branches( $ctx ),
 			'role'        => $ctx->role,

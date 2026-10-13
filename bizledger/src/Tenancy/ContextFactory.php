@@ -13,6 +13,7 @@ use BizLedger\Database\Database;
 use BizLedger\Security\Permissions;
 use BizLedger\Support\Json;
 use BizLedger\Support\PermissionException;
+use BizLedger\Support\SubscriptionException;
 
 /**
  * Resolves membership → role → effective permissions → branch.
@@ -25,15 +26,40 @@ final class ContextFactory {
 	private Database $db;
 	private Permissions $permissions;
 
+	/**
+	 * Business row → subscription state (see PlatformService::subscription()).
+	 *
+	 * @var (callable(array<string,mixed>):array<string,mixed>)|null
+	 */
+	private $subscription = null;
+
+	/**
+	 * User id → true when the user bypasses subscription checks (site owner).
+	 *
+	 * @var (callable(int):bool)|null
+	 */
+	private $exempt = null;
+
+	/**
+	 * @param callable(array<string,mixed>):array<string,mixed> $subscription Subscription resolver.
+	 * @param callable(int):bool                                $exempt       Users exempt from the check.
+	 */
+	public function setSubscriptionPolicy( callable $subscription, callable $exempt ): void {
+		$this->subscription = $subscription;
+		$this->exempt       = $exempt;
+	}
+
 	public function __construct( Database $db, Permissions $permissions ) {
 		$this->db          = $db;
 		$this->permissions = $permissions;
 	}
 
 	/**
-	 * @throws PermissionException When the user may not access the business/branch.
+	 * @param bool $allow_expired Resolve even when the subscription ran out (renewal screens).
+	 * @throws PermissionException   When the user may not access the business/branch.
+	 * @throws SubscriptionException When the business's subscription has run out.
 	 */
-	public function forUser( int $user_id, int $business_id, int $branch_id = 0 ): BusinessContext {
+	public function forUser( int $user_id, int $business_id, int $branch_id = 0, bool $allow_expired = false ): BusinessContext {
 		if ( $user_id <= 0 ) {
 			throw new PermissionException( 'Please log in.' );
 		}
@@ -43,13 +69,26 @@ final class ContextFactory {
 		if ( $business_id <= 0 ) {
 			// Fall back to the user's first business.
 			$business_id = (int) $this->db->value(
-				"SELECT m.business_id FROM {$mt} m JOIN {$bt} b ON b.id = m.business_id WHERE m.user_id = %d AND m.status = 'active' AND b.status = 'active' AND b.deleted_at IS NULL ORDER BY m.id LIMIT 1",
+				"SELECT m.business_id FROM {$mt} m JOIN {$bt} b ON b.id = m.business_id WHERE m.user_id = %d AND m.status = 'active' AND b.status IN ('active','suspended') AND b.deleted_at IS NULL ORDER BY m.id LIMIT 1",
 				array( $user_id )
 			);
 		}
-		$business = $business_id > 0 ? $this->db->row( "SELECT * FROM {$bt} WHERE id = %d AND status = 'active' AND deleted_at IS NULL", array( $business_id ) ) : null;
+		$business = $business_id > 0 ? $this->db->row( "SELECT * FROM {$bt} WHERE id = %d AND status IN ('active','suspended') AND deleted_at IS NULL", array( $business_id ) ) : null;
 		$member   = $business ? $this->db->row( "SELECT * FROM {$mt} WHERE business_id = %d AND user_id = %d AND status = 'active'", array( $business_id, $user_id ) ) : null;
 		if ( null === $business || null === $member ) {
+			throw new PermissionException( 'You do not have access to this business.' );
+		}
+
+		$sub = null;
+		if ( null !== $this->subscription ) {
+			$sub = ( $this->subscription )( $business );
+			if ( in_array( $sub['status'], array( 'expired', 'suspended' ), true ) && ! $allow_expired && ! ( $this->exempt )( $user_id ) ) {
+				throw new SubscriptionException(
+					'suspended' === $sub['status'] ? 'This shop has been suspended. Please contact support.' : 'Your subscription has expired. Please renew to continue.',
+					$sub + array( 'business_name' => (string) $business['name'], 'business_id' => (int) $business['id'] )
+				);
+			}
+		} elseif ( 'active' !== $business['status'] ) {
 			throw new PermissionException( 'You do not have access to this business.' );
 		}
 
@@ -61,7 +100,9 @@ final class ContextFactory {
 			array_map( 'strval', Json::decode( $member['grants'] ?? null ) ),
 			array_map( 'strval', Json::decode( $member['denies'] ?? null ) )
 		);
-		return new BusinessContext( $business, $branch, $user_id, (string) $member['role'], $perms, $branches );
+		$ctx               = new BusinessContext( $business, $branch, $user_id, (string) $member['role'], $perms, $branches );
+		$ctx->subscription = $sub;
+		return $ctx;
 	}
 
 	/**

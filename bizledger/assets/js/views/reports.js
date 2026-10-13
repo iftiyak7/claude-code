@@ -11,6 +11,7 @@ import { money, qty, date, today } from '../core/format.js';
 import { page, card, simpleTable, dateRange, select, input, spinner, empty, downloadText, stat } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { lineChart } from '../core/chart.js';
+import { zip } from '../core/zip.js';
 
 const REPORTS = [
   ['Sales', [
@@ -57,11 +58,46 @@ export default async function reports(el, params, query) {
 
 function hub(el) {
   const p = page(t('Reports'));
+  p.body.append(exportAll());
   p.body.append(...REPORTS.map(([group, items]) => {
     const visible = items.filter(([, , perm]) => can(perm));
     return visible.length ? card(t(group), h('div', { class: 'report-links' }, visible.map(([key, label]) => h('a', { class: 'report-link', href: `#/reports/${key}` }, icon('reports', 18), h('span', {}, t(label)))))) : null;
   }));
   mount(el, p.el);
+}
+
+/** One-click archive: every report the user may see, as CSV files in a ZIP. */
+function exportAll() {
+  let range = { range: 'this_month' };
+  const branches = state.ctx.branches || [];
+  const branch = branches.length > 1 ? select('branch_id', [['', t('All branches')], ...branches.map((x) => [x.id, x.name])], '') : null;
+  const status = h('span', { class: 'muted small' });
+  const btn = h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+    const list = REPORTS.flatMap(([group, items]) => items.filter(([, , perm]) => can(perm)).map(([key, label]) => ({ key, label, group })));
+    const files = [];
+    const failed = [];
+    btn.disabled = true;
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      status.textContent = t('Preparing {n} of {total}…', { n: i + 1, total: list.length });
+      try {
+        const out = await renderReport(r.key, { ...range, branch_id: branch ? branch.value : '' });
+        if (out.csv) files.push({ name: `${String(i + 1).padStart(2, '0')}-${r.key}.csv`, data: out.csv });
+      } catch { failed.push(t(r.label)); }
+    }
+    const period = range.range || `${range.from}_${range.to}`;
+    const biz = (state.ctx.business?.name || 'business').replace(/[^\p{L}\p{N}]+/gu, '-');
+    const blob = zip(files);
+    const a = h('a', { href: URL.createObjectURL(blob), download: `${biz}-reports-${period}-${today()}.zip` });
+    document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    btn.disabled = false;
+    status.textContent = t('{n} reports downloaded.', { n: files.length }) + (failed.length ? ` ${t('Skipped')}: ${failed.join(', ')}` : '');
+  } }, icon('download', 16), t('Download all reports (ZIP)'));
+  return card(t('Save all reports'), h('div', { class: 'export-all' },
+    h('p', { class: 'muted small' }, t('Downloads every report for the chosen period as spreadsheet (CSV) files in one ZIP — opens in Excel or Google Sheets. Keep it as your monthly record.')),
+    h('div', { class: 'row wrap' }, dateRange((r) => { range = r; }, 'this_month'), branch, btn),
+    status));
 }
 
 async function run(el, name, query) {
@@ -97,6 +133,16 @@ async function run(el, name, query) {
   p.body.append(out);
   mount(el, p.el);
 
+  async function load() {
+    mount(out, spinner());
+    try { const r = await renderReport(name, args, query); lastCsv = r.csv; mount(out, r.node); } catch (err) { mount(out, empty(err.message)); }
+  }
+  load();
+}
+
+/** Builds one report: returns its DOM and the matching CSV text. */
+export async function renderReport(name, args, query = {}) {
+  let lastCsv = null;
   const csv = (cols, rows) => {
     const esc = (v) => {
       let s = v === null || v === undefined ? '' : String(v);
@@ -111,10 +157,8 @@ async function run(el, name, query) {
   };
   const m = (k) => ({ key: k, align: 'right', money: true, render: (r) => (r[k] === null || r[k] === undefined ? '—' : money(r[k])), csv: (r) => r[k] });
 
-  async function load() {
-    mount(out, spinner());
-    try { mount(out, await render()); } catch (err) { mount(out, empty(err.message)); }
-  }
+  const node = await render();
+  return { node, csv: lastCsv };
 
   async function render() {
     const [kind, group] = name.split('-');
@@ -292,5 +336,4 @@ async function run(el, name, query) {
     }
     return empty(t('Unknown report.'));
   }
-  load();
 }

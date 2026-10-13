@@ -29,4 +29,12 @@ interface UserDirectory {
 	 * "set your password" email; passwords are never handled by BizLedger.
 	 */
 	public function create( string $email, string $name, string $login ): int;
+
+	/**
+	 * Create a shop-owner login (platform clients) with a password chosen by
+	 * the platform owner. The account can only use the app, never wp-admin.
+	 */
+	public function createClient( string $email, string $name, string $password, string $phone = '' ): int;
+
+	public function setPassword( int $id, string $password ): void;
 }

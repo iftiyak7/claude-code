@@ -84,6 +84,8 @@ route('/settings/:tab', v('settings'));
 route('/notifications', v('notifications'));
 route('/audit', v('notifications'));
 route('/sync', v('notifications'));
+route('/platform', v('platform'));
+route('/subscription', v('subscription'));
 
 const app = document.getElementById('app');
 let main;
@@ -93,6 +95,13 @@ async function boot() {
     await loadLanguage(localStorage.getItem('bzl.lang') || window.BZL.lang, window.BZL.assetsUrl, window.BZL.version);
   } catch { /* English fallback */ }
   await loadSession();
+  if (state.me.blocked) {
+    // Subscription ran out: only the renewal screen is available.
+    setBusiness(state.me.blocked.business_id, 0);
+    const { blockedScreen } = await import(`./views/subscription.js?v=${window.BZL.version}`);
+    blockedScreen(app, state.me.blocked);
+    return;
+  }
   registerServiceWorker();
   start(render);
   if (state.ctx) {
@@ -124,11 +133,19 @@ function applyTheme() {
 let shellBuilt = false;
 
 async function render(match) {
-  if (state.me?.needs_setup && match.path !== '/setup') {
+  const platformPage = match.path.startsWith('/platform') && state.me?.platform?.admin;
+  if (state.me?.needs_setup && match.path !== '/setup' && !platformPage) {
+    if (!state.me.can_setup) {
+      mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('No shop is linked to your account yet.')),
+        h('p', {}, state.me.platform?.support_phone ? t('Please contact support: {p}', { p: state.me.platform.support_phone }) : t('Please contact the person who gave you this login.')),
+        h('a', { class: 'btn', href: window.BZL.logoutUrl }, t('Log out'))));
+      return;
+    }
     navigate('/setup', true);
     return;
   }
-  const meta = match.route?.meta || {};
+  const meta = { ...(match.route?.meta || {}) };
+  if (platformPage && !state.ctx) meta.bare = true;
   if (meta.bare) {
     shellBuilt = false;
     main = h('main', { class: 'bare' });
@@ -159,7 +176,23 @@ async function render(match) {
 }
 
 function navItems() {
-  return NAV.filter(([, , , perms]) => canAny(...perms));
+  const items = NAV.filter(([, , , perms]) => canAny(...perms));
+  const sub = state.me.subscription;
+  if (sub?.managed && (state.ctx.role === 'owner' || can('business.manage'))) items.push(['/subscription', 'calendar', 'Subscription', []]);
+  if (state.me.platform?.admin) items.push(['/platform', 'branches', 'Shops (clients)', []]);
+  return items;
+}
+
+/** Reminder bar when a hosted shop is about to run out. */
+function subscriptionBanner() {
+  const sub = state.me.subscription;
+  if (!sub?.managed || sub.days_left === null || sub.days_left > 7) return null;
+  const owner = state.ctx.role === 'owner' || can('business.manage');
+  const text = sub.days_left > 0 ? t('Your subscription ends in {n} days.', { n: sub.days_left })
+    : sub.days_left === 0 ? t('Your subscription ends today.')
+      : t('Your subscription has expired. The shop will be locked in {n} days.', { n: Math.max(0, sub.grace_left ?? 0) });
+  return h('div', { class: `sub-banner ${sub.days_left < 0 ? 'bad' : ''}`, role: 'status' }, icon('alert', 18), h('span', {}, text),
+    owner ? h('a', { class: 'btn btn-sm', href: '#/subscription' }, t('Renew now')) : null);
 }
 
 function buildShell() {
@@ -181,7 +214,7 @@ function buildShell() {
     h('div', { class: 'switches' }, businessSwitch, branchSwitch),
     h('ul', {}, navItems().map(([path, ic, label]) => h('li', {}, h('a', { href: `#${path}`, dataset: { path } }, icon(ic), h('span', {}, t(label)))))),
     h('div', { class: 'sidebar-foot' },
-      h('a', { href: window.BZL.adminUrl }, icon('back', 16), t('WordPress admin')),
+      window.BZL.appOnly ? null : h('a', { href: window.BZL.adminUrl }, icon('back', 16), t('WordPress admin')),
       h('a', { href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out'))));
 
   const bell = h('a', { class: 'icon-btn bell', href: '#/notifications', 'aria-label': t('Notifications') }, icon('bell'), h('span', { class: 'dot', hidden: !state.me.unread }, String(state.me.unread || '')));
@@ -208,7 +241,7 @@ function buildShell() {
     h('a', { class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('Skip to content')),
     sidebar,
     h('div', { class: 'scrim', onclick: () => document.body.classList.remove('nav-open') }),
-    h('div', { class: 'shell' }, topbar, main),
+    h('div', { class: 'shell' }, topbar, subscriptionBanner(), main),
     bottom);
 
   on('online', (isOnline) => { offline.hidden = isOnline; });

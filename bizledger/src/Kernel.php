@@ -23,6 +23,7 @@ use BizLedger\Inventory\StockService;
 use BizLedger\Notifications\NotificationService;
 use BizLedger\Numbering\NumberingService;
 use BizLedger\Payments\PaymentService;
+use BizLedger\Platform\PlatformService;
 use BizLedger\Purchases\PurchaseService;
 use BizLedger\Reports\ReportService;
 use BizLedger\Returns\ReturnService;
@@ -67,6 +68,7 @@ use BizLedger\Tenancy\UserDirectory;
  * @property-read ContextFactory      $contexts
  * @property-read RateLimiter         $limiter
  * @property-read DataService         $data
+ * @property-read PlatformService     $platform
  */
 final class Kernel {
 
@@ -155,7 +157,30 @@ final class Kernel {
 			case 'members':
 				return new MemberService( $d, $c, $e, $this->permissions, $this->users, $this->audit );
 			case 'contexts':
-				return new ContextFactory( $d, $this->permissions );
+				$contexts = new ContextFactory( $d, $this->permissions );
+				$contexts->setSubscriptionPolicy(
+					fn( array $business ) => $this->platform->subscription( $business ),
+					static fn( int $user_id ) => function_exists( 'user_can' ) && user_can( $user_id, 'manage_options' )
+				);
+				return $contexts;
+			case 'platform':
+				$memory = array();
+				return new PlatformService(
+					$d,
+					$c,
+					$e,
+					$this->businesses,
+					$this->users,
+					static function () use ( &$memory ) {
+						return function_exists( 'get_option' ) ? (array) get_option( 'bizledger_platform', array() ) : $memory;
+					},
+					static function ( array $config ) use ( &$memory ): void {
+						if ( function_exists( 'update_option' ) ) {
+							update_option( 'bizledger_platform', $config, false );
+						}
+						$memory = $config;
+					}
+				);
 			case 'limiter':
 				return new RateLimiter( $c );
 			case 'data':

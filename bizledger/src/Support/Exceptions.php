@@ -131,3 +131,36 @@ class DatabaseException extends BizLedgerException {
 	protected string $error_code = 'bizledger_db_error';
 	protected int $status        = 500;
 }
+
+/**
+ * The business's subscription has run out (or the shop was suspended).
+ */
+class SubscriptionException extends BizLedgerException {
+
+	protected string $error_code = 'bizledger_subscription';
+	protected int $status        = 402;
+
+	/**
+	 * @var array<string,mixed>
+	 */
+	private array $subscription;
+
+	/**
+	 * @param array<string,mixed> $subscription Subscription state.
+	 */
+	public function __construct( string $message, array $subscription ) {
+		$this->subscription = $subscription;
+		parent::__construct( $message );
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function subscription(): array {
+		return $this->subscription;
+	}
+
+	public function data(): array {
+		return array( 'subscription' => $this->subscription );
+	}
+}

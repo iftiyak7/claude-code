@@ -141,7 +141,7 @@ export default async function pos(el) {
   const totalsEl = h('div', { class: 'cart-totals' });
   const customerBox = h('div', { class: 'cart-customer' });
 
-  const customerPicker = combobox({
+  const makeCustomerPicker = (onPick) => combobox({
     placeholder: t('Walk-in customer — search name/phone'),
     search: async (q) => {
       try { return (await api.get('customers', { search: q, per_page: 8, orderby: 'recent' })).items; }
@@ -149,8 +149,9 @@ export default async function pos(el) {
     },
     label: (c) => c.name,
     sub: (c) => `${c.phone || ''}${dec(c.balance) > 0 ? ' · ' + t('Due') + ' ' + money(c.balance) : ''}`,
-    onPick: (c) => { cart.customer = c; paintCustomer(); requestQuote(); },
+    onPick,
   });
+  const customerPicker = makeCustomerPicker((c) => { cart.customer = c; paintCustomer(); requestQuote(); });
 
   function paintCustomer() {
     if (cart.customer) {
@@ -161,11 +162,11 @@ export default async function pos(el) {
         h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove customer'), onclick: () => { cart.customer = null; paintCustomer(); } }, icon('x', 16))));
     } else {
       mount(customerBox, h('div', { class: 'row' }, customerPicker.el,
-        can('customers.create') ? h('button', { class: 'icon-btn', type: 'button', title: t('New customer'), 'aria-label': t('New customer'), onclick: quickCustomer }, icon('plus')) : null));
+        can('customers.create') ? h('button', { class: 'icon-btn', type: 'button', title: t('New customer'), 'aria-label': t('New customer'), onclick: () => quickCustomer() }, icon('plus')) : null));
     }
   }
 
-  function quickCustomer() {
+  function quickCustomer(after) {
     const name = input('name', '', { required: true });
     const phone = input('phone', '', { type: 'tel', inputmode: 'tel' });
     const m = modal({
@@ -176,6 +177,7 @@ export default async function pos(el) {
         try {
           cart.customer = await api.post('customers', { name: name.value, phone: phone.value, quick: 1 });
           m.close(); paintCustomer();
+          if (typeof after === 'function') after(cart.customer);
         } catch (err) { showError(err); }
       } }, t('Add'))],
     });
@@ -438,7 +440,8 @@ export default async function pos(el) {
         tenders.length > 1 ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { tenders.splice(i, 1); paintTenders(); paintSummary(); } }, icon('x', 16)) : null);
     }));
 
-    const quick = h('div', { class: 'quick-cash' },
+    const quick = h('div', { class: 'quick-cash' });
+    const paintQuick = () => mount(quick,
       [['exact', t('Exact')], ...[50, 100, 500, 1000].map((n) => [n, money(String(n))])].map(([n, label]) => h('button', {
         class: 'chip', type: 'button', onclick: () => {
           if (n === 'exact') { tenders.splice(0, tenders.length, { account_id: defaultAcc, amount: total, reference: '' }); given = 0; givenInput.value = ''; }
@@ -448,6 +451,22 @@ export default async function pos(el) {
       }, label)),
       h('button', { class: 'chip', type: 'button', onclick: () => { tenders.push({ account_id: accounts.find((a) => a.subtype !== 'cash')?.id || defaultAcc, amount: Math.max(0, total - tenders.reduce((a, x) => a + x.amount, 0)), reference: '' }); paintTenders(); paintSummary(); } }, icon('plus', 14), t('Split payment')),
       cart.customer ? h('button', { class: 'chip', type: 'button', onclick: () => { tenders.splice(0, tenders.length, { account_id: defaultAcc, amount: 0, reference: '' }); paintTenders(); paintSummary(); } }, t('Full due')) : null);
+
+    // Customer can be chosen right here — needed for selling on due.
+    const payCustomer = h('div', { class: 'pay-customer' });
+    const setPayCustomer = (c) => { cart.customer = c; paintCustomer(); paintPayCustomer(); paintQuick(); paintSummary(); };
+    const paintPayCustomer = () => {
+      if (cart.customer) {
+        mount(payCustomer, h('div', { class: 'picked' }, icon('customers', 18),
+          h('div', {}, h('strong', {}, cart.customer.name), h('small', { class: 'muted' }, ` ${cart.customer.phone || ''}`),
+            dec(cart.customer.balance) > 0 ? h('small', { class: 'warn-text' }, ` · ${t('Previous due')} ${money(cart.customer.balance)}`) : null),
+          h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove customer'), onclick: () => setPayCustomer(null) }, icon('x', 16))));
+      } else {
+        const picker = makeCustomerPicker(setPayCustomer);
+        mount(payCustomer, h('div', { class: 'row' }, picker.el,
+          can('customers.create') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => quickCustomer(setPayCustomer) }, icon('plus', 14), t('New customer')) : null));
+      }
+    };
 
     const paintSummary = () => {
       const paid = tenders.reduce((a, x) => a + x.amount, 0);
@@ -459,7 +478,7 @@ export default async function pos(el) {
         due > 0 ? h('div', { class: `tl ${cart.customer ? 'warn-text' : 'bad-text'}` }, h('span', {}, t('Due')), h('strong', {}, money(str(due)))) : null,
         due < 0 ? h('div', { class: 'tl bad-text' }, h('span', {}, t('Over by')), h('strong', {}, money(str(-due)))) : null,
         change ? h('div', { class: 'tl ok-text' }, h('span', {}, t('Change to return')), h('strong', { class: 'big' }, money(str(change)))) : null,
-        due > 0 && !cart.customer ? h('p', { class: 'bad-text' }, t('Select a customer to sell on due.')) : null);
+        due > 0 && !cart.customer ? h('p', { class: 'bad-text' }, t('Select a customer above to sell on due.')) : null);
       confirmBtn.disabled = due < 0 || (due > 0 && !cart.customer);
     };
 
@@ -467,10 +486,12 @@ export default async function pos(el) {
     const confirmBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => complete(tenders, given, printToggle.checked, m) }, icon('check'), t('Complete sale'));
     const m = modal({
       title: t('Payment'),
-      body: h('div', { class: 'pay' }, summary, linesEl, quick, field(t('Cash received'), givenInput, { hint: t('Optional — shows the change to give back') }),
+      body: h('div', { class: 'pay' }, summary, h('div', { class: 'field' }, h('label', {}, t('Customer')), payCustomer), linesEl, quick, field(t('Cash received'), givenInput, { hint: t('Optional — shows the change to give back') }),
         h('label', { class: 'check' }, printToggle, h('span', {}, t('Print receipt')))),
       actions: [h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, t('Back')), confirmBtn],
     });
+    paintPayCustomer();
+    paintQuick();
     paintTenders();
     paintSummary();
   }

@@ -54,6 +54,10 @@ export async function request(method, path, body, params) {
     if (res.status === 403 && data?.code === 'rest_cookie_invalid_nonce') {
       throw new ApiError('Your session has expired. Please reload the page.', { code: 'session', status: 403 });
     }
+    if (res.status === 402 && data?.code === 'bizledger_subscription') {
+      // The shop's subscription ran out mid-session: show the renewal screen.
+      setTimeout(() => location.reload(), 2500);
+    }
     throw new ApiError(data?.message || `Request failed (${res.status})`, {
       code: data?.code || 'http_error',
       status: res.status,

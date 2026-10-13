@@ -51,4 +51,22 @@ final class MemoryUsers implements UserDirectory {
 	public function create( string $email, string $name, string $login ): int {
 		return $this->add( $name, $email );
 	}
+
+	/**
+	 * @var array<int,string>
+	 */
+	public array $passwords = array();
+
+	public function createClient( string $email, string $name, string $password, string $phone = '' ): int {
+		if ( $this->findByEmail( $email ) ) {
+			throw \BizLedger\Support\ValidationException::field( 'email', 'Sorry, that email address is already used!' );
+		}
+		$id                      = $this->add( $name, $email );
+		$this->passwords[ $id ] = $password;
+		return $id;
+	}
+
+	public function setPassword( int $id, string $password ): void {
+		$this->passwords[ $id ] = $password;
+	}
 }

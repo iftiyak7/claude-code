@@ -15,6 +15,7 @@ use BizLedger\Http\Controllers\ContactsController;
 use BizLedger\Http\Controllers\CoreController;
 use BizLedger\Http\Controllers\DataController;
 use BizLedger\Http\Controllers\InventoryController;
+use BizLedger\Http\Controllers\PlatformController;
 use BizLedger\Http\Controllers\PurchasesController;
 use BizLedger\Http\Controllers\ReportsController;
 use BizLedger\Http\Controllers\SalesController;
@@ -64,6 +65,7 @@ final class Api {
 			new InventoryController( $this->k ),
 			new ReportsController( $this->k ),
 			new DataController( $this->k ),
+			new PlatformController( $this->k ),
 		);
 		return (array) apply_filters( 'bizledger/rest_controllers', $controllers, $this->k );
 	}
@@ -101,7 +103,7 @@ final class Api {
 
 			$ctx = null;
 			if ( $route['context'] ?? true ) {
-				$ctx = $this->context( $request, $user_id );
+				$ctx = $this->context( $request, $user_id, 'expired_ok' === ( $route['context'] ?? true ) );
 			}
 
 			$params = $request->get_params();
@@ -122,10 +124,10 @@ final class Api {
 		}
 	}
 
-	private function context( \WP_REST_Request $request, int $user_id ): BusinessContext {
+	private function context( \WP_REST_Request $request, int $user_id, bool $allow_expired = false ): BusinessContext {
 		$business = (int) ( $request->get_header( 'x_bizledger_business' ) ?: $request->get_param( 'business_id' ) );
 		$branch   = (int) ( $request->get_header( 'x_bizledger_branch' ) ?: $request->get_param( 'branch_id_ctx' ) );
-		$ctx      = $this->k->contexts->forUser( $user_id, $business, $branch );
+		$ctx      = $this->k->contexts->forUser( $user_id, $business, $branch, $allow_expired );
 		$ctx->ip  = self::clientIp();
 		$ctx->user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 		$this->k->contexts->touch( $ctx, $this->k->clock->mysql() );

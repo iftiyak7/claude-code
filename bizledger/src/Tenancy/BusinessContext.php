@@ -43,6 +43,13 @@ final class BusinessContext {
 	 */
 	private array $permissions;
 
+	/**
+	 * Subscription state for hosted shops (null when no platform policy).
+	 *
+	 * @var array<string,mixed>|null
+	 */
+	public ?array $subscription = null;
+
 	public string $ip = '';
 	public string $user_agent = '';
 

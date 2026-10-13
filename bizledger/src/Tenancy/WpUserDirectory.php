@@ -63,4 +63,36 @@ final class WpUserDirectory implements UserDirectory {
 		wp_new_user_notification( (int) $id, null, 'user' );
 		return (int) $id;
 	}
+
+	public function createClient( string $email, string $name, string $password, string $phone = '' ): int {
+		$base  = sanitize_user( (string) strstr( $email, '@', true ), true );
+		$base  = '' !== $base ? $base : 'shop';
+		$login = $base;
+		$i     = 1;
+		while ( username_exists( $login ) ) {
+			$login = $base . ( ++$i );
+		}
+		$id = wp_insert_user(
+			array(
+				'user_login'           => $login,
+				'user_email'           => $email,
+				'display_name'         => $name,
+				'first_name'           => $name,
+				'user_pass'            => $password,
+				'role'                 => \BizLedger\Admin\ClientAccess::ROLE,
+				'show_admin_bar_front' => 'false',
+			)
+		);
+		if ( is_wp_error( $id ) ) {
+			throw ValidationException::field( 'email', $id->get_error_message() );
+		}
+		if ( '' !== $phone ) {
+			update_user_meta( (int) $id, 'billing_phone', $phone );
+		}
+		return (int) $id;
+	}
+
+	public function setPassword( int $id, string $password ): void {
+		wp_set_password( $password, $id );
+	}
 }

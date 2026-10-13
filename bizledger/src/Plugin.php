@@ -11,6 +11,7 @@ namespace BizLedger;
 
 use BizLedger\Admin\AdminMenu;
 use BizLedger\Admin\AppRoute;
+use BizLedger\Admin\ClientAccess;
 use BizLedger\Core\Cron;
 use BizLedger\Core\Installer;
 use BizLedger\Database\WpdbDatabase;
@@ -44,6 +45,7 @@ final class Plugin {
 		( new Api( $kernel ) )->register();
 		( new AppRoute( $kernel ) )->register();
 		( new AdminMenu() )->register();
+		( new ClientAccess( $kernel ) )->register();
 		( new Cron( $kernel ) )->register();
 
 		do_action( 'bizledger/loaded', $kernel );
