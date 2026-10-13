@@ -199,4 +199,37 @@ final class PlatformTest extends IntegrationTestCase {
 		$this->k->platform->saveConfig( array( 'ai_key' => $admin['ai_key'] ) );
 		$this->assertSame( 'sk-ant-secret-value', $this->k->platform->config()['ai_key'] );
 	}
+
+	public function testSignupFreeTrialInstantApprovalAndOff(): void {
+		$mk = fn( string $email ) => $this->k->platform->signup( array( 'shop_name' => 'Shop ' . $email, 'owner_name' => 'O', 'phone' => '01700000000', 'email' => $email, 'password' => 'secret123' ) );
+
+		// Default: the trial starts at once, once per shop.
+		$a   = $mk( 'a@gmail.com' );
+		$ctx = $this->k->contexts->forUser( $a['user_id'], 0, 0, true );
+		$t   = $this->k->platform->startTrial( $ctx );
+		$this->assertSame( 'approved', $t['status'] );
+		$sub = $this->k->contexts->forUser( $a['user_id'], 0 )->subscription;
+		$this->assertSame( 'trial', $sub['status'] );
+		$this->assertSame( '2026-03-22', $sub['paid_until'] );
+		$this->assertTrue( $this->k->platform->trialUsed( $a['business_id'] ) );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->platform->startTrial( $ctx ) );
+
+		// Approval mode: the trial waits like a payment request.
+		$this->k->platform->saveConfig( array( 'signup_trial' => 'approval' ) );
+		$b   = $mk( 'b@gmail.com' );
+		$req = $this->k->platform->trialFor( $b['business_id'], $b['user_id'] );
+		$this->assertSame( 'pending', $req['status'] );
+		$this->assertThrows( SubscriptionException::class, fn() => $this->k->contexts->forUser( $b['user_id'], 0 ) );
+		$this->k->platform->approve( $this->owner, $req['id'] );
+		$this->assertSame( 'trial', $this->k->contexts->forUser( $b['user_id'], 0 )->subscription['status'] );
+
+		// Paying after the trial extends from the trial end.
+		$p = $this->k->platform->recordPayment( $this->owner, $b['business_id'], array( 'amount' => '300', 'cycle' => 'monthly' ) );
+		$this->assertSame( '2026-03-23', $p['period_from'] );
+		$this->assertSame( 'monthly', $this->k->contexts->forUser( $b['user_id'], 0 )->business['plan'] );
+
+		$this->k->platform->saveConfig( array( 'signup_trial' => 'off' ) );
+		$c = $mk( 'c@gmail.com' );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->platform->trialFor( $c['business_id'], $c['user_id'] ) );
+	}
 }

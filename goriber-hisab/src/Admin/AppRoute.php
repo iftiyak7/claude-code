@@ -348,8 +348,11 @@ final class AppRoute {
 			exit;
 		}
 		// phpcs:disable WordPress.Security.NonceVerification -- verified below.
+		if ( isset( $_GET['start'] ) ) {
+			$old['start'] = 'pay' === $_GET['start'] ? 'pay' : 'trial';
+		}
 		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
-			foreach ( array( 'shop_name', 'owner_name', 'phone', 'email', 'address', 'business_type' ) as $k ) {
+			foreach ( array( 'shop_name', 'owner_name', 'phone', 'email', 'address', 'business_type', 'start' ) as $k ) {
 				$old[ $k ] = isset( $_POST[ $k ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ $k ] ) ) : '';
 			}
 			$nonce = isset( $_POST['_gh'] ) ? sanitize_text_field( wp_unslash( $_POST['_gh'] ) ) : '';
@@ -362,7 +365,14 @@ final class AppRoute {
 				}
 				$this->k->limiter->hit( 'signup:' . Api::clientIp(), 5, HOUR_IN_SECONDS );
 				$pass = isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-				$this->k->platform->signup( $old + array( 'password' => $pass ) );
+				$created = $this->k->platform->signup( $old + array( 'password' => $pass ) );
+				if ( isset( $_POST['start'] ) && 'trial' === $_POST['start'] ) {
+					try {
+						$this->k->platform->trialFor( $created['business_id'], $created['user_id'] );
+					} catch ( \GoriberHisab\Support\HisabException $e ) {
+						unset( $e ); // Trial switched off meanwhile: they land on the payment screen.
+					}
+				}
 				$user = wp_signon(
 					array(
 						'user_login'    => $old['email'],

@@ -85,6 +85,7 @@ final class PlatformService extends Service {
 				'whatsapp'             => '',
 				'landing'              => true,
 				'signup'               => true,
+				'signup_trial'         => 'instant',
 				'pay_bkash'            => '',
 				'pay_bkash_type'       => 'personal',
 				'pay_nagad'            => '',
@@ -104,6 +105,9 @@ final class PlatformService extends Service {
 	 */
 	public function saveConfig( array $data ): array {
 		$c = $this->config();
+		if ( isset( $data['signup_trial'] ) ) {
+			$c['signup_trial'] = in_array( $data['signup_trial'], array( 'instant', 'approval', 'off' ), true ) ? (string) $data['signup_trial'] : 'instant';
+		}
 		foreach ( array( 'landing', 'signup' ) as $k ) {
 			if ( isset( $data[ $k ] ) ) {
 				$c[ $k ] = Text::bool( $data[ $k ] );
@@ -160,7 +164,7 @@ final class PlatformService extends Service {
 	 */
 	public function publicConfig(): array {
 		$c = $this->config();
-		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'trial_days', 'pay_bkash', 'pay_bkash_type', 'pay_nagad', 'pay_nagad_type', 'pay_rocket', 'pay_rocket_type', 'pay_bank' ) ) );
+		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'trial_days', 'pay_bkash', 'pay_bkash_type', 'pay_nagad', 'pay_nagad_type', 'pay_rocket', 'pay_rocket_type', 'pay_bank', 'signup_trial' ) ) );
 	}
 
 	/**
@@ -494,6 +498,65 @@ final class PlatformService extends Service {
 	 * @param array<string,mixed> $data cycle, method, reference, payer_phone, note.
 	 * @return array<string,mixed>
 	 */
+	/**
+	 * Free trial for a self-signed-up shop. Depending on the "signup_trial"
+	 * setting it starts at once, or waits for the owner's approval like a
+	 * payment. Each shop gets one trial.
+	 *
+	 * @return array<string,mixed> The trial record.
+	 */
+	public function startTrial( BusinessContext $ctx ): array {
+		if ( 'owner' !== $ctx->role && ! $ctx->can( 'business.manage' ) ) {
+			throw new PermissionException( 'Only the shop owner can do this.' );
+		}
+		return $this->trialFor( $ctx->business_id, $ctx->user_id );
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function trialFor( int $business_id, int $user_id ): array {
+		$c    = $this->config();
+		$mode = (string) $c['signup_trial'];
+		if ( 'off' === $mode || (int) $c['trial_days'] <= 0 ) {
+			throw new ValidationException( array(), 'A free trial is not available. Please pay to start.' );
+		}
+		$bt  = $this->db->table( 'businesses' );
+		$row = $this->db->row( "SELECT status, paid_until FROM {$bt} WHERE id = %d", array( $business_id ) );
+		if ( $this->trialUsed( $business_id ) || 'pending' !== ( $row['status'] ?? '' ) ) {
+			throw new ValidationException( array(), 'The free trial was already used.' );
+		}
+		$id = $this->db->insert(
+			$this->db->table( 'subscription_payments' ),
+			array(
+				'business_id' => $business_id,
+				'amount'      => '0',
+				'cycle'       => 'trial',
+				'months'      => 0,
+				'method'      => 'trial',
+				'reference'   => '',
+				'payer_phone' => '',
+				'note'        => 'Free trial',
+				'status'      => 'pending',
+				'created_by'  => $user_id,
+				'updated_by'  => $user_id,
+				'created_at'  => $this->now(),
+				'updated_at'  => $this->now(),
+			)
+		);
+		if ( 'instant' === $mode ) {
+			$this->apply( 0, $id );
+		} else {
+			$this->events->dispatch( 'goriber_hisab/platform/renewal_requested', $id, $business_id );
+		}
+		return $this->payment( $id );
+	}
+
+	public function trialUsed( int $business_id ): bool {
+		$pt = $this->db->table( 'subscription_payments' );
+		return (int) $this->db->value( "SELECT COUNT(*) FROM {$pt} WHERE business_id = %d AND cycle = 'trial' AND status IN ('pending','approved')", array( $business_id ) ) > 0;
+	}
+
 	public function requestRenewal( BusinessContext $ctx, array $data ): array {
 		if ( 'owner' !== $ctx->role && ! $ctx->can( 'business.manage' ) ) {
 			throw new PermissionException( 'Only the shop owner can renew.' );
@@ -657,14 +720,19 @@ final class PlatformService extends Service {
 		$today = $this->clock->today( (string) ( $row['timezone'] ?? '' ) ?: 'UTC' );
 		$until = (string) ( $row['paid_until'] ?? '' );
 		// Renewing early keeps the remaining days; renewing late starts today.
-		$from = '' !== $until && $until >= $today ? self::addDays( $until, 1 ) : $today;
-		$to   = self::addDays( self::addMonths( $from, (int) $p['months'] ), -1 );
+		$from  = '' !== $until && $until >= $today ? self::addDays( $until, 1 ) : $today;
+		$to    = self::addDays( self::addMonths( $from, (int) $p['months'] ), -1 );
+		$trial = 'trial' === $p['cycle'];
+		if ( $trial ) {
+			$from = $today;
+			$to   = self::addDays( $today, max( 1, (int) $this->config()['trial_days'] ) );
+		}
 		$this->db->update(
 			$bt,
 			array(
 				'paid_until'    => $to,
 				'plan'          => $p['cycle'],
-				'billing_cycle' => $p['cycle'],
+				'billing_cycle' => $trial ? (string) ( $row['billing_cycle'] ?: 'monthly' ) : $p['cycle'],
 				'status'        => 'pending' === ( $row['status'] ?? '' ) ? 'active' : $row['status'],
 				'updated_at'    => $this->now(),
 			),

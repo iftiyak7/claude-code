@@ -39,6 +39,7 @@ final class PlatformController extends Controller {
 			$this->route( 'POST', '/platform/payments/(?P<id>\d+)/reject', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->reject( get_current_user_id(), self::id( $r ), (string) ( $p['reason'] ?? '' ) ) ), $admin ),
 
 			$this->route( 'GET', '/subscription', array( $this, 'subscription' ), array( 'context' => 'expired_ok' ) ),
+			$this->route( 'POST', '/subscription/trial', fn( BusinessContext $c ) => $this->k->platform->startTrial( $c ), array( 'context' => 'expired_ok', 'created' => true ) ),
 			$this->route( 'POST', '/subscription/renew', fn( BusinessContext $c, array $p ) => $this->k->platform->requestRenewal( $c, $p ), array( 'context' => 'expired_ok', 'created' => true ) ),
 		);
 	}
@@ -56,6 +57,7 @@ final class PlatformController extends Controller {
 			'config'       => $this->k->platform->publicConfig(),
 			'payments'     => $this->k->platform->ownPayments( $ctx ),
 			'is_owner'     => 'owner' === $ctx->role || $ctx->can( 'business.manage' ),
+			'trial_used'   => $this->k->platform->trialUsed( $ctx->business_id ),
 		);
 	}
 

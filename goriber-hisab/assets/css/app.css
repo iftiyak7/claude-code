@@ -617,3 +617,7 @@ button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .tile.loose { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
 .tile-weigh { position: absolute; top: 6px; left: 6px; font-size: .68rem; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); font-weight: 600; }
 .tile-price small { font-weight: 500; color: var(--muted); }
+.trial-card { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 6px 2px; }
+.trial-card p { margin: 4px 0 0; }
+.or-line { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; color: var(--muted); font-size: .85rem; }
+.or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--border); }

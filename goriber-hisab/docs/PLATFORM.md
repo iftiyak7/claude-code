@@ -101,3 +101,13 @@ rows, plan items) can be added, removed and reordered, and each section can
 be hidden. Stored in the `goriber_hisab_landing` option; *Reset to original*
 restores the defaults. The footer and hero show the company credit
 ("A product of NOORIYAH Group") with its logo.
+
+### Free trial for sign-ups
+
+The sign-up form offers "N-day free trial" (pre-selected from the home page
+button) or "Pay now"; a pending shop also sees a *Start free trial* button on
+its payment screen. *Free trial for new sign-ups* decides what happens:
+`instant` (default — the shop opens at once on the `trial` plan), `approval`
+(a zero-amount "Free trial" request waits in Payments for you to approve) or
+`off`. Each shop gets one trial; paying afterwards extends from the trial's
+end date.

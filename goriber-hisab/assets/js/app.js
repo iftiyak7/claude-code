@@ -193,11 +193,12 @@ function subscriptionBanner() {
   const sub = state.me.subscription;
   if (!sub?.managed || sub.days_left === null || sub.days_left > 7) return null;
   const owner = state.ctx.role === 'owner' || can('business.manage');
-  const text = sub.days_left > 0 ? t('Your subscription ends in {n} days.', { n: sub.days_left })
+  const text = sub.status === 'trial' && sub.days_left > 0 ? t('Free trial: {n} days left.', { n: sub.days_left })
+    : sub.days_left > 0 ? t('Your subscription ends in {n} days.', { n: sub.days_left })
     : sub.days_left === 0 ? t('Your subscription ends today.')
       : t('Your subscription has expired. The shop will be locked in {n} days.', { n: Math.max(0, sub.grace_left ?? 0) });
   return h('div', { class: `sub-banner ${sub.days_left < 0 ? 'bad' : ''}`, role: 'status' }, icon('alert', 18), h('span', {}, text),
-    owner ? h('a', { class: 'btn btn-sm', href: '#/subscription' }, t('Renew now')) : null);
+    owner ? h('a', { class: 'btn btn-sm', href: '#/subscription' }, sub.status === 'trial' ? t('Pay now') : t('Renew now')) : null);
 }
 
 function buildShell() {

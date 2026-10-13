@@ -98,10 +98,34 @@ function content(data, onDone, { compact = false } = {}) {
     return out;
   }
 
-  if (pending.length) {
+  const trialPending = pending.find((x) => x.cycle === 'trial');
+  const paidPending = pending.find((x) => x.cycle !== 'trial');
+  if (trialPending) {
+    out.push(card(null, h('div', { class: 'blocked-msg ok' }, icon('check', 22), h('div', {},
+      h('strong', {}, t('Free trial requested — waiting for approval')),
+      h('p', { class: 'muted' }, t('Your {n}-day free trial starts as soon as we approve it.', { n: cfg.trial_days }))))));
+  }
+  if (paidPending) {
     out.push(card(null, h('div', { class: 'blocked-msg ok' }, icon('check', 22), h('div', {},
       h('strong', {}, t('Payment received — waiting for approval')),
-      h('p', { class: 'muted' }, t('TrxID {r}. Your shop will be extended as soon as it is checked.', { r: pending[0].reference }))))));
+      h('p', { class: 'muted' }, t('TrxID {r}. Your shop will be extended as soon as it is checked.', { r: paidPending.reference }))))));
+  }
+
+  // A new sign-up can start with the free trial instead of paying.
+  if (data.is_owner && sub.status === 'pending' && !data.trial_used && Number(cfg.trial_days) > 0 && cfg.signup_trial !== 'off') {
+    const btn = h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: async () => {
+      btn.disabled = true;
+      try {
+        await api.post('subscription/trial');
+        toast(cfg.signup_trial === 'instant' ? t('Your free trial has started!') : t('Free trial requested'));
+        if (cfg.signup_trial === 'instant') location.reload(); else onDone();
+      } catch (err) { btn.disabled = false; showError(err); }
+    } }, t('Start {n}-day free trial', { n: cfg.trial_days }));
+    out.push(card(null, h('div', { class: 'trial-card' },
+      h('div', {}, h('strong', {}, t('Try it free for {n} days', { n: cfg.trial_days })),
+        h('p', { class: 'muted' }, cfg.signup_trial === 'instant' ? t('No payment needed. Your shop opens right now; pay when the trial ends.') : t('No payment needed. Your shop opens as soon as we approve it.'))),
+      btn),
+      h('p', { class: 'or-line' }, h('span', {}, t('or pay now')))));
   }
 
   if (data.is_owner) {

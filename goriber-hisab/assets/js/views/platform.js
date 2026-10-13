@@ -11,6 +11,7 @@ import { page, card, stat, tabs, field, input, select, textarea, modal, toast, s
 import { icon } from '../core/icons.js';
 
 const METHODS = [['bkash', 'bKash'], ['nagad', 'Nagad'], ['rocket', 'Rocket'], ['bank', 'Bank'], ['cash', 'Cash']];
+const methodLabel = (m) => (m === 'trial' ? t('Free trial') : METHODS.find(([k]) => k === m)?.[1] || m);
 const SUB_TONE = { active: 'active', trial: 'held', grace: 'partial', expired: 'due', suspended: 'suspended', unlimited: 'completed', pending: 'partial' };
 const SUB_LABEL = { active: 'Active', trial: 'Trial', grace: 'Grace period', expired: 'Expired', suspended: 'Suspended', unlimited: 'No limit', pending: 'New sign-up' };
 
@@ -94,14 +95,15 @@ export default async function platform(el, params, query) {
       columns: [
         { label: t('Date'), render: (x) => datetime(x.created_at) },
         { label: t('Shop'), render: (x) => h('a', { href: '#', onclick: (e) => { e.preventDefault(); manageShop(x.business_id, reload); } }, x.shop_name) },
-        { label: t('Plan'), render: (x) => `${t(x.cycle === 'yearly' ? 'Yearly' : 'Monthly')} · ${t('{n} months', { n: x.months })}` },
+        { label: t('Plan'), render: (x) => (x.cycle === 'trial' ? t('Free trial') : `${t(x.cycle === 'yearly' ? 'Yearly' : 'Monthly')} · ${t('{n} months', { n: x.months })}`) },
         { label: t('Amount'), align: 'right', render: (x) => tk(x.amount) },
-        { label: t('Method'), render: (x) => (METHODS.find(([k]) => k === x.method)?.[1] || x.method) },
+        { label: t('Method'), render: (x) => (methodLabel(x.method)) },
         { label: t('TrxID'), render: (x) => h('span', { class: 'cell-stack' }, h('code', {}, x.reference || '—'), x.payer_phone ? h('small', { class: 'muted' }, x.payer_phone) : null) },
         { label: t('Status'), render: (x) => h('span', { class: 'cell-stack' }, badge({ pending: 'partial', approved: 'paid', rejected: 'void' }[x.status], t(x.status === 'pending' ? 'Waiting' : x.status === 'approved' ? 'Approved' : 'Rejected')), x.period_to ? h('small', { class: 'muted' }, `${date(x.period_from)} – ${date(x.period_to)}`) : null) },
         { label: '', render: (x) => (x.status === 'pending' ? h('span', { class: 'row' },
           h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: async () => {
-            if (!(await confirmDialog(t('Did you receive {amount} from {shop}? Approving extends the shop by {n} months.', { amount: tk(x.amount), shop: x.shop_name, n: x.months }), { confirmText: t('Approve') }))) return;
+            const q = x.cycle === 'trial' ? t('Start the {n}-day free trial for {shop}?', { n: cfg.trial_days, shop: x.shop_name }) : t('Did you receive {amount} from {shop}? Approving extends the shop by {n} months.', { amount: tk(x.amount), shop: x.shop_name, n: x.months });
+            if (!(await confirmDialog(q, { confirmText: t('Approve') }))) return;
             try { await api.post(`platform/payments/${x.id}/approve`); toast(t('Approved — shop extended')); reload(); } catch (err) { showError(err); }
           } }, icon('check', 14), t('Approve')),
           h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => {
@@ -205,7 +207,8 @@ function settingsForm(reload) {
       field(t('Software name'), input('brand', cfg.brand)))),
     card(t('Website'),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'landing', checked: cfg.landing !== false }), h('span', {}, t('Show the Goriber Hisab home page (features, pricing, WhatsApp) on the site\'s front page'))),
-      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'signup', checked: cfg.signup !== false }), h('span', {}, t('Let new shops sign up themselves (you approve each one)')))),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'signup', checked: cfg.signup !== false }), h('span', {}, t('Let new shops sign up themselves (you approve each one)'))),
+      field(t('Free trial for new sign-ups'), select('signup_trial', [['instant', t('Starts right away (no approval needed)')], ['approval', t('Starts after I approve it')], ['off', t('No free trial — they must pay')]], cfg.signup_trial || 'instant'), { hint: t('Trial length is set in Free trial days above.') })),
     card(t('AI order reading (optional)'),
       h('p', { class: 'muted small' }, t('Paste-to-fill works without this. With an Anthropic (Claude) API key, messy messages are read even better. You pay Anthropic per use.')),
       field(t('Claude API key'), input('ai_key', cfg.ai_key || '', { autocomplete: 'off', placeholder: 'sk-ant-…' }), { hint: cfg.ai_enabled ? t('Connected') : t('Get a key at console.anthropic.com') })),
@@ -374,7 +377,7 @@ async function manageShop(id, onChange) {
     card(t('Payment history'), shop.payments.length ? simpleTable([
       { label: t('Date'), render: (x) => datetime(x.created_at) },
       { label: t('Amount'), align: 'right', render: (x) => tk(x.amount) },
-      { label: t('Method'), render: (x) => `${METHODS.find(([k]) => k === x.method)?.[1] || x.method}${x.reference ? ` · ${x.reference}` : ''}` },
+      { label: t('Method'), render: (x) => `${methodLabel(x.method)}${x.reference ? ` · ${x.reference}` : ''}` },
       { label: t('Period'), render: (x) => (x.period_to ? `${date(x.period_from)} – ${date(x.period_to)}` : '—') },
       { label: t('Status'), render: (x) => badge({ pending: 'partial', approved: 'paid', rejected: 'void' }[x.status], t(x.status === 'pending' ? 'Waiting' : x.status === 'approved' ? 'Approved' : 'Rejected')) },
     ], shop.payments) : h('p', { class: 'muted' }, t('No payments yet.'))));

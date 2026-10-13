@@ -30,7 +30,11 @@ $types = array(
 	'service'     => array( 'সার্ভিস ব্যবসা', 'Service business' ),
 	'general'     => array( 'অন্যান্য', 'Other' ),
 );
-$trial = (int) $platform['trial_days'];
+$trial      = (int) $platform['trial_days'];
+$trial_mode = (string) ( $platform['signup_trial'] ?? 'instant' );
+$can_trial  = $trial > 0 && 'off' !== $trial_mode;
+$start      = '' !== $v( 'start' ) ? $v( 'start' ) : ( $can_trial ? 'trial' : 'pay' );
+$num        = static fn( int $n ): string => 'en' === $lang ? (string) $n : strtr( (string) $n, array_combine( range( 0, 9 ), array( '০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯' ) ) );
 ?>
 <!doctype html>
 <html lang="<?php echo esc_attr( $lang ); ?>">
@@ -67,11 +71,11 @@ $trial = (int) $platform['trial_days'];
 		<a class="brand m-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>"><img src="<?php echo esc_url( $asset( 'img/icon.svg' ) ); ?>" alt="" width="40" height="40"><span><b><?php echo esc_html( $L( 'গরিবের', 'Goriber' ) ); ?></b> <?php echo esc_html( $L( 'হিসাব', 'Hisab' ) ); ?></span></a>
 		<ol class="steps">
 			<li class="on"><b>১</b><?php echo esc_html( $L( 'তথ্য দিন', 'Your details' ) ); ?></li>
-			<li><b>২</b><?php echo esc_html( $L( 'পেমেন্ট', 'Payment' ) ); ?></li>
+			<li><b>২</b><?php echo esc_html( $can_trial ? $L( 'ফ্রি ট্রায়াল / পেমেন্ট', 'Free trial / payment' ) : $L( 'পেমেন্ট', 'Payment' ) ); ?></li>
 			<li><b>৩</b><?php echo esc_html( $L( 'অনুমোদন', 'Approval' ) ); ?></li>
 		</ol>
 		<h1><?php echo esc_html( $L( 'নতুন দোকান খুলুন', 'Open your shop' ) ); ?></h1>
-		<p class="sub"><?php echo esc_html( $L( 'নিচের তথ্যগুলো দিন। পরের ধাপে পেমেন্টের নিয়ম দেখাবে।', 'Fill in your details. Payment instructions come next.' ) ); ?></p>
+		<p class="sub"><?php echo esc_html( $can_trial ? $L( 'নিচের তথ্যগুলো দিন, তারপর ফ্রি ট্রায়াল শুরু করুন অথবা পেমেন্ট করুন।', 'Fill in your details, then start your free trial or pay.' ) : $L( 'নিচের তথ্যগুলো দিন। পরের ধাপে পেমেন্টের নিয়ম দেখাবে।', 'Fill in your details. Payment instructions come next.' ) ); ?></p>
 		<?php if ( empty( $platform['signup'] ) ) : ?>
 			<div class="error" role="alert"><span aria-hidden="true">⚠</span><span><?php echo esc_html( $L( 'এখন নতুন সাইন আপ বন্ধ আছে। আমাদের সাথে যোগাযোগ করুন।', 'Sign-up is closed. Please contact us.' ) ); ?></span></div>
 		<?php else : ?>
@@ -116,8 +120,22 @@ $trial = (int) $platform['trial_days'];
 				</div>
 				<input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
 				<input type="hidden" name="_gh" value="<?php echo esc_attr( wp_create_nonce( 'goriber_signup' ) ); ?>">
-				<p class="sub" style="margin:16px 0"><?php echo esc_html( $L( 'মাসিক ' . $platform['currency'] . number_format( (float) $platform['monthly_price'] ) . ' অথবা বাৎসরিক ' . $platform['currency'] . number_format( (float) $platform['yearly_price'] ) . '।', 'Monthly ' . $platform['currency'] . number_format( (float) $platform['monthly_price'] ) . ' or yearly ' . $platform['currency'] . number_format( (float) $platform['yearly_price'] ) . '.' ) ); ?></p>
-				<button class="btn" type="submit"><?php echo esc_html( $L( 'অ্যাকাউন্ট খুলুন ও পেমেন্টে যান', 'Create account & continue to payment' ) ); ?></button>
+				<label><?php echo esc_html( $L( 'কীভাবে শুরু করবেন?', 'How do you want to start?' ) ); ?></label>
+				<div class="start-pick">
+					<?php if ( $can_trial ) : ?>
+						<label class="start-opt">
+							<input type="radio" name="start" value="trial" <?php checked( $start, 'trial' ); ?>>
+							<span><b><?php echo esc_html( $L( $num( $trial ) . ' দিন ফ্রি ট্রায়াল', $trial . '-day free trial' ) ); ?></b>
+							<small><?php echo esc_html( 'instant' === $trial_mode ? $L( 'এখনই চালু, কোনো টাকা লাগবে না। পরে পছন্দ হলে পেমেন্ট করবেন।', 'Starts right away, no payment. Pay later if you like it.' ) : $L( 'কোনো টাকা লাগবে না। আমরা অনুমোদন দিলেই চালু হবে।', 'No payment. Starts as soon as we approve it.' ) ); ?></small></span>
+						</label>
+					<?php endif; ?>
+					<label class="start-opt">
+						<input type="radio" name="start" value="pay" <?php checked( $start, 'pay' ); ?>>
+						<span><b><?php echo esc_html( $L( 'এখনই পেমেন্ট করব', 'Pay now' ) ); ?></b>
+						<small><?php echo esc_html( $L( 'মাসিক ' . $platform['currency'] . number_format( (float) $platform['monthly_price'] ) . ' অথবা বাৎসরিক ' . $platform['currency'] . number_format( (float) $platform['yearly_price'] ) . ' — বিকাশ/নগদে।', 'Monthly ' . $platform['currency'] . number_format( (float) $platform['monthly_price'] ) . ' or yearly ' . $platform['currency'] . number_format( (float) $platform['yearly_price'] ) . ' — by bKash/Nagad.' ) ); ?></small></span>
+					</label>
+				</div>
+				<button class="btn" type="submit"><?php echo esc_html( $L( 'অ্যাকাউন্ট খুলুন', 'Create my account' ) ); ?></button>
 			</form>
 		<?php endif; ?>
 		<p class="help"><?php echo esc_html( $L( 'আগেই অ্যাকাউন্ট আছে?', 'Already have an account?' ) ); ?> <a href="<?php echo esc_url( \GoriberHisab\Admin\AppRoute::loginUrl() ); ?>"><?php echo esc_html( $L( 'লগইন করুন', 'Log in' ) ); ?></a></p>

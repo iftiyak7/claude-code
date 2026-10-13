@@ -55,3 +55,9 @@ textarea:focus, select:focus { outline: none; border-color: var(--green); box-sh
 .steps li + li::before { content: "›"; margin-right: 6px; color: #94a3b8; }
 .hp { position: absolute; left: -9999px; }
 @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+.start-pick { display: grid; gap: 10px; margin-bottom: 18px; }
+.start-opt { display: flex !important; gap: 10px; align-items: flex-start; margin: 0 !important; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font-weight: 400 !important; }
+.start-opt:has(input:checked) { border-color: var(--green); background: #f0fdf4; }
+.start-opt input { margin-top: 4px; accent-color: var(--green); }
+.start-opt span { display: grid; gap: 2px; }
+.start-opt small { color: var(--muted); font-size: .86rem; }
