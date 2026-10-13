@@ -29,7 +29,6 @@ const NAV = [
   ['/branches', 'branches', 'Branches', ['branches.manage']],
   ['/settings', 'settings', 'Settings', ['settings.manage', 'business.manage', 'data.export', 'backup.manage']],
 ];
-const BOTTOM = ['/', '/pos', '/sales', '/customers'];
 
 const v = (name) => () => import(`./views/${name}.js?v=${window.BZL.version}`);
 
@@ -106,7 +105,7 @@ async function loadSession() {
   try {
     state.me = await api.get('me', { business: state.businessId, branch: state.branchId });
   } catch (err) {
-    mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('Could not load BizLedger')), h('p', {}, err.message),
+    mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('Could not load Goriber Hisab')), h('p', {}, err.message),
       h('button', { class: 'btn btn-primary', onclick: () => location.reload() }, t('Try again'))));
     throw err;
   }
@@ -178,7 +177,7 @@ function buildShell() {
     : null;
 
   const sidebar = h('nav', { class: 'sidebar', 'aria-label': t('Main') },
-    h('div', { class: 'brand' }, h('img', { src: `${window.BZL.assetsUrl}img/icon.svg`, alt: '', width: 28, height: 28 }), h('span', {}, 'BizLedger')),
+    h('div', { class: 'brand' }, h('img', { src: `${window.BZL.assetsUrl}img/icon.svg`, alt: '', width: 28, height: 28 }), h('span', {}, t('Goriber Hisab'))),
     h('div', { class: 'switches' }, businessSwitch, branchSwitch),
     h('ul', {}, navItems().map(([path, ic, label]) => h('li', {}, h('a', { href: `#${path}`, dataset: { path } }, icon(ic), h('span', {}, t(label)))))),
     h('div', { class: 'sidebar-foot' },
@@ -197,8 +196,12 @@ function buildShell() {
     bell,
     h('span', { class: 'avatar', title: state.me.user.name }, h('img', { src: state.me.user.avatar, alt: '', width: 32, height: 32, onerror: (e) => { e.target.replaceWith(icon('users')); } })));
 
+  // Phone bottom bar: POS sits in the middle as the main action.
+  const items = navItems();
+  const pick = (p) => items.find(([path]) => path === p);
+  const slots = ['/', '/sales', '/pos', '/customers'].map(pick).filter(Boolean);
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': t('Quick') },
-    navItems().filter(([p]) => BOTTOM.includes(p)).map(([path, ic, label]) => h('a', { href: `#${path}`, dataset: { path } }, icon(ic), h('span', {}, t(label)))),
+    slots.map(([path, ic, label]) => h('a', { href: `#${path}`, dataset: { path }, class: path === '/pos' ? 'center' : '' }, path === '/pos' ? h('span', { class: 'center-btn' }, icon(ic, 24)) : icon(ic), h('span', {}, t(label)))),
     h('button', { type: 'button', onclick: () => document.body.classList.toggle('nav-open') }, icon('more'), h('span', {}, t('More'))));
 
   mount(app,

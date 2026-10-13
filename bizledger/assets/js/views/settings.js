@@ -157,7 +157,7 @@ const RENDER = {
   printer(S) {
     const status = h('span', { class: 'muted' }, transport()?.name || '');
     const tools = card(t('Thermal printer'),
-      h('p', { class: 'muted small' }, t('Bluetooth printing works in Chrome on Android and desktop over HTTPS. In the BizLedger Android app, any paired printer works through the native bridge. Otherwise receipts print through the browser dialog.')),
+      h('p', { class: 'muted small' }, t('Bluetooth printing works in Chrome on Android and desktop over HTTPS. In the Goriber Hisab Android app, any paired printer works through the native bridge. Otherwise receipts print through the browser dialog.')),
       h('div', { class: 'row' },
         h('button', { class: 'btn', type: 'button', onclick: async () => { try { status.textContent = await connectPrinter(); toast(t('Printer connected')); } catch (err) { toast(err.message, 'error', 6000); } } }, icon('bluetooth', 16), t('Choose printer')),
         h('button', { class: 'btn', type: 'button', onclick: async () => { try { await printTest(); toast(t('Test page sent')); } catch (err) { toast(err.message, 'error', 6000); } } }, icon('printer', 16), t('Test print')),

@@ -53,7 +53,7 @@ final class DataTest extends IntegrationTestCase {
 		$this->k->settings->update( $this->ctx, array( 'tax.enabled' => true ) );
 		$this->k->taxes->save( $this->ctx, array( 'name' => 'VAT', 'rate' => '5', 'is_default' => true ) );
 		( new \BizLedger\Data\DemoData( $this->k ) )->seed( $this->ctx );
-		$this->assertSame( 9, $this->k->products->list( $this->ctx )['total'] );
+		$this->assertSame( 10, $this->k->products->list( $this->ctx )['total'] );
 		$this->assertBooksBalanced( 'demo data' );
 	}
 

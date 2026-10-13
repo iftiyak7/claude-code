@@ -157,9 +157,9 @@ final class AppRoute {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1d4ed8">
+<meta name="theme-color" content="#047857">
 <meta name="robots" content="noindex, nofollow">
-<title><?php esc_html_e( 'BizLedger', 'bizledger' ); ?></title>
+<title><?php esc_html_e( 'Goriber Hisab', 'bizledger' ); ?></title>
 <?php if ( 'front' === $mode ) : ?>
 <link rel="manifest" href="<?php echo esc_url( self::url( 'manifest.webmanifest' ) ); ?>">
 <?php endif; ?>
@@ -170,7 +170,7 @@ final class AppRoute {
 </head>
 <body>
 <div id="app" aria-live="polite"><div class="boot"><div class="spinner" role="status" aria-label="<?php esc_attr_e( 'Loading', 'bizledger' ); ?>"></div></div></div>
-<noscript><?php esc_html_e( 'BizLedger needs JavaScript enabled.', 'bizledger' ); ?></noscript>
+<noscript><?php esc_html_e( 'Goriber Hisab needs JavaScript enabled.', 'bizledger' ); ?></noscript>
 </body>
 </html>
 		<?php
@@ -180,14 +180,14 @@ final class AppRoute {
 		header( 'Content-Type: application/manifest+json; charset=utf-8' );
 		echo wp_json_encode(
 			array(
-				'name'             => 'BizLedger',
-				'short_name'       => 'BizLedger',
+				'name'             => 'Goriber Hisab',
+				'short_name'       => 'Goriber Hisab',
 				'description'      => __( 'Accounting, inventory, sales and POS', 'bizledger' ),
 				'start_url'        => self::url( '#/' ),
 				'scope'            => self::url(),
 				'display'          => 'standalone',
 				'background_color' => '#f8fafc',
-				'theme_color'      => '#1d4ed8',
+				'theme_color'      => '#047857',
 				'icons'            => array(
 					array(
 						'src'     => BIZLEDGER_URL . 'assets/img/icon.svg',

@@ -194,7 +194,7 @@ async function form(el, id = 0) {
       field(t('Type'), typeSel),
       field(t('Category'), select('category_id', opt(state.me.categories, t('None')), pr.category_id || '')),
       field(t('Brand'), select('brand_id', opt(state.me.brands, t('None')), pr.brand_id || '')),
-      field(t('Unit'), select('unit_id', opt(state.me.units, t('None')), pr.unit_id || '')),
+      field(t('Unit'), select('unit_id', opt(state.me.units, t('None')), pr.unit_id || ''), { hint: t('For loose items (nuts, rice, oil) choose kg or litre — the POS will ask for the weight.') }),
       field(t('SKU'), input('sku', pr.sku)),
       field(t('Barcode'), input('barcode', pr.barcode), { hint: t('Scan it in, or leave empty') }),
       !id ? h('div', { class: 'field' }, checkbox('auto_barcode', true, t('Generate a barcode if empty'))) : null,

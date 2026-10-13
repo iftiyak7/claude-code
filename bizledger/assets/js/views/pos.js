@@ -113,19 +113,25 @@ export default async function pos(el) {
     add(p, null);
   }
 
+  function isLoose(p) {
+    return !!p.unit_decimal || ['kg', 'g', 'gm', 'l', 'ltr', 'ml', 'm'].includes(String(p.unit_name || '').toLowerCase());
+  }
+
   function add(p, v) {
     const key = `${p.id}:${v?.id || 0}`;
     const existing = cart.lines.find((l) => `${l.product_id}:${l.variant_id}` === key);
     const stock = v ? dec(v.stock_qty) : dec(p.stock_qty);
-    if (existing) {
-      existing.qty += 10000;
-    } else {
-      const price = v ? dec(v.selling_price) : dec(p.selling_price);
-      cart.lines.push({ product_id: p.id, variant_id: v?.id || 0, name: p.name + (v ? ` - ${v.name}` : ''), qty: 10000, price, base: price, discount: 0, track: !!p.track_stock, stock });
+    const price = v ? dec(v.selling_price) : dec(p.selling_price);
+    const line = existing || { product_id: p.id, variant_id: v?.id || 0, name: p.name + (v ? ` - ${v.name}` : ''), qty: 10000, price, base: price, discount: 0, track: !!p.track_stock, stock, unit: p.unit_name || '', loose: isLoose(p) };
+    if (line.loose) {
+      // Weighed/loose goods (e.g. nuts by the gram): ask how much first.
+      editLine(line, !existing);
+      return;
     }
-    const line = existing || cart.lines[cart.lines.length - 1];
+    if (existing) existing.qty += 10000; else cart.lines.push(line);
     if (line.track && line.qty > line.stock && !S['inventory.allow_negative']) toast(t('Only {n} in stock for {p}', { n: fmtQty(line.stock), p: line.name }), 'error');
     navigator.vibrate?.(30);
+    bump();
     paintCart();
   }
 
@@ -184,19 +190,19 @@ export default async function pos(el) {
       mount(cartBody, h('div', { class: 'cart-empty' }, icon('pos', 40), h('p', {}, t('Scan or tap a product to start.'))));
     } else {
       mount(cartBody, cart.lines.map((l, i) => {
-        const qtyInput = h('input', { class: 'qty-input', inputmode: 'decimal', value: fmtQty(l.qty), 'aria-label': t('Quantity') });
-        qtyInput.addEventListener('change', () => { const q = dec(qtyInput.value); if (q > 0) { l.qty = q; } paintCart(); });
+        const remove = () => { cart.lines.splice(i, 1); paintCart(); };
         return h('div', { class: 'cart-line' },
-          h('div', { class: 'cl-main' },
+          h('button', { class: 'cl-main', type: 'button', title: t('Tap to change quantity or price'), onclick: () => editLine(l, false) },
             h('strong', {}, l.name),
-            h('button', { class: 'link', type: 'button', onclick: () => editLine(l) },
-              `${money(str(l.price))}${l.discount ? ' − ' + money(str(l.discount)) : ''}`, can('sales.price') || can('sales.discount') ? icon('edit', 12) : null)),
-          h('div', { class: 'stepper' },
-            h('button', { type: 'button', 'aria-label': t('Decrease'), onclick: () => { l.qty -= 10000; if (l.qty <= 0) cart.lines.splice(i, 1); paintCart(); } }, icon('minus', 16)),
-            qtyInput,
-            h('button', { type: 'button', 'aria-label': t('Increase'), onclick: () => { l.qty += 10000; paintCart(); } }, icon('plus', 16))),
+            h('small', { class: 'muted' }, `${fmtQty(l.qty)}${l.unit ? ' ' + l.unit : ''} × ${money(str(l.price))}${l.discount ? ' − ' + money(str(l.discount)) : ''}`, ' ', icon('edit', 12))),
+          l.loose
+            ? h('button', { class: 'btn btn-sm qty-chip', type: 'button', onclick: () => editLine(l, false) }, `${fmtQty(l.qty)} ${l.unit}`)
+            : h('div', { class: 'stepper' },
+              h('button', { type: 'button', 'aria-label': t('Decrease'), onclick: () => { l.qty -= 10000; if (l.qty <= 0) cart.lines.splice(i, 1); paintCart(); } }, icon('minus', 16)),
+              h('button', { type: 'button', class: 'qty-input', 'aria-label': t('Quantity'), onclick: () => editLine(l, false) }, fmtQty(l.qty)),
+              h('button', { type: 'button', 'aria-label': t('Increase'), onclick: () => { l.qty += 10000; paintCart(); } }, icon('plus', 16))),
           h('strong', { class: 'cl-total' }, money(str(lineTotal(l)))),
-          h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { cart.lines.splice(i, 1); paintCart(); } }, icon('trash', 16)));
+          h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: remove }, icon('trash', 16)));
       }));
     }
     quote = null;
@@ -204,16 +210,84 @@ export default async function pos(el) {
     requestQuote();
   }
 
-  function editLine(l) {
-    if (!can('sales.price') && !can('sales.discount')) return;
-    const price = money_input('price', str(l.price, places()), { disabled: !can('sales.price') });
-    const disc = money_input('discount', str(l.discount, places()), { disabled: !can('sales.discount') });
+  /**
+   * Quantity / weight / price editor for a cart line. For loose goods it
+   * accepts grams, kilograms or a taka amount ("৳50 worth").
+   */
+  function editLine(l, isNew) {
+    const unit = (l.unit || '').toLowerCase();
+    const isKg = unit === 'kg';
+    const isLitre = unit === 'l' || unit === 'ltr';
+    const canPrice = can('sales.price');
+    const canDisc = can('sales.discount');
+    const work = { qty: isNew && l.loose ? 0 : l.qty, price: l.price, discount: l.discount };
+
+    const qtyIn = money_input('qty', work.qty ? fmtQty(work.qty) : '', { autofocus: !isKg, 'aria-label': t('Quantity') });
+    const gramIn = isKg || isLitre ? money_input('grams', work.qty ? String(Math.round(work.qty / 10)) : '', { autofocus: true, 'aria-label': isKg ? t('Grams') : t('ml') }) : null;
+    const amountIn = money_input('amount', '', { placeholder: t('e.g. 50'), 'aria-label': t('Amount') });
+    const priceIn = money_input('price', str(work.price, places()), { disabled: !canPrice });
+    const discIn = money_input('discount', work.discount ? str(work.discount, places()) : '', { disabled: !canDisc, placeholder: '0' });
+    const totalOut = h('strong', { class: 'big' });
+
+    const total = () => mul(work.qty, work.price) - work.discount;
+    const paint = (from) => {
+      if (from !== 'qty') qtyIn.value = work.qty ? fmtQty(work.qty) : '';
+      if (gramIn && from !== 'grams') gramIn.value = work.qty ? String(Math.round(work.qty / 10)) : '';
+      if (from !== 'amount') amountIn.value = '';
+      totalOut.textContent = money(str(Math.max(0, total())));
+    };
+    qtyIn.addEventListener('input', () => { work.qty = dec(qtyIn.value); paint('qty'); });
+    gramIn?.addEventListener('input', () => { work.qty = Math.round(Number(gramIn.value || 0) * 10); paint('grams'); });
+    priceIn.addEventListener('input', () => { work.price = dec(priceIn.value); paint('price'); });
+    discIn.addEventListener('input', () => { work.discount = dec(discIn.value); paint('disc'); });
+    amountIn.addEventListener('input', () => {
+      const amount = dec(amountIn.value);
+      if (!amount || !work.price) return;
+      // qty = amount / price, to 0.1 g; round up and absorb the few paisa as discount when allowed.
+      work.qty = Math.ceil((amount * 10000) / work.price);
+      work.discount = canDisc ? Math.max(0, mul(work.qty, work.price) - amount) : 0;
+      discIn.value = work.discount ? str(work.discount, places()) : '';
+      paint('amount');
+    });
+
+    const chips = (isKg ? [[100, '100g'], [250, '250g'], [500, '500g'], [1000, '1kg'], [2000, '2kg']]
+      : isLitre ? [[250, '250ml'], [500, '500ml'], [1000, '1L'], [2000, '2L']]
+        : l.loose ? [[250, '0.25'], [500, '0.5'], [1000, '1'], [2000, '2']]
+          : [[1000, '1'], [2000, '2'], [3000, '3'], [5000, '5'], [10000, '10']])
+      .map(([n, label]) => h('button', { class: 'chip', type: 'button', onclick: () => { work.qty = n * 10; paint(); } }, label));
+
+    const apply = () => {
+      if (work.qty <= 0) { toast(t('Enter a quantity.'), 'error'); return; }
+      l.qty = work.qty; l.price = work.price; l.discount = Math.min(work.discount, mul(work.qty, work.price));
+      if (isNew && !cart.lines.includes(l)) cart.lines.push(l);
+      if (l.track && l.qty > l.stock && !S['inventory.allow_negative']) toast(t('Only {n} in stock for {p}', { n: fmtQty(l.stock), p: l.name }), 'error');
+      m.close();
+      bump();
+      paintCart();
+    };
+
+    const body = h('form', { class: 'form line-editor', onsubmit: (e) => { e.preventDefault(); apply(); } },
+      h('p', { class: 'muted' }, `${money(str(l.base))} / ${l.unit || t('unit')}`),
+      gramIn ? field(isKg ? t('Weight in grams') : t('Volume in ml'), gramIn) : null,
+      field(l.unit ? t('Quantity ({u})', { u: l.unit }) : t('Quantity'), qtyIn),
+      h('div', { class: 'chips wrap' }, chips),
+      l.loose ? field(t('Or sell by amount (৳)'), amountIn, { hint: t('Type the money the customer wants to spend; the weight is calculated.') }) : null,
+      h('div', { class: 'grid-2 tight' },
+        field(t('Unit price'), priceIn, { hint: canPrice ? '' : t('You cannot change prices') }),
+        field(t('Discount'), discIn)),
+      h('div', { class: 'tl grand' }, h('span', {}, t('Line total')), totalOut),
+      h('button', { type: 'submit', hidden: true }));
     const m = modal({
       title: l.name,
       size: 'sm',
-      body: h('div', { class: 'form' }, field(t('Unit price'), price), field(t('Line discount (amount)'), disc)),
-      actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { l.price = dec(price.value); l.discount = dec(disc.value); m.close(); paintCart(); } }, t('Apply'))],
+      body,
+      actions: [
+        !isNew ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: () => { cart.lines.splice(cart.lines.indexOf(l), 1); m.close(); paintCart(); } }, icon('trash', 16), t('Remove')) : null,
+        h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: apply }, icon('check'), isNew ? t('Add to cart') : t('Update')),
+      ],
     });
+    paint();
+    (gramIn || qtyIn).focus();
   }
 
   function payload() {
@@ -270,6 +344,7 @@ export default async function pos(el) {
     payBtn.disabled = !cart.lines.length;
     holdBtn.disabled = !cart.lines.length;
     payBtn.lastChild.textContent = cart.lines.length ? `${t('Pay')} ${money(str(tt.total))}` : t('Pay');
+    paintBar(tt.total);
   }
 
   function docDiscount() {
@@ -453,16 +528,38 @@ export default async function pos(el) {
     cart.shipping = 0;
     cart.note = '';
     if (clearHeld) cart.heldId = null;
+    openCart(false);
     quote = null;
     paintCustomer();
     paintCart();
-    search.input.focus();
+    if (matchMedia('(min-width: 900px)').matches) search.input.focus(); // don't pop the phone keyboard
   }
 
   /* ---------------------------------------------------------- Layout */
 
   const payBtn = h('button', { class: 'btn btn-primary btn-lg pay-btn', type: 'button', onclick: pay }, icon('cash'), h('span', {}, t('Pay')));
   const holdBtn = h('button', { class: 'btn', type: 'button', onclick: hold, title: 'F8' }, icon('pause', 16), t('Hold'));
+
+  // Phones: a sticky cart bar; tapping it opens the cart as a full-screen sheet.
+  const barCount = h('span', { class: 'cart-count' }, '0');
+  const barTotal = h('strong', {}, money('0'));
+  const cartBar = h('div', { class: 'cart-bar' },
+    h('button', { class: 'cart-bar-open', type: 'button', onclick: () => openCart(true) }, icon('pos', 20), barCount, h('span', {}, t('View cart')), barTotal),
+    h('button', { class: 'btn btn-primary', type: 'button', onclick: pay }, t('Pay')));
+  function paintBar(total) {
+    const n = cart.lines.length;
+    barCount.textContent = String(n);
+    barTotal.textContent = money(str(total));
+    cartBar.classList.toggle('empty', !n);
+  }
+  function bump() {
+    cartBar.classList.remove('bump');
+    void cartBar.offsetWidth; // restart the animation
+    cartBar.classList.add('bump');
+  }
+  function openCart(open) {
+    layout.classList.toggle('cart-open', open);
+  }
 
   const layout = h('div', { class: 'pos' },
     h('section', { class: 'pos-left', 'aria-label': t('Products') },
@@ -472,7 +569,12 @@ export default async function pos(el) {
         cameraSupported() ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Scan with camera'), onclick: async () => { const c = await scanWithCamera(); if (c) byCode(c); } }, icon('camera')) : null),
       chips,
       grid),
+    cartBar,
     h('aside', { class: 'pos-right', 'aria-label': t('Cart') },
+      h('div', { class: 'cart-sheet-head' },
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Back to products'), onclick: () => openCart(false) }, icon('back')),
+        h('strong', {}, t('Cart')),
+        h('button', { class: 'btn btn-sm', type: 'button', onclick: () => openCart(false) }, icon('plus', 14), t('Add more'))),
       customerBox,
       cartBody,
       totalsEl,

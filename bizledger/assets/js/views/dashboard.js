@@ -25,6 +25,19 @@ export default async function dashboard(el) {
     subtitle: state.business.name,
     actions: [dateRange((r) => { range = r; if (r.range) prefs.set('dash.range', r.range); load(); }, range.range), customise],
   });
+  // Big, thumb-friendly shortcuts for the most common daily jobs.
+  const quick = [
+    ['pos.use', '#/pos', 'pos', t('New sale')],
+    ['payments.receive', '#/payments/receive', 'cash', t('Receive due')],
+    ['expenses.create', '#/expenses/new', 'expenses', t('Add expense')],
+    ['purchases.create', '#/purchases/new', 'purchases', t('New purchase')],
+    ['products.create', '#/products/new', 'products', t('Add product')],
+    ['customers.create', '#/customers/new', 'customers', t('Add customer')],
+  ].filter(([perm]) => can(perm));
+  if (quick.length) {
+    p.body.append(h('nav', { class: 'quick-actions', 'aria-label': t('Quick actions') },
+      quick.map(([, href, ic, label]) => h('a', { class: 'quick', href }, h('span', { class: 'quick-icon' }, icon(ic, 22)), h('span', {}, label)))));
+  }
   p.body.append(content);
   mount(el, p.el);
 

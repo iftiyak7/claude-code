@@ -254,4 +254,17 @@ final class SalesFlowTest extends IntegrationTestCase {
 		$this->assertMoney( '4800', $dash['overview']['stock_value'] );
 		$this->assertBooksBalanced( 'p&l' );
 	}
+
+	public function testLooseItemsSoldByWeight(): void {
+		$p = $this->product( 'Badam (loose)', '1200', '900', '5' ); // per kg, 5 kg in stock
+		// 250 g.
+		$a = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'qty' => '0.25' ) ), 'payments' => array( array( 'amount' => '300' ) ) ) );
+		$this->assertMoney( '300', $a['total'] );
+		$this->assertMoney( '225', $a['cost_amount'] );
+		// "৳50 worth": the POS sends 0.0417 kg (rounded up) with the paisa difference as discount.
+		$b = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'qty' => '0.0417', 'discount_value' => '0.04' ) ), 'payments' => array( array( 'amount' => '50' ) ) ) );
+		$this->assertMoney( '50', $b['total'] );
+		$this->assertSame( '4.7083', $this->qty( $p ) );
+		$this->assertBooksBalanced( 'loose items' );
+	}
 }

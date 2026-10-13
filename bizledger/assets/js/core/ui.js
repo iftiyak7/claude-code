@@ -79,7 +79,7 @@ export function page(title, { actions = [], back = null, subtitle = '' } = {}) {
         h('div', {}, h('h1', {}, title), subtitle ? h('p', { class: 'muted' }, subtitle) : null)),
       h('div', { class: 'page-actions' }, actions)),
     body);
-  document.title = `${title} · BizLedger`;
+  document.title = `${title} · Goriber Hisab`;
   return { el, body };
 }
 
@@ -281,8 +281,15 @@ export function dataTable({ columns, fetch, filters = [], rowHref, query = {}, s
     mount(foot, footer ? footer(res) : null);
   }
 
+  // On phones the filters fold away behind one button so the list is visible.
+  const filterBox = h('div', { class: 'filters' }, filterEls);
+  const filterBtn = filterEls.length ? h('button', { class: 'btn filter-toggle', type: 'button', 'aria-expanded': 'false', onclick: () => {
+    const open = !filterBox.classList.contains('open');
+    filterBox.classList.toggle('open', open);
+    filterBtn.setAttribute('aria-expanded', String(open));
+  } }, icon('menu', 16), t('Filters')) : null;
   const el = h('div', { class: 'data-table' },
-    h('div', { class: 'toolbar' }, searchInput, filterEls),
+    h('div', { class: 'toolbar' }, searchInput, filterBtn, filterBox),
     body, foot, pager);
   load();
   return { el, reload: load };

@@ -72,6 +72,23 @@ final class DemoData {
 						)
 					)['id'];
 				}
+				// A loose item sold by weight, to show the POS weight dialog.
+				$ut = $this->k->db->table( 'units' );
+				$kg = (int) $this->k->db->value( "SELECT id FROM {$ut} WHERE business_id = %d AND short_name = 'kg' AND deleted_at IS NULL", array( $ctx->business_id ) );
+				$this->k->products->create(
+					$ctx,
+					array(
+						'name'           => 'Peanuts / Badam (loose)',
+						'sku'            => 'DEMO-010',
+						'category_id'    => $cats['Groceries'],
+						'unit_id'        => $kg,
+						'selling_price'  => '280',
+						'purchase_price' => '220',
+						'opening_qty'    => '25',
+						'min_stock'      => '3',
+						'auto_barcode'   => true,
+					)
+				);
 				$customer = (int) $this->k->contacts->create( $ctx, 'customer', array( 'name' => 'Rahim Uddin', 'phone' => '01711000001' ) )['id'];
 				$this->k->contacts->create( $ctx, 'customer', array( 'name' => 'Karim Traders', 'phone' => '01811000002', 'company' => 'Karim Traders' ) );
 				$supplier = (int) $this->k->contacts->create( $ctx, 'supplier', array( 'name' => 'City Wholesale', 'phone' => '01911000003' ) )['id'];

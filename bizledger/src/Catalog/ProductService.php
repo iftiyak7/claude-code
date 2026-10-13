@@ -86,7 +86,7 @@ final class ProductService extends Service {
 		$w     = implode( ' AND ', $where );
 		$total = (int) $this->db->value( "SELECT COUNT(*) FROM {$pt} p WHERE {$w}", $params );
 		$rows  = $this->db->rows(
-			"SELECT p.*, c.name AS category_name, u.short_name AS unit_name,
+			"SELECT p.*, c.name AS category_name, u.short_name AS unit_name, u.allow_decimal AS unit_decimal,
 				(SELECT COALESCE(SUM(s.qty),0) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d) AS stock_qty
 			FROM {$pt} p
 			LEFT JOIN {$ct} c ON c.id = p.category_id
@@ -104,6 +104,10 @@ final class ProductService extends Service {
 	public function get( BusinessContext $ctx, int $id ): array {
 		$ctx->authorize( 'products.view' );
 		$row              = $this->findScoped( $ctx, 'products', $id, 'Product' );
+		$ut               = $this->db->table( 'units' );
+		$unit             = (int) $row['unit_id'] ? $this->db->row( "SELECT short_name, allow_decimal FROM {$ut} WHERE id = %d", array( (int) $row['unit_id'] ) ) : null;
+		$row['unit_name']    = $unit['short_name'] ?? '';
+		$row['unit_decimal'] = $unit['allow_decimal'] ?? 0;
 		$product          = $this->present( $ctx, $row );
 		$product['stock'] = $this->stockByBranch( $ctx, $id );
 		$product['stock_qty'] = Decimal::toString( Decimal::sum( array_map( static fn( $s ) => Decimal::of( $s['qty'] ), array_filter( $product['stock'], static fn( $s ) => (int) $s['branch_id'] === $ctx->branch_id ) ) ) );
@@ -528,6 +532,9 @@ final class ProductService extends Service {
 		if ( isset( $row['stock_qty'] ) ) {
 			$row['stock_qty'] = Decimal::toString( Decimal::of( $row['stock_qty'] ) );
 			$row['is_low']    = $row['track_stock'] && Decimal::of( $row['stock_qty'] ) <= Decimal::of( $row['min_stock'] );
+		}
+		if ( array_key_exists( 'unit_decimal', $row ) ) {
+			$row['unit_decimal'] = (bool) (int) $row['unit_decimal'];
 		}
 		$row['image_url'] = $row['image_id'] && function_exists( 'wp_get_attachment_image_url' ) ? (string) wp_get_attachment_image_url( $row['image_id'], 'thumbnail' ) : '';
 		if ( ! $ctx->can( 'products.cost' ) ) {

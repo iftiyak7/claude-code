@@ -55,7 +55,7 @@ class BluetoothTransport {
   get supported() { return !!navigator.bluetooth; }
 
   async connect(forcePick = false) {
-    if (!this.supported) throw new Error(t('This browser cannot use Bluetooth. Use Chrome on Android/desktop, or the BizLedger Android app.'));
+    if (!this.supported) throw new Error(t('This browser cannot use Bluetooth. Use Chrome on Android/desktop, or the Goriber Hisab Android app.'));
     if (this.char && this.device?.gatt?.connected && !forcePick) return;
     if (!this.device || forcePick) {
       this.device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: SERVICES });
@@ -153,7 +153,7 @@ export function receiptBytes(sale) {
 
 export function testPageBytes() {
   const p = new EscPos(Number(state.settings['printer.width']) === 58 ? 58 : 80);
-  p.align('center').bold().size(2, 2).line('BizLedger').size(1, 1).bold(false)
+  p.align('center').bold().size(2, 2).line('Goriber Hisab').size(1, 1).bold(false)
     .line(t('Printer test')).rule().align('left')
     .pair('Left', 'Right').line('1234567890'.repeat(5).slice(0, p.cols))
     .line('বাংলা লেখা পরীক্ষা').align('center').barcode('TEST-123').feed(3).cut();

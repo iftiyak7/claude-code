@@ -23,8 +23,8 @@ final class AdminMenu {
 
 	public function menu(): void {
 		add_menu_page(
-			__( 'BizLedger', 'bizledger' ),
-			__( 'BizLedger', 'bizledger' ),
+			__( 'Goriber Hisab', 'bizledger' ),
+			__( 'Goriber Hisab', 'bizledger' ),
 			'read',
 			'bizledger',
 			array( $this, 'render' ),
@@ -38,7 +38,7 @@ final class AdminMenu {
 	 * app on admin_init. Shown only if that was prevented.
 	 */
 	public function render(): void {
-		echo '<div class="wrap"><h1>' . esc_html__( 'BizLedger', 'bizledger' ) . '</h1><p><a class="button button-primary" href="' . esc_url( AppRoute::url() ) . '">' . esc_html__( 'Open BizLedger', 'bizledger' ) . '</a></p></div>';
+		echo '<div class="wrap"><h1>' . esc_html__( 'Goriber Hisab', 'bizledger' ) . '</h1><p><a class="button button-primary" href="' . esc_url( AppRoute::url() ) . '">' . esc_html__( 'Open Goriber Hisab', 'bizledger' ) . '</a></p></div>';
 	}
 
 	public function activationRedirect(): void {

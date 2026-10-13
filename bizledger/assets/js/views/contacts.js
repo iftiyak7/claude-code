@@ -171,7 +171,7 @@ async function form(el, type, id = 0) {
       field(isCustomer ? t('Customer ID') : t('Supplier ID'), input('code', c.code, { placeholder: t('Auto') })),
       field(t('Tax / VAT ID'), input('tax_number', c.tax_number)),
       field(t('Address'), textarea('address', c.address, { rows: 2 }), { wide: true }),
-      field(isCustomer ? t('Opening due') : t('Opening payable'), money_input('opening_balance', c.opening_balance && Number(c.opening_balance) ? c.opening_balance : ''), { hint: isCustomer ? t('Amount the customer already owed before using BizLedger') : t('Amount you already owed this supplier') }),
+      field(isCustomer ? t('Opening due') : t('Opening payable'), money_input('opening_balance', c.opening_balance && Number(c.opening_balance) ? c.opening_balance : ''), { hint: isCustomer ? t('Amount the customer already owed before using Goriber Hisab') : t('Amount you already owed this supplier') }),
       isCustomer ? field(t('Credit limit'), money_input('credit_limit', c.credit_limit && Number(c.credit_limit) ? c.credit_limit : ''), { hint: t('0 = no limit') }) : null,
       field(t('Notes'), textarea('notes', c.notes, { rows: 2 }), { wide: true }))),
     h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: `#/${plural}${id ? '/' + id : ''}` }, t('Cancel')), h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, t('Save'))));

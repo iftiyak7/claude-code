@@ -52,7 +52,7 @@ export default async function setup(el) {
     ]],
     [t('Invoice'), () => [
       field(t('Invoice number format'), input('inv_format', data.inv_format || 'INV-{SEQ:6}'), { hint: t('e.g. INV-{YYYY}-{SEQ:5}') }),
-      field(t('Brand colour'), input('inv_color', data.inv_color || '#2563eb', { type: 'color' })),
+      field(t('Brand colour'), input('inv_color', data.inv_color || '#047857', { type: 'color' })),
       field(t('Default paper'), select('inv_paper', [['a4', 'A4'], ['a5', 'A5'], ['80mm', '80mm'], ['58mm', '58mm']], data.inv_paper || 'a4')),
       field(t('Footer message'), input('inv_footer', data.inv_footer ?? t('Thank you for your business!')), { wide: true }),
     ]],
@@ -63,7 +63,7 @@ export default async function setup(el) {
       h('div', { class: 'field' }, checkbox('tax_inclusive', !!data.tax_inclusive, t('My prices already include tax'))),
     ]],
     [t('Printer'), () => [
-      field(t('How do you print receipts?'), select('printer_type', [['browser', t('Normal / browser printing')], ['bluetooth', t('Bluetooth thermal printer')], ['native', t('BizLedger Android app')]], data.printer_type || 'browser')),
+      field(t('How do you print receipts?'), select('printer_type', [['browser', t('Normal / browser printing')], ['bluetooth', t('Bluetooth thermal printer')], ['native', t('Goriber Hisab Android app')]], data.printer_type || 'browser')),
       field(t('Receipt width'), select('printer_width', [['80', '80mm'], ['58', '58mm']], data.printer_width || '80')),
       h('div', { class: 'field wide' }, checkbox('auto_print', !!data.auto_print, t('Print automatically after each POS sale'))),
     ]],
@@ -104,7 +104,7 @@ export default async function setup(el) {
         tax: data.tax_enabled && data.tax_rate ? { name: data.tax_name, rate: data.tax_rate, is_inclusive: data.tax_inclusive } : null,
         settings: {
           'numbering.sale': data.inv_format || 'INV-{SEQ:6}',
-          'invoice.color': data.inv_color || '#2563eb',
+          'invoice.color': data.inv_color || '#047857',
           'invoice.paper': data.inv_paper || 'a4',
           'invoice.footer': data.inv_footer || '',
           'tax.enabled': !!data.tax_enabled,
@@ -119,7 +119,7 @@ export default async function setup(el) {
       if (data.staff_email) {
         try { await api.post('members', { email: data.staff_email, name: data.staff_name, role: data.staff_role }); } catch (err) { toast(t('Business created, but the invitation failed: {e}', { e: err.message }), 'error', 8000); }
       }
-      toast(t('Welcome to BizLedger!'));
+      toast(t('Welcome to Goriber Hisab!'));
       emit('session:reload', { business: res.business_id, go: '/' });
     } catch (err) {
       showError(err);

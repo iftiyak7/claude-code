@@ -1,4 +1,4 @@
-# BizLedger — Accounting, Inventory, Sales & POS for WordPress
+# Goriber Hisab (গরিবের হিসাব) — Accounting, Inventory, Sales & POS for WordPress
 
 A business management platform delivered as a WordPress plugin: POS, sales,
 purchases, inventory, customers, suppliers, dues, double-entry accounting,

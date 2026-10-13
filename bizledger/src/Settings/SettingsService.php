@@ -85,7 +85,7 @@ final class SettingsService extends Service {
 			// Invoice.
 			'invoice.template'               => 'classic',
 			'invoice.paper'                  => 'a4',
-			'invoice.color'                  => '#2563eb',
+			'invoice.color'                  => '#047857',
 			'invoice.font'                   => 'system',
 			'invoice.show_logo'              => true,
 			'invoice.show_signature'         => true,
