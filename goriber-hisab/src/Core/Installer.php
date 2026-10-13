@@ -1,0 +1,84 @@
+<?php
+/**
+ * Activation, deactivation and schema migrations.
+ *
+ * @package GoriberHisab
+ */
+
+declare(strict_types=1);
+
+namespace GoriberHisab\Core;
+
+use GoriberHisab\Admin\AppRoute;
+use GoriberHisab\Database\Schema;
+use GoriberHisab\Database\WpdbDatabase;
+
+/**
+ * dbDelta-based installer plus versioned data migrations.
+ */
+final class Installer {
+
+	public const OPTION = 'bizledger_db_version';
+
+	public static function activate(): void {
+		// The plugin used to live in the "bizledger" folder. Both share the
+		// same tables, so switch the old copy off (its data stays).
+		if ( ! function_exists( 'deactivate_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		if ( is_plugin_active( 'bizledger/bizledger.php' ) ) {
+			deactivate_plugins( 'bizledger/bizledger.php', true );
+		}
+		wp_clear_scheduled_hook( 'bizledger_daily' );
+		delete_option( 'goriber_hisab_paths_checked' );
+		self::migrate();
+		AppRoute::addRewrite();
+		flush_rewrite_rules();
+		if ( ! wp_next_scheduled( 'goriber_hisab_daily' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'goriber_hisab_daily' );
+		}
+		add_option( 'bizledger_activation_redirect', 1 );
+	}
+
+	public static function deactivate(): void {
+		wp_clear_scheduled_hook( 'goriber_hisab_daily' );
+		flush_rewrite_rules();
+	}
+
+	/**
+	 * Run on every load; cheap when already current.
+	 */
+	public static function maybeMigrate(): void {
+		if ( get_option( self::OPTION ) !== Schema::VERSION ) {
+			self::migrate();
+		}
+	}
+
+	public static function migrate(): void {
+		global $wpdb;
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		$db      = new WpdbDatabase( $wpdb );
+		$collate = $wpdb->get_charset_collate();
+		foreach ( Schema::mysql( $db, $collate ) as $sql ) {
+			dbDelta( $sql );
+		}
+
+		$from = (string) get_option( self::OPTION, '0' );
+		foreach ( self::migrations() as $version => $callback ) {
+			if ( version_compare( $from, $version, '<' ) ) {
+				$callback( $db );
+			}
+		}
+		update_option( self::OPTION, Schema::VERSION, true );
+	}
+
+	/**
+	 * Versioned data migrations (version => callable(Database)).
+	 *
+	 * @return array<string,callable>
+	 */
+	private static function migrations(): array {
+		return (array) apply_filters( 'goriber_hisab/migrations', array() );
+	}
+}
