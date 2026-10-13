@@ -33,17 +33,12 @@ final class AdminMenu {
 		);
 	}
 
+	/**
+	 * Normally never reached: AppRoute::serveAdmin() renders the full-screen
+	 * app on admin_init. Shown only if that was prevented.
+	 */
 	public function render(): void {
-		$url = AppRoute::url();
-		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'BizLedger', 'bizledger' ); ?></h1>
-			<p><?php esc_html_e( 'BizLedger runs as a full-screen app so it works like a native POS on desktop, tablet and phone.', 'bizledger' ); ?></p>
-			<p><a class="button button-primary button-hero" href="<?php echo esc_url( $url ); ?>"><?php esc_html_e( 'Open BizLedger', 'bizledger' ); ?></a></p>
-			<p class="description"><?php echo esc_html( $url ); ?></p>
-			<script>setTimeout(function(){window.location.href=<?php echo wp_json_encode( esc_url_raw( $url ) ); ?>;},600);</script>
-		</div>
-		<?php
+		echo '<div class="wrap"><h1>' . esc_html__( 'BizLedger', 'bizledger' ) . '</h1><p><a class="button button-primary" href="' . esc_url( AppRoute::url() ) . '">' . esc_html__( 'Open BizLedger', 'bizledger' ) . '</a></p></div>';
 	}
 
 	public function activationRedirect(): void {
@@ -54,7 +49,7 @@ final class AdminMenu {
 		if ( wp_doing_ajax() || is_network_admin() || isset( $_GET['activate-multi'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;
 		}
-		wp_safe_redirect( AppRoute::url( '#/setup' ) );
+		wp_safe_redirect( AppRoute::adminUrl( '#/setup' ) );
 		exit;
 	}
 
@@ -63,7 +58,7 @@ final class AdminMenu {
 	 * @return array<int,string>
 	 */
 	public function links( array $links ): array {
-		array_unshift( $links, '<a href="' . esc_url( AppRoute::url() ) . '">' . esc_html__( 'Open app', 'bizledger' ) . '</a>' );
+		array_unshift( $links, '<a href="' . esc_url( AppRoute::adminUrl() ) . '">' . esc_html__( 'Open app', 'bizledger' ) . '</a>' );
 		return $links;
 	}
 }

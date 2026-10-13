@@ -37,6 +37,14 @@ final class AppRoute {
 		return home_url( '/' . self::slug() . '/' ) . ltrim( $suffix, '/' );
 	}
 
+	/**
+	 * The app hosted inside wp-admin. Always works: admin pages bypass page
+	 * caches, themes and rewrite rules.
+	 */
+	public static function adminUrl( string $hash = '' ): string {
+		return admin_url( 'admin.php?page=bizledger' ) . $hash;
+	}
+
 	public static function addRewrite(): void {
 		add_rewrite_rule( '^' . preg_quote( self::slug(), '#' ) . '(?:/(.*))?/?$', 'index.php?bizledger_app=/$matches[1]', 'top' );
 	}
@@ -50,15 +58,58 @@ final class AppRoute {
 				return $vars;
 			}
 		);
-		add_action( 'template_redirect', array( $this, 'serve' ), 0 );
+		// Match the URL path directly so the app works even when rewrite rules
+		// are stale or another plugin/theme interferes with query vars.
+		add_action( 'parse_request', array( $this, 'serveFront' ), 0 );
+		add_action( 'template_redirect', array( $this, 'serveFallback' ), 0 );
+		add_action( 'admin_init', array( $this, 'serveAdmin' ), 0 );
 	}
 
-	public function serve(): void {
-		$path = (string) get_query_var( 'bizledger_app' );
-		if ( '' === $path ) {
-			return; // Not our route (the rewrite always yields at least "/").
+	/**
+	 * /{slug}/… or ?bizledger_app=… on the front end.
+	 */
+	public function serveFront( \WP $wp ): void {
+		$slug = self::slug();
+		$path = trim( (string) $wp->request, '/' );
+		if ( $path === $slug || str_starts_with( $path, $slug . '/' ) ) {
+			$this->dispatch( substr( $path, strlen( $slug ) ), 'front' );
 		}
+		if ( isset( $_GET['bizledger_app'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+			$this->dispatch( sanitize_text_field( wp_unslash( $_GET['bizledger_app'] ) ), 'front' ); // phpcs:ignore WordPress.Security.NonceVerification
+		}
+	}
+
+	public function serveFallback(): void {
+		$path = (string) get_query_var( 'bizledger_app' );
+		if ( '' !== $path ) {
+			$this->dispatch( $path, 'front' );
+		}
+	}
+
+	/**
+	 * wp-admin/admin.php?page=bizledger[&bzl_path=print/sale/1]
+	 */
+	public function serveAdmin(): void {
+		// phpcs:disable WordPress.Security.NonceVerification
+		if ( wp_doing_ajax() || ! isset( $_GET['page'] ) || 'bizledger' !== $_GET['page'] ) {
+			return;
+		}
+		$path = isset( $_GET['bzl_path'] ) ? sanitize_text_field( wp_unslash( $_GET['bzl_path'] ) ) : '';
+		// phpcs:enable
+		$this->dispatch( $path, 'admin' );
+	}
+
+	/**
+	 * @return never
+	 */
+	private function dispatch( string $path, string $mode ): void {
 		$path = trim( $path, '/' );
+		// Never let a page cache store the app or print views.
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true );
+		}
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+		header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
 
 		if ( 'manifest.webmanifest' === $path ) {
 			$this->manifest();
@@ -67,12 +118,12 @@ final class AppRoute {
 		} elseif ( preg_match( '#^print/(sale|purchase|payment|return|statement)/(\d+)$#', $path, $m ) ) {
 			$this->print( $m[1], (int) $m[2] );
 		} else {
-			$this->shell();
+			$this->shell( $mode );
 		}
 		exit;
 	}
 
-	private function shell(): void {
+	private function shell( string $mode = 'front' ): void {
 		if ( ! is_user_logged_in() ) {
 			auth_redirect();
 		}
@@ -84,12 +135,14 @@ final class AppRoute {
 		$config = array(
 			'restUrl'   => esc_url_raw( rest_url( Api::NAMESPACE . '/' ) ),
 			'nonce'     => wp_create_nonce( 'wp_rest' ),
-			'appUrl'    => esc_url_raw( self::url() ),
+			'mode'      => $mode,
+			'appUrl'    => esc_url_raw( 'admin' === $mode ? self::adminUrl() : self::url() ),
+			'frontUrl'  => esc_url_raw( self::url() ),
 			'assetsUrl' => esc_url_raw( BIZLEDGER_URL . 'assets/' ),
 			'version'   => BIZLEDGER_VERSION,
 			'locale'    => $locale,
 			'lang'      => str_starts_with( $locale, 'bn' ) ? 'bn' : 'en',
-			'logoutUrl' => esc_url_raw( wp_logout_url( self::url() ) ),
+			'logoutUrl' => esc_url_raw( wp_logout_url( 'admin' === $mode ? self::adminUrl() : self::url() ) ),
 			'adminUrl'  => esc_url_raw( admin_url() ),
 			'userName'  => $user->display_name,
 		);
@@ -103,7 +156,9 @@ final class AppRoute {
 <meta name="theme-color" content="#1d4ed8">
 <meta name="robots" content="noindex, nofollow">
 <title><?php esc_html_e( 'BizLedger', 'bizledger' ); ?></title>
+<?php if ( 'front' === $mode ) : ?>
 <link rel="manifest" href="<?php echo esc_url( self::url( 'manifest.webmanifest' ) ); ?>">
+<?php endif; ?>
 <link rel="icon" href="<?php echo $asset( 'img/icon.svg' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?php echo $asset( 'css/app.css' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>">
 <script>window.BZL = <?php echo wp_json_encode( $config ); ?>;</script>

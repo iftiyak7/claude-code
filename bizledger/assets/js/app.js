@@ -262,7 +262,7 @@ function globalSearch() {
 }
 
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+  if (!('serviceWorker' in navigator) || window.BZL.mode === 'admin') return;
   navigator.serviceWorker.register(`${window.BZL.appUrl}sw.js`, { scope: window.BZL.appUrl }).catch(() => { /* optional */ });
 }
 

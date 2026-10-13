@@ -28,12 +28,19 @@ export function printUrl(type, id, { paper, autoprint = true, extra = {} } = {})
     ...(autoprint ? { autoprint: '1' } : {}),
     ...extra,
   });
+  // Inside wp-admin the app routes through admin.php?page=bizledger&bzl_path=…
+  if (window.BZL.mode === 'admin') return `${window.BZL.appUrl}&bzl_path=${encodeURIComponent(`print/${type}/${id}`)}&${q}`;
   return `${window.BZL.appUrl}print/${type}/${id}?${q}`;
 }
 
 export function openPrint(type, id, opts) {
-  const w = window.open(printUrl(type, id, opts), '_blank', 'noopener');
-  if (!w) location.href = printUrl(type, id, opts);
+  // Not using the 'noopener' feature: it makes window.open() return null,
+  // which is indistinguishable from a blocked popup.
+  const url = printUrl(type, id, opts);
+  const w = window.open(url, '_blank');
+  if (w) w.opener = null;
+  else location.href = url; // popup blocked: print in this tab
+
 }
 
 /* -------------------------------------------------------------- Bluetooth */
