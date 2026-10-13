@@ -83,13 +83,21 @@ interface Database {
 
 	/**
 	 * Run $callback inside a transaction. Nested calls join the outer
-	 * transaction. Any exception rolls the whole transaction back.
+	 * transaction (an exception anywhere rolls everything back). Pass
+	 * $savepoint = true to make a nested unit independently rollback-able;
+	 * only honoured when supportsSavepoints().
 	 *
 	 * @template T
 	 * @param callable():T $callback Work.
 	 * @return T
 	 */
-	public function transaction( callable $callback );
+	public function transaction( callable $callback, bool $savepoint = false );
+
+	/**
+	 * Whether nested savepoints are available (MySQL/MariaDB/SQLite yes; the
+	 * WordPress SQLite-integration translator no).
+	 */
+	public function supportsSavepoints(): bool;
 
 	/**
 	 * Row-lock suffix for SELECT (" FOR UPDATE" on MySQL).

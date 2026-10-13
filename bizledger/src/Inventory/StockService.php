@@ -339,36 +339,36 @@ final class StockService extends Service {
 		$pt = $this->db->table( 'products' );
 		$st = $this->db->table( 'stock_levels' );
 
-		$params      = array();
-		$branch_cond = '';
+		$branch_cond   = '';
+		$branch_params = array();
 		if ( 'all' !== ( $args['branch_id'] ?? '' ) ) {
-			$branch_cond = ' AND s.branch_id = %d';
-			$params[]    = (int) ( $args['branch_id'] ?? $ctx->branch_id ) ?: $ctx->branch_id;
+			$branch_cond     = ' AND s.branch_id = %d';
+			$branch_params[] = (int) ( $args['branch_id'] ?? $ctx->branch_id ) ?: $ctx->branch_id;
 		}
-		$where   = array( 'p.business_id = %d', 'p.deleted_at IS NULL', 'p.track_stock = 1' );
-		$params[] = $ctx->business_id;
+		$qty_sql   = "COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$branch_cond}),0)";
+		$value_sql = "COALESCE((SELECT SUM(s.value) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$branch_cond}),0)";
+
+		$where  = array( 'p.business_id = %d', 'p.deleted_at IS NULL', 'p.track_stock = 1' );
+		$params = array( $ctx->business_id );
 		if ( ! empty( $args['search'] ) ) {
 			$like     = '%' . $this->db->escapeLike( Text::line( $args['search'] ) ) . '%';
 			$where[]  = '(p.name LIKE %s OR p.sku LIKE %s OR p.barcode LIKE %s)';
-			$params[] = $like;
-			$params[] = $like;
-			$params[] = $like;
+			array_push( $params, $like, $like, $like );
 		}
 		if ( ! empty( $args['category_id'] ) ) {
 			$where[]  = 'p.category_id = %d';
 			$params[] = (int) $args['category_id'];
 		}
-		$having = '';
 		if ( ! empty( $args['low'] ) ) {
-			$having = ' HAVING COALESCE(SUM(s.qty),0) <= MAX(p.min_stock)';
+			$where[] = "{$qty_sql} <= p.min_stock";
+			$params  = array_merge( $params, $branch_params );
 		}
-		$w    = implode( ' AND ', $where );
-		$base = "FROM {$pt} p LEFT JOIN {$st} s ON s.product_id = p.id AND s.business_id = p.business_id{$branch_cond} WHERE {$w} GROUP BY p.id{$having}";
-
-		$total = (int) $this->db->value( "SELECT COUNT(*) FROM (SELECT p.id {$base}) x", $params );
+		$w     = implode( ' AND ', $where );
+		$total = (int) $this->db->value( "SELECT COUNT(*) FROM {$pt} p WHERE {$w}", $params );
 		$rows  = $this->db->rows(
-			"SELECT p.id AS product_id, p.name, p.sku, p.barcode, p.min_stock, p.selling_price, COALESCE(SUM(s.qty),0) AS qty, COALESCE(SUM(s.value),0) AS value {$base} ORDER BY p.name LIMIT %d OFFSET %d",
-			array_merge( $params, array( $per_page, $offset ) )
+			"SELECT p.id AS product_id, p.name, p.sku, p.barcode, p.min_stock, p.selling_price, {$qty_sql} AS qty, {$value_sql} AS value
+			FROM {$pt} p WHERE {$w} ORDER BY p.name LIMIT %d OFFSET %d",
+			array_merge( $branch_params, $branch_params, $params, array( $per_page, $offset ) )
 		);
 		$show_cost = $ctx->can( 'products.cost' );
 		foreach ( $rows as &$r ) {

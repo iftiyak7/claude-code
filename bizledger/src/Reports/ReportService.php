@@ -80,11 +80,12 @@ final class ReportService extends Service {
 
 		$pt  = $this->db->table( 'products' );
 		$low = (int) $this->db->value(
-			"SELECT COUNT(*) FROM (SELECT p.id FROM {$pt} p LEFT JOIN {$st} s ON s.product_id = p.id AND s.business_id = p.business_id AND s.branch_id = %d
+			"SELECT COUNT(*) FROM {$pt} p
 			WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active' AND p.min_stock > 0
-			GROUP BY p.id HAVING COALESCE(SUM(s.qty),0) <= MAX(p.min_stock)) x",
-			array( $ctx->branch_id, $ctx->business_id )
+			AND COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) <= p.min_stock",
+			array( $ctx->business_id, $ctx->branch_id )
 		);
+
 
 		return array(
 			'from'          => $from,

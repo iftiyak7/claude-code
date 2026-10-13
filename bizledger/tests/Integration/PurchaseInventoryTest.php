@@ -131,6 +131,11 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertMoney( '30', $this->balance( 'inventory_adjustment' ) );
 		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'set', 'qty' => '4', 'reason' => 'Count' ) );
 		$this->assertSame( '4.0000', $this->qty( $p ) );
+		$low = $this->k->stock->levels( $this->ctx, array( 'low' => 1 ) );
+		$this->assertSame( 1, $low['total'] );
+		$this->assertMoney( '4', $low['items'][0]['qty'] );
+		$this->assertTrue( $low['items'][0]['is_low'] );
+		$this->assertSame( 1, $this->k->reports->dashboard( $this->ctx, array() )['low_stock'] );
 		$inbox = $this->k->notifications->inbox( $this->ctx );
 		$this->assertSame( 1, $inbox['unread'] );
 		$this->assertSame( 'low_stock', $inbox['items'][0]['type'] );

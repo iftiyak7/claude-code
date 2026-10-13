@@ -27,6 +27,15 @@ final class PdoDatabase extends AbstractDatabase {
 
 	public bool $logging = false;
 
+	/**
+	 * Tests flip this to exercise the no-savepoint code paths.
+	 */
+	public bool $savepoints = true;
+
+	public function supportsSavepoints(): bool {
+		return $this->savepoints;
+	}
+
 	public function __construct( \PDO $pdo, string $prefix = 'wp_' ) {
 		$this->pdo = $pdo;
 		$this->pdo->setAttribute( \PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION );

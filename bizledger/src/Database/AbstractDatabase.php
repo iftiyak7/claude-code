@@ -65,10 +65,13 @@ abstract class AbstractDatabase implements Database {
 		);
 	}
 
-	public function transaction( callable $callback ) {
+	public function transaction( callable $callback, bool $savepoint = false ) {
 		$outer = 0 === $this->depth;
+		$point = ( ! $outer && $savepoint && $this->supportsSavepoints() ) ? 'bzl_sp_' . $this->depth : null;
 		if ( $outer ) {
 			$this->begin();
+		} elseif ( null !== $point ) {
+			$this->ddl( "SAVEPOINT {$point}" );
 		}
 		++$this->depth;
 		try {
@@ -76,15 +79,30 @@ abstract class AbstractDatabase implements Database {
 			--$this->depth;
 			if ( $outer ) {
 				$this->commit();
+			} elseif ( null !== $point ) {
+				$this->ddl( "RELEASE SAVEPOINT {$point}" );
 			}
 			return $result;
 		} catch ( \Throwable $e ) {
 			--$this->depth;
 			if ( $outer ) {
 				$this->rollback();
+			} elseif ( null !== $point ) {
+				$this->ddl( "ROLLBACK TO SAVEPOINT {$point}" );
 			}
 			throw $e;
 		}
+	}
+
+	public function supportsSavepoints(): bool {
+		return true;
+	}
+
+	/**
+	 * True while inside a transaction.
+	 */
+	public function inTransaction(): bool {
+		return $this->depth > 0;
 	}
 
 	public function escapeLike( string $text ): string {

@@ -58,7 +58,19 @@ final class WpdbDatabase extends AbstractDatabase {
 	}
 
 	public function forUpdate(): string {
-		return ' FOR UPDATE';
+		return $this->isSqliteIntegration() ? '' : ' FOR UPDATE';
+	}
+
+	public function supportsSavepoints(): bool {
+		return ! $this->isSqliteIntegration();
+	}
+
+	/**
+	 * The "SQLite Database Integration" drop-in (WordPress Playground, some
+	 * hosts) translates MySQL to SQLite and supports a narrower dialect.
+	 */
+	private function isSqliteIntegration(): bool {
+		return class_exists( 'WP_SQLite_DB', false ) && $this->wpdb instanceof \WP_SQLite_DB;
 	}
 
 	public function driver(): string {

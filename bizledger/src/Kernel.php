@@ -16,6 +16,7 @@ use BizLedger\Catalog\ProductService;
 use BizLedger\Catalog\TaxonomyService;
 use BizLedger\Catalog\TaxService;
 use BizLedger\Contacts\ContactService;
+use BizLedger\Data\DataService;
 use BizLedger\Database\Database;
 use BizLedger\Finance\FinanceService;
 use BizLedger\Inventory\StockService;
@@ -65,6 +66,7 @@ use BizLedger\Tenancy\UserDirectory;
  * @property-read MemberService       $members
  * @property-read ContextFactory      $contexts
  * @property-read RateLimiter         $limiter
+ * @property-read DataService         $data
  */
 final class Kernel {
 
@@ -156,6 +158,8 @@ final class Kernel {
 				return new ContextFactory( $d, $this->permissions );
 			case 'limiter':
 				return new RateLimiter( $c );
+			case 'data':
+				return new DataService( $this );
 		}
 		throw new \LogicException( "Unknown service {$name}" );
 	}

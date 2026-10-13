@@ -33,21 +33,26 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | REST API v1 | ✅ |
 | SPA shell (sidebar / bottom nav), dashboard, POS, CRUD screens, reports | ✅ |
 | Print views A4/A5/80mm/58mm, ESC/POS encoder, Web Bluetooth + native bridge transports | ✅ |
-| In-app notifications (low stock, sale/purchase/payment events) | ✅ |
+| In-app notifications (low stock, sale/purchase/payment events, daily due & backup reminders) | ✅ |
 | Setup wizard (first business) | ✅ |
 | Integration tests for accounting synchronisation | ✅ |
 
 ## Phase 2 — Operations
-* ⬜ CSV/Excel import (products, customers, suppliers) with dry-run preview
-* 🟡 CSV export of lists and reports (CSV done; XLSX/PDF pending)
-* ⬜ Backup & restore (chunked JSON export per business, scheduled via
-  Action Scheduler/WP-Cron, restore into empty business)
-* ⬜ Barcode label printing, QR code generation
-* 🟡 Camera barcode scanning (BarcodeDetector API done; ZXing fallback pending)
-* ⬜ Offline POS queue + sync inbox (UUID idempotency already on the server)
+* ✅ CSV import (products, customers, suppliers) with dry run, in-file
+  duplicate detection and per-row rollback
+* 🟡 Export: CSV for every list/report ✅, PDF via print ✅, native XLSX ⬜
+* 🟡 Backup ✅ (per-business JSON) · Restore ⬜ (needs id remapping into an
+  empty business)
+* 🟡 Barcodes: Code 128 generation on invoices, product pages and label
+  sheets ✅ · QR codes ⬜
+* 🟡 Camera scanning via BarcodeDetector (Chrome/Android) ✅ · ZXing fallback
+  for iOS/Firefox ⬜
+* ✅ Offline POS: IndexedDB catalogue snapshot, queued sales with UUIDs,
+  automatic sync, sync inbox for rejected sales
 * ⬜ Stock transfer between branches
-* ⬜ Invoice template designer (colors, fonts, layout presets beyond the
-  current settings)
+* 🟡 Invoice design: colour, font, logo, footer, terms, signature, 3 layout
+  presets ✅ · drag-and-drop designer ⬜
+* ⬜ Per-user read state for broadcast notifications
 
 ## Phase 3 — Depth
 * ⬜ Batch / expiry / serial tracking (tables `product_batches`,
@@ -57,13 +62,23 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 * ⬜ Multi-currency documents (exchange rate columns already reserved)
 * ⬜ Tax reports per rate and period; tax-inclusive purchase handling options
 * ⬜ Email/SMS/WhatsApp notification channels
-* ⬜ Draggable dashboard widgets (visibility toggles done in Phase 1)
+* 🟡 Dashboard widgets: show/hide per device ✅ · drag-to-reorder ⬜
 
 ## Phase 4 — Intelligence & SaaS
 * ⬜ Sales trends, slow movers, low-stock prediction, customer patterns,
   business score (read models over existing tables)
 * ⬜ Plans/limits/subscriptions, cloud sync, white-label build
 * ⬜ Native Android wrapper with Bluetooth printing bridge
+
+## Verified so far
+* `php tests/run.php`: 53 tests / ~5,400 assertions (unit, integration,
+  security, randomized ledger property test across seeds), also with
+  savepoints disabled.
+* `tests/e2e/smoke.mjs` run against WordPress 6.5 (SQLite integration):
+  login, setup wizard, POS sale, 26 screens, A4 + 80 mm print, mobile
+  viewport — all passing.
+* Not yet verified: MySQL/MariaDB on a real host, Web Bluetooth with a
+  physical printer, Safari/iOS, very large data volumes.
 
 ## Testing plan per phase
 * Unit: Decimal, calculator, permissions, numbering.

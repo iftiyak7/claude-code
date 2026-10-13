@@ -31,6 +31,7 @@ abstract class IntegrationTestCase extends TestCase {
 
 	public function setUp(): void {
 		$this->db = PdoDatabase::sqliteMemory();
+		$this->db->savepoints = ! getenv( 'BZL_NO_SAVEPOINTS' );
 		foreach ( Schema::sqlite( $this->db ) as $sql ) {
 			$this->db->ddl( $sql );
 		}
