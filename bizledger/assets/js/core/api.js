@@ -14,14 +14,20 @@ export class ApiError extends Error {
   get offline() { return this.status === 0; }
 }
 
-function query(params) {
+/**
+ * Build the endpoint URL. With plain permalinks the REST root is
+ * "…/index.php?rest_route=/bizledger/v1/", so extra parameters must be
+ * joined with "&", not a second "?".
+ */
+export function endpoint(path, params) {
+  const base = window.BZL.restUrl + path.replace(/^\//, '');
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) {
     if (v === undefined || v === null || v === '') continue;
     q.append(k, String(v));
   }
   const s = q.toString();
-  return s ? `?${s}` : '';
+  return s ? `${base}${base.includes('?') ? '&' : '?'}${s}` : base;
 }
 
 export async function request(method, path, body, params) {
@@ -37,7 +43,7 @@ export async function request(method, path, body, params) {
   }
   let res;
   try {
-    res = await fetch(window.BZL.restUrl + path.replace(/^\//, '') + query(params), init);
+    res = await fetch(endpoint(path, params), init);
   } catch (e) {
     throw new ApiError('You appear to be offline. Check your internet connection.', { code: 'offline', status: 0 });
   }

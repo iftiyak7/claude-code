@@ -30,7 +30,8 @@ export function printUrl(type, id, { paper, autoprint = true, extra = {} } = {})
   });
   // Inside wp-admin the app routes through admin.php?page=bizledger&bzl_path=…
   if (window.BZL.mode === 'admin') return `${window.BZL.appUrl}&bzl_path=${encodeURIComponent(`print/${type}/${id}`)}&${q}`;
-  return `${window.BZL.appUrl}print/${type}/${id}?${q}`;
+  const url = `${window.BZL.appUrl}print/${type}/${id}`;
+  return `${url}${url.includes('?') ? '&' : '?'}${q}`;
 }
 
 export function openPrint(type, id, opts) {

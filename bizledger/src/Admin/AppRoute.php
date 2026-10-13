@@ -34,6 +34,10 @@ final class AppRoute {
 	}
 
 	public static function url( string $suffix = '' ): string {
+		if ( '' === (string) get_option( 'permalink_structure' ) ) {
+			// Plain permalinks: the server never routes /bizledger/ to WordPress.
+			return home_url( '/?bizledger_app=/' ) . ltrim( $suffix, '/' );
+		}
 		return home_url( '/' . self::slug() . '/' ) . ltrim( $suffix, '/' );
 	}
 

@@ -262,7 +262,8 @@ function globalSearch() {
 }
 
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || window.BZL.mode === 'admin') return;
+  // Service workers need a real path scope: only for the pretty /bizledger/ URL.
+  if (!('serviceWorker' in navigator) || window.BZL.mode === 'admin' || window.BZL.appUrl.includes('?')) return;
   navigator.serviceWorker.register(`${window.BZL.appUrl}sw.js`, { scope: window.BZL.appUrl }).catch(() => { /* optional */ });
 }
 
