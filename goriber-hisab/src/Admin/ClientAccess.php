@@ -36,6 +36,59 @@ final class ClientAccess {
 		add_action( 'admin_init', array( $this, 'blockAdmin' ), 1 );
 		add_filter( 'show_admin_bar', array( $this, 'adminBar' ) );
 		add_filter( 'login_redirect', array( $this, 'loginRedirect' ), 20, 3 );
+		add_action( 'goriber_hisab/platform/signup', array( $this, 'notifySignup' ), 10, 2 );
+		add_action( 'goriber_hisab/platform/renewal_requested', array( $this, 'notifyPayment' ), 10, 2 );
+	}
+
+	/**
+	 * Email the site owner about a new sign-up.
+	 */
+	public function notifySignup( int $business_id, int $user_id ): void {
+		$shop = $this->k->platform->shop( $business_id );
+		$this->mailOwner(
+			'New shop sign-up: ' . $shop['name'],
+			sprintf(
+				"%s signed up.\n\nOwner: %s\nPhone: %s\nEmail: %s\n\nIt stays locked until you approve it (approve their payment, or Approve with free trial):\n%s",
+				$shop['name'],
+				$shop['owner']['name'] ?? '',
+				$shop['phone'],
+				$shop['email'],
+				AppRoute::adminUrl( '#/platform?tab=shops&status=pending' )
+			)
+		);
+		unset( $user_id );
+	}
+
+	/**
+	 * Email the site owner about a payment waiting for approval.
+	 */
+	public function notifyPayment( int $payment_id, int $business_id ): void {
+		$shop = $this->k->platform->shop( $business_id );
+		$pay  = null;
+		foreach ( $shop['payments'] as $p ) {
+			if ( (int) $p['id'] === $payment_id ) {
+				$pay = $p;
+			}
+		}
+		$this->mailOwner(
+			'Payment to check: ' . $shop['name'],
+			sprintf(
+				"%s says they paid %s by %s.\nTrxID: %s\nFrom: %s\n\nCheck your statement, then approve or reject:\n%s",
+				$shop['name'],
+				$pay['amount'] ?? '',
+				$pay['method'] ?? '',
+				$pay['reference'] ?? '',
+				$pay['payer_phone'] ?? '',
+				AppRoute::adminUrl( '#/platform?tab=payments' )
+			)
+		);
+	}
+
+	private function mailOwner( string $subject, string $body ): void {
+		$to = (string) get_option( 'admin_email' );
+		if ( '' !== $to && function_exists( 'wp_mail' ) ) {
+			wp_mail( $to, '[Goriber Hisab] ' . $subject, $body );
+		}
 	}
 
 	public static function ensureRole(): void {

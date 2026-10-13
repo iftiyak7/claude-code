@@ -48,6 +48,22 @@ final class Landing {
 		return 'en' === $cookie ? 'en' : 'bn';
 	}
 
+	/**
+	 * "A product of NOORIYAH Group" credit (text is editable on the home page editor).
+	 *
+	 * @param callable(string,string):string $L Language picker.
+	 */
+	public static function credit( callable $L, string $class = 'nooriyah' ): void {
+		$c    = get_option( 'goriber_hisab_landing', array() );
+		$text = is_array( $c ) && ! empty( $c['credit']['en'] ) ? $L( (string) ( $c['credit']['bn'] ?? $c['credit']['en'] ), (string) $c['credit']['en'] ) : $L( 'NOORIYAH Group-এর একটি পণ্য', 'A product of NOORIYAH Group' );
+		printf(
+			'<span class="%1$s"><img src="%2$s" alt="NOORIYAH" width="34" height="34"><span>%3$s</span></span>',
+			esc_attr( $class ),
+			esc_url( GORIBER_HISAB_URL . 'assets/img/nooriyah.jpg?v=' . GORIBER_HISAB_VERSION ),
+			wp_kses( preg_replace( '/NOORIYAH Group/', '<b>NOORIYAH Group</b>', esc_html( $text ) ), array( 'b' => array() ) )
+		);
+	}
+
 	public function render(): void {
 		$lang     = self::lang();
 		$config   = $this->k->platform->config();

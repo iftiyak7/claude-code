@@ -31,7 +31,7 @@ shop or many branches.
   staff/branch/category, invoice profit, dues aging, tax, stock valuation,
   slow movers — with CSV export, print/PDF, and one-click "download all
   reports" as a ZIP of CSV files.
-* **Online orders & courier.** Log Facebook / WhatsApp / phone orders,
+* **Online orders & courier.** Paste a customer's message to fill the order (built-in reader, optional Claude AI). Log Facebook / WhatsApp / phone orders,
   confirm them into real sales, book Steadfast parcels in one click (API) or
   enter Pathao / RedX / Paperfly… tracking by hand, follow delivery, collect
   COD from the courier in bulk (courier charge booked as a delivery expense),
@@ -40,6 +40,7 @@ shop or many branches.
   home page; every screen and server message is translated.
 * **Public home page.** A marketing page with features, pricing (from the
   platform settings), FAQ and WhatsApp buttons on the site's front page.
+* **Self sign-up.** New shops sign up at `/app/signup`, pay by bKash/Nagad and wait for the owner's approval.
 * **Hosted shops (SaaS).** The site owner opens shops for clients from the
   *Shops (clients)* panel, sets monthly/yearly prices and a free trial, and
   records payments (bKash/Nagad/bank/cash) or approves the TrxIDs clients

@@ -578,3 +578,42 @@ main.bare > .view > .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
 .btn-primary { box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--brand) 80%, transparent); }
 .stat { transition: transform .15s, box-shadow .15s; }
 button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+
+/* ------------------------------------------------------------ Payment methods */
+.pay-methods { display: grid; gap: 8px; }
+.wallet { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-left: 4px solid var(--w); border-radius: var(--radius-sm); background: var(--surface); }
+.wallet-name { font-weight: 700; color: var(--w); }
+.wallet-body { display: grid; min-width: 0; }
+.wallet-body strong { font-size: 1.15rem; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+.wallet-body small { color: var(--muted); }
+.wallet-body pre { margin: 0; font: inherit; white-space: pre-wrap; }
+.wallet-row { display: grid; grid-template-columns: 1fr 160px; gap: 10px; }
+@media (max-width: 600px) { .wallet { grid-template-columns: 1fr auto; } .wallet-name { grid-column: 1 / -1; } }
+.signup-steps { display: flex; justify-content: center; gap: 10px; list-style: none; padding: 0; margin: 0; color: var(--muted); font-size: .9rem; flex-wrap: wrap; }
+.signup-steps li { display: flex; align-items: center; gap: 6px; }
+.signup-steps b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border); font-size: .8rem; }
+.signup-steps .done b, .signup-steps .on b { background: var(--brand); border-color: var(--brand); color: #fff; }
+.signup-steps .on { color: var(--text); font-weight: 600; }
+.nooriyah-credit { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: .85rem; margin: 8px 0; }
+.nooriyah-credit img { border-radius: 5px; }
+.nooriyah-credit b { color: var(--text); letter-spacing: .03em; }
+.side-credit { display: flex; align-items: center; gap: 6px; padding: 8px 6px 2px; font-size: .75rem; color: #7f93aa; }
+.side-credit img { border-radius: 4px; }
+.side-credit b { color: #cfe0ee; letter-spacing: .03em; }
+
+/* ------------------------------------------------------------ Home page editor */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair-field { display: grid; gap: 2px; }
+.pair-lang { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.list-editor { display: grid; gap: 10px; }
+.list-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; display: grid; gap: 8px; background: var(--surface-2); }
+.list-item-head { display: flex; justify-content: space-between; align-items: center; }
+.field.wide { grid-column: 1 / -1; }
+@media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+.paste-box { display: grid; gap: 10px; }
+.paste-box textarea { min-height: 96px; }
+.loose-toggle { padding: 10px 12px; border: 1px dashed var(--brand); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 6%, transparent); }
+.loose-toggle small { display: inline; }
+.tile.loose { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+.tile-weigh { position: absolute; top: 6px; left: 6px; font-size: .68rem; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); font-weight: 600; }
+.tile-price small { font-weight: 500; color: var(--muted); }

@@ -186,7 +186,33 @@ async function form(el) {
   [discount, delivery, advance].forEach((x) => x.addEventListener('input', paintTotals));
   paint();
 
+  // Paste the customer's whole message and let the reader fill the form.
+  const pasteBox = h('textarea', { class: 'input', rows: 4, placeholder: t('Paste the customer\'s message here — name, phone, address and products, in any order. Bangla or English.') });
+  const fillBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+    if (!pasteBox.value.trim()) { pasteBox.focus(); return; }
+    fillBtn.disabled = true; fillBtn.classList.add('busy');
+    try {
+      const r = await api.post('orders/parse', { text: pasteBox.value });
+      if (r.phone) { phone.value = r.phone; }
+      if (r.customer_name) name.value = r.customer_name;
+      if (r.address) address.value = r.address;
+      if (r.area) areaName.value = r.area;
+      if (r.zone) { area.value = r.zone; delivery.value = r.zone === 'inside' ? cfg.charge_inside : cfg.charge_outside; }
+      if (r.note) note.value = [note.value, r.note].filter(Boolean).join('\n');
+      if (r.customer_id) { customerId = r.customer_id; mount(known, icon('check', 14), ` ${t('Existing customer')}: ${r.customer_name}`); }
+      (r.items || []).forEach((it) => {
+        const same = lines.find((l) => l.product_id === it.product_id);
+        if (same) same.qty = it.qty; else lines.push({ product_id: it.product_id, variant_id: 0, name: it.name, qty: it.qty, unit_price: str(dec(it.unit_price), places()) });
+      });
+      paint();
+      const missing = [!r.phone && t('Phone'), !r.customer_name && t('Name'), !r.address && t('Address'), !(r.items || []).length && t('Products')].filter(Boolean);
+      toast(`${r.reader === 'ai' ? t('Filled by AI') : t('Filled automatically')} — ${missing.length ? t('please add: {f}', { f: missing.join(', ') }) : t('please check before saving')}`, missing.length ? 'info' : 'success', 6000);
+    } catch (err) { showError(err); } finally { fillBtn.disabled = false; fillBtn.classList.remove('busy'); }
+  } }, icon('check', 16), t('Auto-fill'));
+
   const f = h('form', { class: 'form order-form' },
+    card(t('Quick entry: paste the message'), h('div', { class: 'paste-box' }, pasteBox,
+      h('div', { class: 'row wrap' }, fillBtn, h('small', { class: 'muted' }, cfg.ai ? t('Reads with AI (Claude); works for messy messages too.') : t('Reads phone, name, address, district and your products automatically.'))))),
     card(t('Customer'), h('div', { class: 'form-grid' },
       field(t('Phone'), phone, { required: true }),
       field(t('Name'), name, { required: true }),

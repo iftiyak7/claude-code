@@ -574,6 +574,78 @@ final class OrderService extends Service {
 		return $this->get( $ctx, $id );
 	}
 
+	/* ------------------------------------------------------- Paste & fill */
+
+	/**
+	 * @var (callable():string)|null
+	 */
+	private $ai_key = null;
+
+	/**
+	 * @param callable():string $key Returns the Claude API key ('' when not set).
+	 */
+	public function setAiKey( callable $key ): void {
+		$this->ai_key = $key;
+	}
+
+	public function aiAvailable(): bool {
+		return null !== $this->ai_key && '' !== ( $this->ai_key )();
+	}
+
+	/**
+	 * Read a pasted customer message into order fields. Uses Claude when a key
+	 * is configured and $use_ai is true, otherwise (or if that fails) the
+	 * built-in parser.
+	 *
+	 * @return array<string,mixed> Fields + 'reader' ('ai'|'parser').
+	 */
+	public function parse( BusinessContext $ctx, string $text, bool $use_ai = true ): array {
+		$ctx->authorize( 'orders.manage' );
+		$text = mb_substr( trim( $text ), 0, 4000 );
+		if ( '' === $text ) {
+			throw ValidationException::field( 'text', 'Paste the customer\'s message first.' );
+		}
+		$pt  = $this->db->table( 'products' );
+		$ut  = $this->db->table( 'units' );
+		$cat = array_map(
+			static fn( $r ) => array(
+				'id'      => (int) $r['id'],
+				'name'    => (string) $r['name'],
+				'sku'     => (string) $r['sku'],
+				'price'   => Decimal::toString( Decimal::of( $r['selling_price'] ), 2 ),
+				'decimal' => (bool) (int) $r['allow_decimal'],
+				'unit'    => (string) ( $r['unit'] ?? '' ),
+			),
+			$this->db->rows(
+				"SELECT p.id, p.name, p.sku, p.selling_price, COALESCE(u.allow_decimal, 0) AS allow_decimal, u.short_name AS unit FROM {$pt} p LEFT JOIN {$ut} u ON u.id = p.unit_id
+				WHERE p.business_id = %d AND p.status = 'active' AND p.deleted_at IS NULL ORDER BY p.name LIMIT 3000",
+				array( $ctx->business_id )
+			)
+		);
+		$out = null;
+		if ( $use_ai && $this->aiAvailable() ) {
+			$out = ( new AiOrderReader( $this->http, ( $this->ai_key )() ) )->read( $text, $cat );
+			if ( null !== $out ) {
+				$out['reader'] = 'ai';
+			}
+		}
+		if ( null === $out ) {
+			$out           = OrderParser::parse( $text, $cat );
+			$out['reader'] = 'parser';
+		}
+		// Known customer? Fill what the message left out.
+		if ( '' !== $out['phone'] ) {
+			$ct = $this->db->table( 'contacts' );
+			$c  = $this->db->row( "SELECT id, name, address FROM {$ct} WHERE business_id = %d AND type = 'customer' AND phone = %s AND deleted_at IS NULL", array( $ctx->business_id, $out['phone'] ) );
+			if ( $c ) {
+				$out['customer_id']   = (int) $c['id'];
+				$out['customer_name'] = '' !== $out['customer_name'] ? $out['customer_name'] : (string) $c['name'];
+				$out['address']       = '' !== $out['address'] ? $out['address'] : (string) $c['address'];
+			}
+		}
+		return $out;
+	}
+
 	/* ----------------------------------------------------- Courier config */
 
 	/**
@@ -590,6 +662,7 @@ final class OrderService extends Service {
 			'default_courier'     => $c['default_courier'],
 			'couriers'            => self::COURIERS,
 			'sources'             => self::SOURCES,
+			'ai'                  => $this->aiAvailable(),
 		);
 	}
 

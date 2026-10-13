@@ -220,7 +220,8 @@ function buildShell() {
     h('ul', {}, navItems().map(([path, ic, label]) => h('li', {}, h('a', { href: `#${path}`, dataset: { path } }, icon(ic), h('span', {}, t(label)))))),
     h('div', { class: 'sidebar-foot' },
       window.BZL.appOnly ? null : h('a', { href: window.BZL.adminUrl }, icon('back', 16), t('WordPress admin')),
-      h('a', { href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out'))));
+      h('a', { href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out')),
+      h('span', { class: 'side-credit' }, h('img', { src: `${window.BZL.assetsUrl}img/nooriyah.jpg`, alt: '', width: 20, height: 20 }), t('A product of'), ' ', h('b', {}, 'NOORIYAH Group'))));
 
   const bell = h('a', { class: 'icon-btn bell', href: '#/notifications', 'aria-label': t('Notifications') }, icon('bell'), h('span', { class: 'dot', hidden: !state.me.unread }, String(state.me.unread || '')));
   const offline = h('a', { class: 'offline-pill', href: '#/sync', hidden: navigator.onLine }, icon('wifi_off', 16), h('span', {}, t('Offline')));

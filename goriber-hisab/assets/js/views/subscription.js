@@ -12,6 +12,30 @@ import { subBadge } from './platform.js';
 
 const METHODS = [['bkash', 'bKash'], ['nagad', 'Nagad'], ['rocket', 'Rocket'], ['bank', 'Bank'], ['cash', 'Cash']];
 
+const WALLETS = [['bkash', 'bKash', '#e2136e'], ['nagad', 'Nagad', '#f6921e'], ['rocket', 'Rocket', '#8c3494']];
+const TYPES = { personal: 'Personal', merchant: 'Merchant', agent: 'Agent' };
+const HOW = { personal: 'Send Money', merchant: 'Payment', agent: 'Cash Out' };
+
+/** Where to send the money: one card per wallet with a copy button. */
+export function payMethods(cfg, amount) {
+  const copy = (text) => h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => {
+    try { await navigator.clipboard.writeText(text); toast(t('Copied')); } catch { /* ignore */ }
+  } }, t('Copy'));
+  const cards = WALLETS.filter(([k]) => cfg[`pay_${k}`]).map(([k, name, color]) => {
+    const type = cfg[`pay_${k}_type`] || 'personal';
+    return h('div', { class: 'wallet', style: `--w:${color}` },
+      h('span', { class: 'wallet-name' }, name),
+      h('div', { class: 'wallet-body' }, h('strong', {}, cfg[`pay_${k}`]), h('small', {}, `${t(TYPES[type])} · ${t(HOW[type])}`)),
+      copy(cfg[`pay_${k}`]));
+  });
+  if (cfg.pay_bank) cards.push(h('div', { class: 'wallet', style: '--w:#0b1a2e' }, h('span', { class: 'wallet-name' }, t('Bank')), h('div', { class: 'wallet-body' }, h('pre', {}, cfg.pay_bank)), copy(cfg.pay_bank)));
+  const support = cfg.whatsapp || cfg.support_phone;
+  return h('div', { class: 'pay-methods' },
+    cards.length ? h('p', { class: 'muted small' }, t('Send {x} to any of these:', { x: amount })) : null,
+    cards.length ? cards : h('p', { class: 'muted' }, support ? t('Call {p} for payment details.', { p: support }) : t('Contact support for payment details.')),
+    cfg.payment_instructions ? h('pre', { class: 'pay-instructions' }, cfg.payment_instructions) : null);
+}
+
 export default async function subscription(el) {
   mount(el, spinner());
   const data = await api.get('subscription');
@@ -26,15 +50,26 @@ export async function blockedScreen(root, blocked) {
   let data = null;
   try { data = await api.get('subscription'); } catch { /* suspended shops cannot renew */ }
   const suspended = blocked.status === 'suspended';
+  const pending = blocked.status === 'pending';
+  const [title, text] = suspended ? [t('This shop has been suspended.'), t('Please contact support to continue.')]
+    : pending ? [t('Welcome! Your shop is almost ready.'), t('Pay below and submit the transaction ID. Your shop opens as soon as we approve it — usually within a few hours.')]
+      : [t('Your subscription has expired.'), t('Your data is safe. Renew to continue using the software.')];
   mount(root, h('main', { class: 'bare blocked' }, h('div', { class: 'blocked-card' },
     h('div', { class: 'brand' }, h('img', { src: `${window.BZL.assetsUrl}img/icon.svg`, alt: '', width: 48, height: 48 }), h('h1', {}, blocked.business_name)),
-    h('div', { class: 'blocked-msg' }, icon('alert', 28),
+    pending ? h('ol', { class: 'signup-steps' }, h('li', { class: 'done' }, h('b', {}, '✓'), t('Account created')), h('li', { class: 'on' }, h('b', {}, '2'), t('Payment')), h('li', {}, h('b', {}, '3'), t('Approval'))) : null,
+    h('div', { class: `blocked-msg ${pending ? 'ok' : ''}` }, icon(pending ? 'check' : 'alert', 28),
       h('div', {},
-        h('strong', {}, suspended ? t('This shop has been suspended.') : t('Your subscription has expired.')),
-        h('p', {}, suspended ? t('Please contact support to continue.') : t('Your data is safe. Renew to continue using the software.')))),
+        h('strong', {}, title),
+        h('p', {}, text))),
     data && !suspended ? content(data, () => location.reload(), { compact: true }) : null,
     blocked_help(data),
-    h('p', { class: 'center' }, h('a', { class: 'btn', href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out'))))));
+    h('p', { class: 'center' }, h('a', { class: 'btn', href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out'))),
+    nooriyah())));
+}
+
+/** "A product of NOORIYAH Group" footer. */
+export function nooriyah() {
+  return h('p', { class: 'nooriyah-credit' }, h('img', { src: `${window.BZL.assetsUrl}img/nooriyah.jpg`, alt: '', width: 22, height: 22 }), t('A product of'), ' ', h('b', {}, 'NOORIYAH Group'));
 }
 
 function blocked_help(data) {
@@ -72,7 +107,8 @@ function content(data, onDone, { compact = false } = {}) {
   if (data.is_owner) {
     let cycle = sub.cycle || 'monthly';
     const plans = h('div', { class: 'plan-pick' });
-    const paint = () => mount(plans, [['monthly', t('Monthly'), cfg.monthly_price, t('1 month')], ['yearly', t('Yearly'), cfg.yearly_price, t('12 months')]].map(([k, label, price, len]) =>
+    const payBox = h('div');
+    const paint = () => mount(payBox, payMethods(cfg, tk(cycle === 'yearly' ? cfg.yearly_price : cfg.monthly_price))) && mount(plans, [['monthly', t('Monthly'), cfg.monthly_price, t('1 month')], ['yearly', t('Yearly'), cfg.yearly_price, t('12 months')]].map(([k, label, price, len]) =>
       h('button', { type: 'button', class: `plan ${cycle === k ? 'on' : ''}`, 'aria-pressed': String(cycle === k), onclick: () => { cycle = k; paint(); } },
         h('span', {}, label), h('strong', {}, tk(price)), h('small', { class: 'muted' }, len))));
     paint();
@@ -80,7 +116,7 @@ function content(data, onDone, { compact = false } = {}) {
       h('p', {}, h('strong', {}, t('1. Choose a plan'))),
       plans,
       h('p', {}, h('strong', {}, t('2. Send the money'))),
-      cfg.payment_instructions ? h('pre', { class: 'pay-instructions' }, cfg.payment_instructions) : h('p', { class: 'muted' }, t('Contact support for payment details.')),
+      payBox,
       h('p', {}, h('strong', {}, t('3. Tell us the transaction ID'))),
       h('div', { class: 'form-grid' },
         field(t('Paid with'), select('method', METHODS, 'bkash')),

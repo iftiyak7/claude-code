@@ -68,6 +68,10 @@ final class AppRoute {
 		return self::url( 'login' );
 	}
 
+	public static function signupUrl(): string {
+		return self::url( 'signup' );
+	}
+
 	public static function addRewrite(): void {
 		add_rewrite_rule( '^' . preg_quote( self::slug(), '#' ) . '(?:/(.*))?/?$', 'index.php?hisab=/$matches[1]', 'top' );
 	}
@@ -211,6 +215,8 @@ final class AppRoute {
 			$this->serviceWorker();
 		} elseif ( 'login' === $path ) {
 			$this->login();
+		} elseif ( 'signup' === $path ) {
+			$this->signup();
 		} elseif ( preg_match( '#^print/(sale|purchase|payment|return|statement)/(\d+)$#', $path, $m ) ) {
 			$this->print( $m[1], (int) $m[2] );
 		} else {
@@ -324,6 +330,78 @@ final class AppRoute {
 		header( 'Referrer-Policy: same-origin' );
 		status_header( '' !== $error ? 401 : 200 );
 		include GORIBER_HISAB_DIR . 'templates/login.php';
+	}
+
+	/**
+	 * Public sign-up: creates a pending shop, logs the person in and sends
+	 * them to the app, where they pay and wait for approval.
+	 */
+	private function signup(): void {
+		$lang     = Landing::lang();
+		$L        = static fn( string $bn, string $en ): string => 'en' === $lang ? $en : $bn;
+		$platform = $this->k->platform->config();
+		$errors   = array();
+		$error    = '';
+		$old      = array();
+		if ( is_user_logged_in() && 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_safe_redirect( self::url() );
+			exit;
+		}
+		// phpcs:disable WordPress.Security.NonceVerification -- verified below.
+		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			foreach ( array( 'shop_name', 'owner_name', 'phone', 'email', 'address', 'business_type' ) as $k ) {
+				$old[ $k ] = isset( $_POST[ $k ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ $k ] ) ) : '';
+			}
+			$nonce = isset( $_POST['_gh'] ) ? sanitize_text_field( wp_unslash( $_POST['_gh'] ) ) : '';
+			try {
+				if ( ! empty( $_POST['website'] ) ) {
+					throw new \GoriberHisab\Support\ValidationException( array(), 'Spam check failed.' );
+				}
+				if ( ! wp_verify_nonce( $nonce, 'goriber_signup' ) ) {
+					throw new \GoriberHisab\Support\ValidationException( array(), $L( 'পেজের মেয়াদ শেষ হয়েছে, আবার চেষ্টা করুন।', 'The page expired. Please try again.' ) );
+				}
+				$this->k->limiter->hit( 'signup:' . Api::clientIp(), 5, HOUR_IN_SECONDS );
+				$pass = isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+				$this->k->platform->signup( $old + array( 'password' => $pass ) );
+				$user = wp_signon(
+					array(
+						'user_login'    => $old['email'],
+						'user_password' => $pass,
+						'remember'      => true,
+					),
+					''
+				);
+				if ( ! is_wp_error( $user ) ) {
+					wp_safe_redirect( self::url() );
+					exit;
+				}
+				wp_safe_redirect( self::loginUrl() );
+				exit;
+			} catch ( \GoriberHisab\Support\ValidationException $e ) {
+				$errors = $e->errors();
+				$error  = $e->getMessage();
+			} catch ( \GoriberHisab\Support\HisabException $e ) {
+				$error = $e->getMessage();
+			}
+		}
+		// phpcs:enable
+		$messages = array(
+			'Owner name is required.'                => $L( 'আপনার নাম লিখুন।', 'Please enter your name.' ),
+			'A valid email is required.'             => $L( 'সঠিক ইমেইল দিন।', 'Please enter a valid email.' ),
+			'This email already has an account.'     => $L( 'এই ইমেইলে আগেই অ্যাকাউন্ট আছে — লগইন করুন।', 'This email already has an account — please log in.' ),
+			'Enter your mobile number.'              => $L( 'মোবাইল নম্বর দিন।', 'Please enter your mobile number.' ),
+			'Password must be at least 8 characters.' => $L( 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।', 'Password must be at least 8 characters.' ),
+			'Shop name is required.'                 => $L( 'দোকানের নাম লিখুন।', 'Please enter your shop name.' ),
+			'Sign-up is closed. Please contact us.'  => $L( 'এখন নতুন সাইন আপ বন্ধ আছে। আমাদের সাথে যোগাযোগ করুন।', 'Sign-up is closed. Please contact us.' ),
+			'Too many requests. Please wait a moment and try again.' => $L( 'অনেকবার চেষ্টা হয়েছে, কিছুক্ষণ পর আবার চেষ্টা করুন।', 'Too many attempts. Please try again later.' ),
+		);
+		$errors = array_map( static fn( $m ) => $messages[ $m ] ?? $m, $errors );
+		$error  = $messages[ $error ] ?? $error;
+		nocache_headers();
+		header( 'X-Frame-Options: SAMEORIGIN' );
+		header( 'Referrer-Policy: same-origin' );
+		status_header( '' !== $error ? 422 : 200 );
+		include GORIBER_HISAB_DIR . 'templates/signup.php';
 	}
 
 	private function manifest(): void {

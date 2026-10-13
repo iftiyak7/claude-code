@@ -74,3 +74,30 @@ the site's front page shows a landing page: features, how to start, pricing
 from the monthly/yearly prices and trial days, FAQ, and WhatsApp buttons for
 the *WhatsApp number*. `?lang=en` / `?lang=bn` switches language (remembered
 in the `gh_lang` cookie, shared with the login page and the app).
+
+## Sign-up
+
+`/app/signup` (on when *Let new shops sign up themselves* is ticked). The
+form asks for shop name, owner name, mobile, email, address, business type
+and a password; it is protected by a nonce, a honeypot field and a limit of 5
+sign-ups per IP per hour. The new shop is created with status `pending`:
+the person is logged in and sees a payment screen (your bKash / Nagad /
+Rocket / bank details) where they submit the TrxID. You get an email for the
+sign-up and for the payment. Approving the payment opens the shop for the
+paid period; *Approve with free trial* opens it without a payment.
+
+## Payment numbers
+
+*Prices & settings → Where clients pay you*: bKash, Nagad and Rocket numbers
+with account type (personal = Send Money, merchant = Payment, agent = Cash
+Out), bank details and extra instructions. They appear on the renewal and
+sign-up screens with copy buttons.
+
+## Home page editor
+
+*Shops → Home page* (also in the WordPress menu as *Home page editor*):
+every text in Bangla and English, lists (features, steps, FAQ, comparison
+rows, plan items) can be added, removed and reordered, and each section can
+be hidden. Stored in the `goriber_hisab_landing` option; *Reset to original*
+restores the defaults. The footer and hero show the company credit
+("A product of NOORIYAH Group") with its logo.

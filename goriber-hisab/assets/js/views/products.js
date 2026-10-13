@@ -14,6 +14,7 @@ import { stockAdjust } from './inventory.js';
 
 export default async function products(el, params, query) {
   const path = location.hash.split('?')[0];
+  if (path.endsWith('/catalog')) return catalogue(el);
   if (path.endsWith('/new')) return form(el);
   if (path.endsWith('/edit')) return form(el, Number(params.id));
   if (params.id) return detail(el, Number(params.id));
@@ -23,6 +24,7 @@ export default async function products(el, params, query) {
     actions: [
       can('data.import') ? h('a', { class: 'btn btn-sm', href: '#/settings/data' }, icon('upload', 16), t('Import')) : null,
       can('data.export') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { const r = await api.get('export/products', query); downloadText(r.filename, r.csv); } }, icon('download', 16), t('Export')) : null,
+      h('a', { class: 'btn btn-sm', href: '#/products/catalog' }, icon('products', 16), t('Categories & brands')),
       can('products.create') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/products/new' }, icon('plus', 16), t('New product')) : null,
     ],
   });
@@ -166,6 +168,57 @@ function labels(pr) {
   });
 }
 
+/** A select with a "+" button that creates a new category / brand / unit in place. */
+function withAdd(sel, kind, title) {
+  if (!can('products.create')) return sel;
+  return h('div', { class: 'row' }, sel, h('button', { class: 'btn btn-sm', type: 'button', title, 'aria-label': title, onclick: () => termForm(kind, null, (saved) => {
+    state.me[kind] = [...(state.me[kind] || []), saved].sort((a, b) => a.name.localeCompare(b.name));
+    sel.append(h('option', { value: saved.id }, saved.name));
+    sel.value = saved.id;
+    sel.dispatchEvent(new Event('change'));
+  }, title) }, icon('plus', 14), t('New')));
+}
+
+function termForm(kind, x, onDone, title) {
+  const name = input('name', x?.name || '', { required: true, autofocus: true });
+  const f = h('form', { class: 'form' }, field(t('Name'), name, { required: true }),
+    kind === 'units' ? field(t('Short name'), input('short_name', x?.short_name || ''), { hint: t('e.g. kg, pcs, ltr') }) : null,
+    kind === 'units' ? checkbox('allow_decimal', !!Number(x?.allow_decimal), t('Allow fractions (e.g. 1.5 kg)')) : null);
+  const save = async () => {
+    try {
+      const saved = x ? await api.put(`taxonomies/${kind}/${x.id}`, values(f)) : await api.post(`taxonomies/${kind}`, values(f));
+      m.close(); toast(t('Saved')); onDone(saved);
+    } catch (err) { showFieldErrors(f, err.errors || {}); showError(err); }
+  };
+  f.addEventListener('submit', (e) => { e.preventDefault(); save(); });
+  const m = modal({ title: title || (x ? t('Edit') : t('Add')), size: 'sm', body: f, actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: save }, t('Save'))] });
+}
+
+/** Categories, brands and units in one place. */
+async function catalogue(el) {
+  const p = page(t('Categories, brands & units'), { back: '/products', subtitle: t('Group your products. The number shows how many products use each one.') });
+  const grid = h('div', { class: 'grid-3' });
+  p.body.append(grid);
+  mount(el, p.el);
+  const kinds = [['categories', t('Categories'), t('New category')], ['brands', t('Brands'), t('New brand')], ['units', t('Units'), t('New unit')]];
+  const paint = async () => {
+    const lists = await Promise.all(kinds.map(([k]) => api.get(`taxonomies/${k}`)));
+    lists.forEach((items, i) => { state.me[kinds[i][0]] = items; });
+    mount(grid, kinds.map(([kind, label, add], i) => card(label,
+      lists[i].length ? h('ul', { class: 'list' }, lists[i].map((x) => h('li', {},
+        h('span', {}, h('strong', {}, x.name), kind === 'units' ? h('small', { class: 'muted' }, ` (${x.short_name}${Number(x.allow_decimal) ? ' · ' + t('fractions') : ''})`) : null),
+        h('span', { class: 'row' },
+          h('a', { class: 'badge badge-info', href: kind === 'categories' ? `#/products?category_id=${x.id}` : '#/products' }, String(x.product_count)),
+          can('products.edit') ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Edit'), onclick: () => termForm(kind, x, paint, t('Edit')) }, icon('edit', 14)) : null,
+          can('products.delete') ? h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Delete'), onclick: async () => {
+            if (!(await confirmDialog(t('Delete {n}?', { n: x.name }), { danger: true }))) return;
+            try { await api.del(`taxonomies/${kind}/${x.id}`); paint(); } catch (err) { showError(err); }
+          } }, icon('trash', 14)) : null)))) : h('p', { class: 'muted' }, t('Nothing here yet.')),
+      can('products.create') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => termForm(kind, null, paint, add) }, icon('plus', 14), add) : null)));
+  };
+  paint();
+}
+
 async function form(el, id = 0) {
   if (!can(id ? 'products.edit' : 'products.create')) { mount(el, empty(t('You do not have permission for this.'))); return; }
   const pr = id ? await api.get(`products/${id}`) : { track_stock: true, type: 'standard', status: 'active' };
@@ -178,6 +231,21 @@ async function form(el, id = 0) {
     !id && can('products.cost') ? field(t('Opening unit cost'), money_input('opening_cost', ''), { hint: t('Defaults to purchase price') }) : null);
   typeSel.addEventListener('change', () => { stockFields.hidden = typeSel.value === 'service'; });
   stockFields.hidden = pr.type === 'service';
+
+  const catSel = select('category_id', opt(state.me.categories, t('None')), pr.category_id || '');
+  const brandSel = select('brand_id', opt(state.me.brands, t('None')), pr.brand_id || '');
+  const unitSel = select('unit_id', opt(state.me.units, t('None')), pr.unit_id || '');
+  const isDecimalUnit = (uid) => !!Number((state.me.units || []).find((u) => String(u.id) === String(uid))?.allow_decimal);
+  const looseBox = h('input', { type: 'checkbox', checked: isDecimalUnit(pr.unit_id) });
+  looseBox.addEventListener('change', async () => {
+    if (!looseBox.checked) { if (isDecimalUnit(unitSel.value)) unitSel.value = (state.me.units || []).find((u) => !Number(u.allow_decimal))?.id || ''; return; }
+    let kg = (state.me.units || []).find((u) => Number(u.allow_decimal) && /^(kg|কেজি)$/i.test(u.short_name || u.name)) || (state.me.units || []).find((u) => Number(u.allow_decimal));
+    if (!kg) {
+      try { kg = await api.post('taxonomies/units', { name: 'Kilogram', short_name: 'kg', allow_decimal: true }); state.me.units = [...(state.me.units || []), kg]; unitSel.append(h('option', { value: kg.id }, kg.name)); } catch (err) { showError(err); looseBox.checked = false; return; }
+    }
+    unitSel.value = kg.id;
+  });
+  unitSel.addEventListener('change', () => { looseBox.checked = isDecimalUnit(unitSel.value); });
 
   const imageId = input('image_id', pr.image_id || '', { type: 'hidden' });
   const imgPreview = h('div', { class: 'img-preview' }, pr.image_url ? h('img', { src: pr.image_url, alt: '' }) : null);
@@ -192,9 +260,10 @@ async function form(el, id = 0) {
     card(t('Basics'), h('div', { class: 'form-grid' },
       field(t('Product name'), input('name', pr.name, { required: true, autofocus: true }), { required: true }),
       field(t('Type'), typeSel),
-      field(t('Category'), select('category_id', opt(state.me.categories, t('None')), pr.category_id || '')),
-      field(t('Brand'), select('brand_id', opt(state.me.brands, t('None')), pr.brand_id || '')),
-      field(t('Unit'), select('unit_id', opt(state.me.units, t('None')), pr.unit_id || ''), { hint: t('For loose items (nuts, rice, oil) choose kg or litre — the POS will ask for the weight.') }),
+      field(t('Category'), withAdd(catSel, 'categories', t('New category'))),
+      field(t('Brand'), withAdd(brandSel, 'brands', t('New brand'))),
+      field(t('Unit'), withAdd(unitSel, 'units', t('New unit')), { hint: t('For loose items (nuts, rice, oil) choose kg or litre — the POS will ask for the weight.') }),
+      h('div', { class: 'field wide loose-toggle' }, h('label', { class: 'check' }, looseBox, h('span', {}, h('strong', {}, t('Sold loose by weight (gram / kg)')), h('small', { class: 'muted' }, ` — ${t('e.g. badam, rice, sugar. In POS you type the grams or the taka amount.')}`)))),
       field(t('SKU'), input('sku', pr.sku)),
       field(t('Barcode'), input('barcode', pr.barcode), { hint: t('Scan it in, or leave empty') }),
       !id ? h('div', { class: 'field' }, checkbox('auto_barcode', true, t('Generate a barcode if empty'))) : null,

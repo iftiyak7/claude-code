@@ -31,6 +31,16 @@ final class AdminMenu {
 			'dashicons-chart-area',
 			3
 		);
+		if ( current_user_can( 'manage_options' ) ) {
+			// Direct links into the app's owner screens.
+			foreach ( array(
+				array( __( 'Shops & payments', 'goriber-hisab' ), '#/platform' ),
+				array( __( 'Home page editor', 'goriber-hisab' ), '#/platform?tab=home' ),
+				array( __( 'Prices & payment numbers', 'goriber-hisab' ), '#/platform?tab=settings' ),
+			) as $item ) {
+				add_submenu_page( 'goriber-hisab', $item[0], $item[0], 'manage_options', AppRoute::adminUrl( $item[1] ) );
+			}
+		}
 	}
 
 	/**

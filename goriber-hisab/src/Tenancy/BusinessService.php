@@ -203,7 +203,7 @@ final class BusinessService extends Service {
 		$mt = $this->db->table( 'business_users' );
 		return $this->db->rows(
 			"SELECT b.id, b.name, b.business_type, b.currency_code, b.logo_id, m.role, m.default_branch_id FROM {$mt} m JOIN {$bt} b ON b.id = m.business_id
-			WHERE m.user_id = %d AND m.status = 'active' AND b.status IN ('active','suspended') AND b.deleted_at IS NULL ORDER BY b.name",
+			WHERE m.user_id = %d AND m.status = 'active' AND b.status IN ('active','suspended','pending') AND b.deleted_at IS NULL ORDER BY b.name",
 			array( $user_id )
 		);
 	}

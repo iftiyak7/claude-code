@@ -15,6 +15,21 @@ have both); courier credentials need `settings.manage`.
 
 Customers are matched by phone number (an existing customer is reused).
 
+## Paste to fill
+
+On *New order*, paste the customer's message and press *Auto-fill*.
+`POST /orders/parse` reads the phone (Bangla digits too), name, address,
+district (inside / outside Dhaka, which sets the delivery charge), note and
+products with quantities (500 gram of a product sold per kg becomes 0.5).
+
+* Built-in reader (`OrderParser`): rule-based, free, works offline.
+* Optional AI reader (`AiOrderReader`): when the site owner adds a Claude API
+  key in *Prices & settings*, the message and product list are sent to
+  Anthropic's Messages API (`claude-opus-5-5`, low effort, JSON-schema output,
+  server-side refusal fallback). Limited to 120 reads per shop per hour; any
+  error falls back to the built-in reader. Calls go through the WordPress HTTP
+  API because the plugin ships without Composer.
+
 ## Steadfast
 
 Orders → Courier settings: API key + secret from the Steadfast merchant

@@ -62,11 +62,14 @@ export default async function pos(el) {
   function paintGrid() {
     const list = catalogue.filter((p) => p.status === 'active' && (!category || p.category_id === category)).slice(0, 120);
     mount(grid, list.length ? list.map((p) => h('button', {
-      class: `tile ${p.track_stock && dec(p.stock_qty) <= 0 ? 'out' : ''}`, type: 'button', onclick: () => pick(p),
+      class: `tile ${p.track_stock && dec(p.stock_qty) <= 0 ? 'out' : ''} ${isLoose(p) ? 'loose' : ''}`, type: 'button', onclick: () => pick(p),
+      title: t('Long-press to change quantity or price'),
+      oncontextmenu: (e) => { e.preventDefault(); pickAndEdit(p); },
     },
+    isLoose(p) ? h('span', { class: 'tile-weigh' }, `⚖ ${t('By weight')}`) : null,
     S['pos.show_images'] && p.image_url ? h('img', { src: p.image_url, alt: '', loading: 'lazy' }) : h('span', { class: 'tile-initial', 'aria-hidden': 'true' }, p.name.slice(0, 2)),
     h('span', { class: 'tile-name' }, p.name),
-    h('span', { class: 'tile-price' }, money(p.selling_price)),
+    h('span', { class: 'tile-price' }, money(p.selling_price), isLoose(p) && p.unit_name ? h('small', {}, ` /${p.unit_name}`) : null),
     p.track_stock ? h('small', { class: 'tile-stock' }, fmtQty(p.stock_qty)) : null)) : empty(t('No products. Add products first.'), can('products.create') ? h('a', { class: 'btn', href: '#/products/new' }, t('Add product')) : null));
   }
 
@@ -111,6 +114,16 @@ export default async function pos(el) {
       } catch (err) { showError(err); return; }
     }
     add(p, null);
+  }
+
+  /** Long-press: add with the quantity/price editor open, for any product. */
+  function pickAndEdit(p) {
+    if (p.has_variants) { pick(p); return; }
+    const key = `${p.id}:0`;
+    const existing = cart.lines.find((l) => `${l.product_id}:${l.variant_id}` === key);
+    if (existing) { editLine(existing, false); return; }
+    const price = dec(p.selling_price);
+    editLine({ product_id: p.id, variant_id: 0, name: p.name, qty: 10000, price, base: price, discount: 0, track: !!p.track_stock, stock: dec(p.stock_qty), unit: p.unit_name || '', loose: isLoose(p) }, true);
   }
 
   function isLoose(p) {

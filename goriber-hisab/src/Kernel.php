@@ -209,7 +209,9 @@ final class Kernel {
 				);
 				return $contexts;
 			case 'orders':
-				return new OrderService( $d, $c, $e, $this->sales, $this->contacts, $this->payments, $this->finance, $this->accounts, $this->products, $this->numbers, $this->audit, $this->http() );
+				$orders = new OrderService( $d, $c, $e, $this->sales, $this->contacts, $this->payments, $this->finance, $this->accounts, $this->products, $this->numbers, $this->audit, $this->http() );
+				$orders->setAiKey( fn() => (string) $this->platform->config()['ai_key'] );
+				return $orders;
 			case 'platform':
 				$memory = array();
 				return new PlatformService(

@@ -156,4 +156,47 @@ final class PlatformTest extends IntegrationTestCase {
 		$this->assertSame( '2027-03-15', PlatformService::addMonths( '2026-03-15', 12 ) );
 		$this->assertSame( '2026-03-01', PlatformService::addDays( '2026-02-28', 1 ) );
 	}
+
+	public function testSignupStaysPendingUntilApproved(): void {
+		$e = $this->assertThrows( ValidationException::class, fn() => $this->k->platform->signup( array( 'shop_name' => 'X', 'owner_name' => 'Y', 'email' => 'y@gmail.com', 'password' => 'secret123' ) ) );
+		$this->assertTrue( isset( $e->errors()['phone'] ) );
+		$r   = $this->k->platform->signup( array( 'shop_name' => 'Karim Traders', 'owner_name' => 'Karim', 'phone' => '01811111111', 'email' => 'karim@gmail.com', 'address' => 'Bogura', 'password' => 'secret123', 'business_type' => 'grocery' ) );
+		$uid = $r['user_id'];
+		$sh  = $this->k->platform->shop( $r['business_id'] );
+		$this->assertSame( 'pending', $sh['subscription']['status'] );
+		$this->assertSame( 'Bogura', $this->k->businesses->get( $r['business_id'] )['address'] );
+		$this->assertSame( 1, $this->k->platform->stats()['signups'] );
+		$this->assertSame( 1, count( $this->k->platform->shops( array( 'status' => 'pending' ) )['items'] ) );
+		$ex = $this->assertThrows( SubscriptionException::class, fn() => $this->k->contexts->forUser( $uid, 0 ) );
+		$this->assertSame( 'pending', $ex->subscription()['status'] );
+
+		// They pay and submit the TrxID while still pending; approving opens the shop.
+		$ctx = $this->k->contexts->forUser( $uid, 0, 0, true );
+		$req = $this->k->platform->requestRenewal( $ctx, array( 'cycle' => 'monthly', 'reference' => 'TRXSIGN', 'method' => 'bkash' ) );
+		$this->k->platform->approve( $this->owner, $req['id'] );
+		$ok = $this->k->contexts->forUser( $uid, 0 );
+		$this->assertSame( 'active', $ok->subscription['status'] );
+		$this->assertSame( '2026-04-14', $ok->subscription['paid_until'] );
+
+		// Approving without payment starts the free trial.
+		$r2 = $this->k->platform->signup( array( 'shop_name' => 'Two', 'owner_name' => 'T', 'phone' => '01822222222', 'email' => 'two@gmail.com', 'password' => 'secret123' ) );
+		$this->k->platform->updateShop( $r2['business_id'], array( 'status' => 'active' ) );
+		$this->assertSame( 'trial', $this->k->contexts->forUser( $r2['user_id'], 0 )->subscription['status'] );
+
+		$this->k->platform->saveConfig( array( 'signup' => false ) );
+		$this->assertThrows( PermissionException::class, fn() => $this->k->platform->signup( array( 'shop_name' => 'Three', 'owner_name' => 'T', 'phone' => '01833333333', 'email' => 'three@gmail.com', 'password' => 'secret123' ) ) );
+	}
+
+	public function testPaymentNumbersAndMaskedAiKey(): void {
+		$this->k->platform->saveConfig( array( 'pay_bkash' => '01711-000000', 'pay_bkash_type' => 'merchant', 'pay_nagad_type' => 'bogus', 'ai_key' => 'sk-ant-secret-value' ) );
+		$pub = $this->k->platform->publicConfig();
+		$this->assertSame( '01711-000000', $pub['pay_bkash'] );
+		$this->assertSame( 'merchant', $pub['pay_bkash_type'] );
+		$this->assertSame( 'personal', $pub['pay_nagad_type'] );
+		$this->assertFalse( isset( $pub['ai_key'] ) );
+		$admin = $this->k->platform->adminConfig();
+		$this->assertSame( 'sk-ant-••••••••••', $admin['ai_key'] );
+		$this->k->platform->saveConfig( array( 'ai_key' => $admin['ai_key'] ) );
+		$this->assertSame( 'sk-ant-secret-value', $this->k->platform->config()['ai_key'] );
+	}
 }

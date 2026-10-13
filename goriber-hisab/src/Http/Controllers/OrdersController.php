@@ -23,6 +23,7 @@ final class OrdersController extends Controller {
 			$this->route( 'POST', '/orders', fn( BusinessContext $c, array $p ) => $o()->create( $c, $p ), array( 'created' => true ) ),
 			$this->route( 'GET', '/orders/courier', fn( BusinessContext $c ) => $o()->courierSettings( $c ) ),
 			$this->route( 'PUT', '/orders/courier', fn( BusinessContext $c, array $p ) => $o()->saveCourierSettings( $c, $p ) ),
+			$this->route( 'POST', '/orders/parse', array( $this, 'parse' ) ),
 			$this->route( 'POST', '/orders/cod', fn( BusinessContext $c, array $p ) => $o()->collectCod( $c, (array) ( $p['ids'] ?? array() ), $p ) ),
 			$this->route( 'GET', '/orders/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $o()->get( $c, self::id( $r ) ) ),
 			$this->route( 'PUT', '/orders/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $o()->update( $c, self::id( $r ), $p ) ),
@@ -32,5 +33,18 @@ final class OrdersController extends Controller {
 			$this->route( 'POST', '/orders/(?P<id>\d+)/track', fn( BusinessContext $c, array $p, $r ) => $o()->refreshCourier( $c, self::id( $r ) ) ),
 			$this->route( 'POST', '/orders/(?P<id>\d+)/close', fn( BusinessContext $c, array $p, $r ) => $o()->close( $c, self::id( $r ), (string) ( $p['status'] ?? '' ), $p ) ),
 		);
+	}
+
+	/**
+	 * @param array<string,mixed> $p text, ai.
+	 * @return array<string,mixed>
+	 */
+	public function parse( BusinessContext $ctx, array $p ): array {
+		$use_ai = ! isset( $p['ai'] ) || ! empty( $p['ai'] );
+		if ( $use_ai && $this->k->orders->aiAvailable() ) {
+			// AI calls cost the site owner money: cap them per shop.
+			$this->k->limiter->hit( 'ai-order:' . $ctx->business_id, 120, HOUR_IN_SECONDS );
+		}
+		return $this->k->orders->parse( $ctx, (string) ( $p['text'] ?? '' ), $use_ai );
 	}
 }

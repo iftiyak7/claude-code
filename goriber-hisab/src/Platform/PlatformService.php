@@ -84,6 +84,15 @@ final class PlatformService extends Service {
 				'support_phone'        => '',
 				'whatsapp'             => '',
 				'landing'              => true,
+				'signup'               => true,
+				'pay_bkash'            => '',
+				'pay_bkash_type'       => 'personal',
+				'pay_nagad'            => '',
+				'pay_nagad_type'       => 'personal',
+				'pay_rocket'           => '',
+				'pay_rocket_type'      => 'personal',
+				'pay_bank'             => '',
+				'ai_key'               => '',
 			),
 			is_array( $stored ) ? $stored : array()
 		);
@@ -95,8 +104,25 @@ final class PlatformService extends Service {
 	 */
 	public function saveConfig( array $data ): array {
 		$c = $this->config();
-		if ( isset( $data['landing'] ) ) {
-			$c['landing'] = Text::bool( $data['landing'] );
+		foreach ( array( 'landing', 'signup' ) as $k ) {
+			if ( isset( $data[ $k ] ) ) {
+				$c[ $k ] = Text::bool( $data[ $k ] );
+			}
+		}
+		foreach ( array( 'bkash', 'nagad', 'rocket' ) as $w ) {
+			if ( isset( $data[ 'pay_' . $w ] ) ) {
+				$c[ 'pay_' . $w ] = Text::phone( $data[ 'pay_' . $w ] );
+			}
+			if ( isset( $data[ 'pay_' . $w . '_type' ] ) ) {
+				$c[ 'pay_' . $w . '_type' ] = in_array( $data[ 'pay_' . $w . '_type' ], array( 'personal', 'merchant', 'agent' ), true ) ? (string) $data[ 'pay_' . $w . '_type' ] : 'personal';
+			}
+		}
+		if ( isset( $data['pay_bank'] ) ) {
+			$c['pay_bank'] = Text::multiline( $data['pay_bank'], 500 );
+		}
+		// Masked keys come back unchanged from the form: keep the stored one.
+		if ( isset( $data['ai_key'] ) && ! str_contains( (string) $data['ai_key'], '•' ) ) {
+			$c['ai_key'] = trim( Text::line( $data['ai_key'], 300 ) );
 		}
 		if ( isset( $data['whatsapp'] ) ) {
 			$c['whatsapp'] = Text::phone( $data['whatsapp'] );
@@ -134,7 +160,20 @@ final class PlatformService extends Service {
 	 */
 	public function publicConfig(): array {
 		$c = $this->config();
-		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'trial_days' ) ) );
+		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'trial_days', 'pay_bkash', 'pay_bkash_type', 'pay_nagad', 'pay_nagad_type', 'pay_rocket', 'pay_rocket_type', 'pay_bank' ) ) );
+	}
+
+	/**
+	 * Config for the owner's settings screen: secrets masked.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function adminConfig(): array {
+		$c                = $this->config();
+		$c['ai_key']      = '' !== $c['ai_key'] ? substr( $c['ai_key'], 0, 7 ) . str_repeat( '•', 10 ) : '';
+		$c['ai_enabled']  = '' !== $this->config()['ai_key'];
+		unset( $c['landing_content'] );
+		return $c;
 	}
 
 	/* ------------------------------------------------------- Subscription */
@@ -156,8 +195,9 @@ final class PlatformService extends Service {
 			'days_left'  => null,
 			'status'     => 'unlimited',
 		);
-		if ( 'suspended' === $status ) {
-			$out['status'] = 'suspended';
+		if ( 'suspended' === $status || 'pending' === $status ) {
+			$out['status']  = $status;
+			$out['managed'] = true;
 			return $out;
 		}
 		if ( '' === $until ) {
@@ -184,7 +224,7 @@ final class PlatformService extends Service {
 	 * @param array<string,mixed> $sub Result of subscription().
 	 */
 	public static function blocked( array $sub ): bool {
-		return in_array( $sub['status'], array( 'expired', 'suspended' ), true );
+		return in_array( $sub['status'], array( 'expired', 'suspended', 'pending' ), true );
 	}
 
 	/* -------------------------------------------------------------- Shops */
@@ -247,49 +287,7 @@ final class PlatformService extends Service {
 	 * @return array<string,mixed>
 	 */
 	public function openShop( int $admin_id, array $data ): array {
-		$errors = array();
-		$name   = Text::line( $data['owner_name'] ?? '' );
-		$email  = Text::email( $data['email'] ?? '' );
-		$phone  = Text::phone( $data['phone'] ?? '' );
-		$pass   = (string) ( $data['password'] ?? '' );
-		$shop   = Text::line( $data['shop_name'] ?? '' );
-		$cycle  = (string) ( $data['cycle'] ?? 'monthly' );
-		if ( '' === $name ) {
-			$errors['owner_name'] = 'Owner name is required.';
-		}
-		if ( '' === $email ) {
-			$errors['email'] = 'A valid email is required.';
-		} elseif ( $this->users->findByEmail( $email ) ) {
-			$errors['email'] = 'This email already has an account.';
-		}
-		if ( strlen( $pass ) < 8 ) {
-			$errors['password'] = 'Password must be at least 8 characters.';
-		}
-		if ( '' === $shop ) {
-			$errors['shop_name'] = 'Shop name is required.';
-		}
-		if ( ! isset( self::CYCLES[ $cycle ] ) ) {
-			$errors['cycle'] = 'Choose monthly or yearly.';
-		}
-		if ( $errors ) {
-			throw new ValidationException( $errors );
-		}
-
-		$user_id  = $this->users->createClient( $email, $name, $pass, $phone );
-		$business = $this->businesses->create(
-			$user_id,
-			array(
-				'name'          => $shop,
-				'business_type' => $data['business_type'] ?? 'retail',
-				'phone'         => $phone,
-				'email'         => $email,
-				'address'       => $data['address'] ?? '',
-				'currency_code' => $data['currency_code'] ?? 'BDT',
-				'decimals'      => 2,
-				'timezone'      => $data['timezone'] ?? 'Asia/Dhaka',
-			)
-		);
-
+		list( $user_id, $business, $cycle ) = $this->createAccount( $data, true );
 		$config = $this->config();
 		$row    = $this->businesses->get( $business );
 		$today  = $this->clock->today( (string) $row['timezone'] ?: 'UTC' );
@@ -320,6 +318,94 @@ final class PlatformService extends Service {
 		}
 		$this->events->dispatch( 'goriber_hisab/platform/shop_opened', $business, $user_id );
 		return $this->shop( $business );
+	}
+
+	/**
+	 * Public sign-up: the shop is created "pending" and stays locked until the
+	 * site owner approves it (directly, or by approving its first payment).
+	 *
+	 * @param array<string,mixed> $data owner_name, email, phone, address, password, shop_name, business_type.
+	 * @return array{user_id:int,business_id:int}
+	 */
+	public function signup( array $data ): array {
+		if ( empty( $this->config()['signup'] ) ) {
+			throw new PermissionException( 'Sign-up is closed. Please contact us.' );
+		}
+		list( $user_id, $business ) = $this->createAccount( $data, false );
+		$this->db->update(
+			$this->db->table( 'businesses' ),
+			array(
+				'status'        => 'pending',
+				'plan'          => 'pending',
+				'billing_cycle' => 'monthly',
+				'paid_until'    => null,
+				'platform_note' => 'Signed up online',
+			),
+			array( 'id' => $business )
+		);
+		$this->events->dispatch( 'goriber_hisab/platform/signup', $business, $user_id );
+		return array(
+			'user_id'     => $user_id,
+			'business_id' => $business,
+		);
+	}
+
+	/**
+	 * Validate and create the login + business.
+	 *
+	 * @param array<string,mixed> $data Form.
+	 * @return array{0:int,1:int,2:string} user id, business id, cycle.
+	 */
+	private function createAccount( array $data, bool $by_owner ): array {
+		$errors = array();
+		$name   = Text::line( $data['owner_name'] ?? '' );
+		$email  = Text::email( $data['email'] ?? '' );
+		$phone  = Text::phone( $data['phone'] ?? '' );
+		$pass   = (string) ( $data['password'] ?? '' );
+		$shop   = Text::line( $data['shop_name'] ?? '' );
+		$cycle  = (string) ( $data['cycle'] ?? 'monthly' );
+		if ( '' === $name ) {
+			$errors['owner_name'] = 'Owner name is required.';
+		}
+		if ( '' === $email ) {
+			$errors['email'] = 'A valid email is required.';
+		} elseif ( $this->users->findByEmail( $email ) ) {
+			$errors['email'] = 'This email already has an account.';
+		}
+		if ( ! $by_owner && strlen( preg_replace( '/[^0-9]/', '', $phone ) ) < 10 ) {
+			$errors['phone'] = 'Enter your mobile number.';
+		}
+		if ( strlen( $pass ) < 8 ) {
+			$errors['password'] = 'Password must be at least 8 characters.';
+		}
+		if ( '' === $shop ) {
+			$errors['shop_name'] = 'Shop name is required.';
+		}
+		if ( ! isset( self::CYCLES[ $cycle ] ) ) {
+			$errors['cycle'] = 'Choose monthly or yearly.';
+		}
+		$type = (string) ( $data['business_type'] ?? 'retail' );
+		if ( ! isset( BusinessService::TYPES[ $type ] ) ) {
+			$type = 'retail';
+		}
+		if ( $errors ) {
+			throw new ValidationException( $errors );
+		}
+		$user_id  = $this->users->createClient( $email, $name, $pass, $phone );
+		$business = $this->businesses->create(
+			$user_id,
+			array(
+				'name'          => $shop,
+				'business_type' => $type,
+				'phone'         => $phone,
+				'email'         => $email,
+				'address'       => Text::multiline( $data['address'] ?? '', 500 ),
+				'currency_code' => $data['currency_code'] ?? 'BDT',
+				'decimals'      => 2,
+				'timezone'      => $data['timezone'] ?? 'Asia/Dhaka',
+			)
+		);
+		return array( $user_id, $business, $cycle );
 	}
 
 	/**
@@ -354,6 +440,12 @@ final class PlatformService extends Service {
 				throw ValidationException::field( 'status', 'Invalid status.' );
 			}
 			$set['status'] = $data['status'];
+			$current_row   = $this->db->row( 'SELECT status, paid_until, timezone FROM ' . $this->db->table( 'businesses' ) . ' WHERE id = %d', array( $business_id ) );
+			if ( 'active' === $data['status'] && 'pending' === ( $current_row['status'] ?? '' ) && empty( $current_row['paid_until'] ) && ! array_key_exists( 'paid_until', $set ) ) {
+				// Approving a sign-up without a payment starts the free trial.
+				$set['paid_until'] = self::addDays( $this->clock->today( (string) $current_row['timezone'] ?: 'UTC' ), (int) $this->config()['trial_days'] );
+				$set['plan']       = 'trial';
+			}
 		}
 		if ( isset( $data['note'] ) ) {
 			$set['platform_note'] = Text::multiline( $data['note'], 2000 );
@@ -507,6 +599,7 @@ final class PlatformService extends Service {
 			'expiring'  => 0,
 			'expired'   => 0,
 			'suspended' => 0,
+			'signups'   => 0,
 		);
 		foreach ( $this->shops( array( 'per_page' => 500 ) )['items'] as $s ) {
 			if ( ! $s['subscription']['managed'] && 'suspended' !== $s['subscription']['status'] ) {
@@ -516,6 +609,9 @@ final class PlatformService extends Service {
 			$st = $s['subscription']['status'];
 			if ( 'grace' === $st ) {
 				$st = 'expired';
+			}
+			if ( 'pending' === $st ) {
+				$st = 'signups';
 			}
 			if ( isset( $counts[ $st ] ) ) {
 				++$counts[ $st ];
@@ -569,6 +665,7 @@ final class PlatformService extends Service {
 				'paid_until'    => $to,
 				'plan'          => $p['cycle'],
 				'billing_cycle' => $p['cycle'],
+				'status'        => 'pending' === ( $row['status'] ?? '' ) ? 'active' : $row['status'],
 				'updated_at'    => $this->now(),
 			),
 			array( 'id' => $p['business_id'] )

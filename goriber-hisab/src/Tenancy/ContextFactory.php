@@ -69,11 +69,11 @@ final class ContextFactory {
 		if ( $business_id <= 0 ) {
 			// Fall back to the user's first business.
 			$business_id = (int) $this->db->value(
-				"SELECT m.business_id FROM {$mt} m JOIN {$bt} b ON b.id = m.business_id WHERE m.user_id = %d AND m.status = 'active' AND b.status IN ('active','suspended') AND b.deleted_at IS NULL ORDER BY m.id LIMIT 1",
+				"SELECT m.business_id FROM {$mt} m JOIN {$bt} b ON b.id = m.business_id WHERE m.user_id = %d AND m.status = 'active' AND b.status IN ('active','suspended','pending') AND b.deleted_at IS NULL ORDER BY m.id LIMIT 1",
 				array( $user_id )
 			);
 		}
-		$business = $business_id > 0 ? $this->db->row( "SELECT * FROM {$bt} WHERE id = %d AND status IN ('active','suspended') AND deleted_at IS NULL", array( $business_id ) ) : null;
+		$business = $business_id > 0 ? $this->db->row( "SELECT * FROM {$bt} WHERE id = %d AND status IN ('active','suspended','pending') AND deleted_at IS NULL", array( $business_id ) ) : null;
 		$member   = $business ? $this->db->row( "SELECT * FROM {$mt} WHERE business_id = %d AND user_id = %d AND status = 'active'", array( $business_id, $user_id ) ) : null;
 		if ( null === $business || null === $member ) {
 			throw new PermissionException( 'You do not have access to this business.' );
@@ -82,9 +82,14 @@ final class ContextFactory {
 		$sub = null;
 		if ( null !== $this->subscription ) {
 			$sub = ( $this->subscription )( $business );
-			if ( in_array( $sub['status'], array( 'expired', 'suspended' ), true ) && ! $allow_expired && ! ( $this->exempt )( $user_id ) ) {
+			if ( in_array( $sub['status'], array( 'expired', 'suspended', 'pending' ), true ) && ! $allow_expired && ! ( $this->exempt )( $user_id ) ) {
+				$messages = array(
+					'suspended' => 'This shop has been suspended. Please contact support.',
+					'pending'   => 'Your shop is waiting for approval.',
+					'expired'   => 'Your subscription has expired. Please renew to continue.',
+				);
 				throw new SubscriptionException(
-					'suspended' === $sub['status'] ? 'This shop has been suspended. Please contact support.' : 'Your subscription has expired. Please renew to continue.',
+					$messages[ $sub['status'] ],
 					$sub + array( 'business_name' => (string) $business['name'], 'business_id' => (int) $business['id'] )
 				);
 			}

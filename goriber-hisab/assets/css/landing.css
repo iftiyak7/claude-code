@@ -177,3 +177,14 @@ section h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); color: var(--navy); }
   .cta-row .btn { width: 100%; }
   .plan-head, .incl { padding: 24px; }
 }
+
+/* NOORIYAH Group credit */
+.nooriyah-hero, .nooriyah-foot { display: inline-flex; align-items: center; gap: 10px; }
+.nooriyah-hero { margin-top: 26px; padding: 6px 14px 6px 6px; border-radius: 999px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); color: #cfe3d6; font-size: .92rem; }
+.nooriyah-hero img, .nooriyah-foot img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+.nooriyah-hero b { color: #fff; letter-spacing: .04em; }
+.nooriyah-foot { margin: 6px 0; color: #cfe0ee; font-size: .95rem; }
+.nooriyah-foot b { color: #fff; letter-spacing: .05em; }
+.band-cta { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.primary:not(.big) { padding: 0 16px; }
+@media (max-width: 620px) { .hide-sm { display: none; } }

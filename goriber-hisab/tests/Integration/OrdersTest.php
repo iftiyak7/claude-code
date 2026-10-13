@@ -151,4 +151,54 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertSame( 1, $this->k->orders->list( $sctx, array( 'status' => 'all' ) )['total'] );
 		$this->assertThrows( PermissionException::class, fn() => $this->k->orders->saveCourierSettings( $sctx, array( 'steadfast_key' => 'x' ) ) );
 	}
+
+	public function testPasteToFillWithParserAndAi(): void {
+		$kg    = (int) $this->db->value( 'SELECT id FROM ' . $this->db->table( 'units' ) . " WHERE business_id = %d AND short_name = 'kg'", array( $this->ctx->business_id ) );
+		$badam = $this->product( 'Peanuts / Badam (loose)', '280', '200', '20', array( 'unit_id' => $kg ) );
+		$saree = $this->product( 'Saree', '1200', '800', '5' );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->orders->parse( $this->ctx, '  ' ) );
+		$r = $this->k->orders->parse( $this->ctx, "Rahim Uddin, ০১৭১২-৩৪৫৬৭৮, House 5 Road 2 Mirpur 10, 500g badam\nsaree 2 pcs" );
+		$this->assertSame( 'parser', $r['reader'] );
+		$this->assertSame( 'Rahim Uddin', $r['customer_name'] );
+		$this->assertSame( '01712345678', $r['phone'] );
+		$this->assertSame( 'inside', $r['zone'] );
+		$this->assertSame( 2, count( $r['items'] ) );
+		$byId = array_column( $r['items'], 'qty', 'product_id' );
+		$this->assertSame( '2', $byId[ $saree ] );
+
+		// Known customer is recognised by phone.
+		$this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Old Friend', 'phone' => '01912345678', 'address' => 'Khulna' ) );
+		$r2 = $this->k->orders->parse( $this->ctx, '01912345678 saree' );
+		$this->assertSame( 'Old Friend', $r2['customer_name'] );
+		$this->assertSame( 'Khulna', $r2['address'] );
+
+		// With a key, Claude reads it (stubbed); invalid ids are dropped; failures fall back.
+		$sent = array();
+		$this->k->setHttp(
+			function ( $method, $url, $headers, $body ) use ( &$sent, $badam ) {
+				$sent = array( $url, $headers, json_decode( (string) $body, true ) );
+				$json = json_encode( array( 'customer_name' => 'Nusrat', 'phone' => '+8801712000000', 'address' => 'Agrabad', 'area' => 'Chattogram', 'zone' => 'outside', 'items' => array( array( 'product_id' => $badam, 'qty' => 0.25 ), array( 'product_id' => 999, 'qty' => 1 ) ), 'note' => 'after 5pm' ) );
+				return array( 200, json_encode( array( 'stop_reason' => 'end_turn', 'content' => array( array( 'type' => 'thinking', 'thinking' => '' ), array( 'type' => 'text', 'text' => $json ) ) ) ) );
+			}
+		);
+		$this->k->platform->saveConfig( array( 'ai_key' => 'sk-ant-test' ) );
+		$this->assertTrue( $this->k->orders->aiAvailable() );
+		$ai = $this->k->orders->parse( $this->ctx, 'আমি নুসরাত, আগ্রাবাদ, ২৫০ গ্রাম বাদাম দিন' );
+		$this->assertSame( 'ai', $ai['reader'] );
+		$this->assertSame( '01712000000', $ai['phone'] );
+		$this->assertSame( 1, count( $ai['items'] ) );
+		$this->assertSame( '0.25', $ai['items'][0]['qty'] );
+		$this->assertSame( 'https://api.anthropic.com/v1/messages', $sent[0] );
+		$this->assertSame( 'sk-ant-test', $sent[1]['x-api-key'] );
+		$this->assertSame( 'claude-opus-5-5', $sent[2]['model'] );
+		$this->assertSame( 'json_schema', $sent[2]['output_config']['format']['type'] );
+		$this->assertTrue( str_contains( $sent[2]['messages'][0]['content'], 'Peanuts / Badam' ) );
+
+		$this->k->setHttp( fn() => array( 529, '{"type":"error"}' ) );
+		$this->k->orders->setAiKey( fn() => 'sk-ant-test' );
+		$fb = $this->k->orders->parse( $this->ctx, 'Karim 01811111111 Bogura, saree' );
+		$this->assertSame( 'parser', $fb['reader'] );
+		$this->assertSame( 'outside', $fb['zone'] );
+		$this->assertSame( 'parser', $this->k->orders->parse( $this->ctx, 'Karim 01811111111', false )['reader'] );
+	}
 }

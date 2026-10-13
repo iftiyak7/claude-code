@@ -11,12 +11,13 @@ import { page, card, stat, tabs, field, input, select, textarea, modal, toast, s
 import { icon } from '../core/icons.js';
 
 const METHODS = [['bkash', 'bKash'], ['nagad', 'Nagad'], ['rocket', 'Rocket'], ['bank', 'Bank'], ['cash', 'Cash']];
-const SUB_TONE = { active: 'active', trial: 'held', grace: 'partial', expired: 'due', suspended: 'suspended', unlimited: 'completed' };
-const SUB_LABEL = { active: 'Active', trial: 'Trial', grace: 'Grace period', expired: 'Expired', suspended: 'Suspended', unlimited: 'No limit' };
+const SUB_TONE = { active: 'active', trial: 'held', grace: 'partial', expired: 'due', suspended: 'suspended', unlimited: 'completed', pending: 'partial' };
+const SUB_LABEL = { active: 'Active', trial: 'Trial', grace: 'Grace period', expired: 'Expired', suspended: 'Suspended', unlimited: 'No limit', pending: 'New sign-up' };
 
 let cfg = null;
 let loginUrl = '';
 let homeUrl = '';
+let signupUrl = '';
 const tk = (amount) => `${cfg?.currency || '৳'}${Number(amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 export function subBadge(sub) {
@@ -37,6 +38,7 @@ export default async function platform(el, params, query) {
   cfg = o.config;
   loginUrl = o.login_url;
   homeUrl = o.home_url;
+  signupUrl = o.signup_url;
   const tab = query.tab || 'shops';
   const s = o.stats;
   const go = (k) => { location.hash = `#/platform?tab=${k}`; };
@@ -52,17 +54,18 @@ export default async function platform(el, params, query) {
       stat(t('Trial'), String(s.trial)),
       stat(t('Ending in 7 days'), String(s.expiring), { tone: s.expiring ? 'warn' : '' }),
       stat(t('Expired'), String(s.expired), { tone: s.expired ? 'bad' : '' }),
+      stat(t('New sign-ups'), String(s.signups || 0), { tone: s.signups ? 'warn' : '', onclick: () => { location.hash = '#/platform?tab=shops&status=pending'; } }),
       stat(t('Payment requests'), String(s.pending), { tone: s.pending ? 'warn' : '', onclick: () => go('payments') }),
       stat(t('Collected this month'), tk(s.collected_month), { tone: 'ok' }),
       stat(t('Collected total'), tk(s.collected_total))),
-    tabs([['shops', t('Shops')], ['payments', `${t('Payments')}${s.pending ? ` (${s.pending})` : ''}`], ['settings', t('Prices & settings')]], tab, go));
+    tabs([['shops', t('Shops')], ['payments', `${t('Payments')}${s.pending ? ` (${s.pending})` : ''}`], ['settings', t('Prices & settings')], ['home', t('Home page')]], tab, go));
   const body = h('div', { class: 'tab-body' });
   p.body.append(body);
   mount(el, p.el);
   const reload = () => platform(el, params, query);
 
   if (tab === 'shops') {
-    const status = select('status', [['all', t('All shops')], ['active', t('Active')], ['expiring', t('Ending in 7 days')], ['expired', t('Expired')], ['trial', t('Trial')], ['suspended', t('Suspended')]], 'all', { 'aria-label': t('Status') });
+    const status = select('status', [['all', t('All shops')], ['active', t('Active')], ['expiring', t('Ending in 7 days')], ['expired', t('Expired')], ['trial', t('Trial')], ['suspended', t('Suspended')], ['pending', t('New sign-ups')]], query.status || 'all', { 'aria-label': t('Status') });
     const table = dataTable({
       query,
       searchPlaceholder: t('Search shop, phone, email…'),
@@ -109,33 +112,113 @@ export default async function platform(el, params, query) {
       ],
     });
     body.append(card(null, table.el));
+  } else if (tab === 'home') {
+    homeEditor(body);
   } else {
     body.append(settingsForm(reload));
   }
 }
 
+/* ------------------------------------------------------------ Home page editor */
+
+const SECTION_LABELS = { who: 'Kinds of shops', pain: 'Problem & comparison', features: 'Features', how: 'How to start', price: 'Pricing', faq: 'Questions & answers', band: 'Last call to action' };
+
+async function homeEditor(root) {
+  mount(root, spinner());
+  const data = await api.get('platform/landing');
+  const state = JSON.parse(JSON.stringify(data.content));
+  const pairInput = (obj, key, type) => {
+    obj[key] = obj[key] || { bn: '', en: '' };
+    const mk = (lang) => {
+      const el = type === 'textarea' ? h('textarea', { class: 'input', rows: 3 }, obj[key][lang] || '') : h('input', { class: 'input', value: obj[key][lang] || '' });
+      el.addEventListener('input', () => { obj[key][lang] = el.value; });
+      return h('label', { class: 'pair-field' }, h('span', { class: 'pair-lang' }, lang === 'bn' ? 'বাংলা' : 'English'), el);
+    };
+    return h('div', { class: 'pair' }, mk('bn'), mk('en'));
+  };
+  const fieldEl = (obj, f) => {
+    if (f.type === 'icon') {
+      const sel = select(f.key, data.icons.map((i) => [i, i]), obj[f.key] || 'star');
+      sel.addEventListener('change', () => { obj[f.key] = sel.value; });
+      return h('div', { class: 'field' }, h('label', {}, t(f.label)), sel);
+    }
+    if (f.type === 'list') {
+      const box = h('div', { class: 'list-editor' });
+      const paint = () => mount(box, (obj[f.key] || []).map((item, i, arr) => h('div', { class: 'list-item' },
+        h('div', { class: 'list-item-head' }, h('strong', {}, `#${i + 1}`),
+          h('span', { class: 'row' },
+            h('button', { class: 'icon-btn', type: 'button', disabled: i === 0, 'aria-label': t('Move up'), onclick: () => { [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; paint(); } }, '↑'),
+            h('button', { class: 'icon-btn', type: 'button', disabled: i === arr.length - 1, 'aria-label': t('Move down'), onclick: () => { [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; paint(); } }, '↓'),
+            h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { arr.splice(i, 1); paint(); } }, icon('trash', 16)))),
+        f.item.map((sub) => fieldEl(item, sub)))),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: () => {
+        const blank = {}; f.item.forEach((sub) => { blank[sub.key] = sub.type === 'icon' ? 'star' : { bn: '', en: '' }; });
+        (obj[f.key] = obj[f.key] || []).push(blank); paint();
+      } }, icon('plus', 14), t('Add')));
+      paint();
+      return h('div', { class: 'field wide' }, h('label', {}, t(f.label)), box);
+    }
+    return h('div', { class: 'field wide' }, h('label', {}, t(f.label)), pairInput(obj, f.key, f.type));
+  };
+  const toggles = h('div', { class: 'row wrap' }, Object.keys(state.show).map((k) => {
+    const box = h('input', { type: 'checkbox', checked: !!state.show[k] });
+    box.addEventListener('change', () => { state.show[k] = box.checked; });
+    return h('label', { class: 'check' }, box, h('span', {}, t(SECTION_LABELS[k] || k)));
+  }));
+  const save = async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try { await api.put('platform/landing', { content: state }); toast(t('Home page saved')); } catch (err) { showError(err); } finally { b.disabled = false; }
+  };
+  mount(root,
+    card(t('Home page'),
+      h('p', { class: 'muted small' }, t('Edit every text on your home page in Bangla and English. Prices, free days and phone numbers come from Prices & settings.')),
+      h('div', { class: 'row wrap' },
+        h('a', { class: 'btn btn-sm', href: `${data.url}?lang=bn`, target: '_blank', rel: 'noopener' }, t('Preview (বাংলা)')),
+        h('a', { class: 'btn btn-sm', href: `${data.url}?lang=en`, target: '_blank', rel: 'noopener' }, t('Preview (English)')),
+        h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => {
+          if (!(await confirmDialog(t('Put back all the original texts? Your changes will be lost.'), { danger: true, confirmText: t('Reset') }))) return;
+          try { await api.post('platform/landing/reset'); toast(t('Reset done')); homeEditor(root); } catch (err) { showError(err); }
+        } }, t('Reset to original'))),
+      h('h4', {}, t('Sections to show')), toggles),
+    data.schema.map((sec) => card(t(sec.title), h('div', { class: 'form-grid' }, sec.fields.map((f) => fieldEl(state, f))))),
+    h('div', { class: 'form-actions sticky-actions' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: save }, icon('check', 16), t('Save home page'))));
+}
+
 function settingsForm(reload) {
+  const typeSel = (k) => select(`pay_${k}_type`, [['personal', t('Personal')], ['merchant', t('Merchant')], ['agent', t('Agent')]], cfg[`pay_${k}_type`] || 'personal');
+  const wallet = (k, label) => h('div', { class: 'wallet-row' }, field(t('{w} number', { w: label }), input(`pay_${k}`, cfg[`pay_${k}`] || '', { type: 'tel', inputmode: 'tel', placeholder: '01XXXXXXXXX' })), field(t('Account type'), typeSel(k)));
   const f = h('form', { class: 'form' },
-    h('div', { class: 'form-grid' },
+    card(t('Where clients pay you'),
+      h('p', { class: 'muted small' }, t('These numbers are shown on the renewal and sign-up screens with a copy button. Leave empty what you do not use.')),
+      wallet('bkash', 'bKash'), wallet('nagad', 'Nagad'), wallet('rocket', 'Rocket'),
+      field(t('Bank account'), textarea('pay_bank', cfg.pay_bank || '', { rows: 3, placeholder: t('Bank name, account name, account number, branch') }), { wide: true }),
+      field(t('Extra instructions'), textarea('payment_instructions', cfg.payment_instructions, { rows: 3, placeholder: t('e.g. Use your shop name as reference.') }), { wide: true })),
+    card(t('Prices'), h('div', { class: 'form-grid' },
       field(t('Monthly price'), input('monthly_price', cfg.monthly_price, { inputmode: 'decimal' })),
       field(t('Yearly price'), input('yearly_price', cfg.yearly_price, { inputmode: 'decimal' })),
       field(t('Currency symbol'), input('currency', cfg.currency)),
       field(t('Free trial days'), input('trial_days', String(cfg.trial_days), { type: 'number', min: 0 }), { hint: t('For new shops opened without payment') }),
-      field(t('Grace days'), input('grace_days', String(cfg.grace_days), { type: 'number', min: 0 }), { hint: t('Shop keeps working this many days after expiry') }),
+      field(t('Grace days'), input('grace_days', String(cfg.grace_days), { type: 'number', min: 0 }), { hint: t('Shop keeps working this many days after expiry') }))),
+    card(t('Contact'), h('div', { class: 'form-grid' },
       field(t('Support phone'), input('support_phone', cfg.support_phone, { type: 'tel' }), { hint: t('Shown on the login page and renewal screen') }),
       field(t('WhatsApp number'), input('whatsapp', cfg.whatsapp || '', { type: 'tel', placeholder: '017XXXXXXXX' }), { hint: t('Buttons on the home page open a WhatsApp chat with this number') }),
-      field(t('Software name'), input('brand', cfg.brand))),
-    field(t('How clients should pay you'), textarea('payment_instructions', cfg.payment_instructions, { rows: 4, placeholder: t('e.g. bKash Send Money to 01XXXXXXXXX (Personal). Then enter the TrxID below.') }), { wide: true, hint: t('Shown to clients when they renew') }),
-    h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'landing', checked: cfg.landing !== false }), h('span', {}, t('Show the Goriber Hisab home page (features, pricing, WhatsApp) on the site\'s front page'))),
-    h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', type: 'submit' }, t('Save'))));
+      field(t('Software name'), input('brand', cfg.brand)))),
+    card(t('Website'),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'landing', checked: cfg.landing !== false }), h('span', {}, t('Show the Goriber Hisab home page (features, pricing, WhatsApp) on the site\'s front page'))),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'signup', checked: cfg.signup !== false }), h('span', {}, t('Let new shops sign up themselves (you approve each one)')))),
+    card(t('AI order reading (optional)'),
+      h('p', { class: 'muted small' }, t('Paste-to-fill works without this. With an Anthropic (Claude) API key, messy messages are read even better. You pay Anthropic per use.')),
+      field(t('Claude API key'), input('ai_key', cfg.ai_key || '', { autocomplete: 'off', placeholder: 'sk-ant-…' }), { hint: cfg.ai_enabled ? t('Connected') : t('Get a key at console.anthropic.com') })),
+    h('div', { class: 'form-actions sticky-actions' }, h('button', { class: 'btn btn-primary', type: 'submit' }, t('Save'))));
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     try { await api.put('platform/config', values(f)); toast(t('Saved')); reload(); } catch (err) { showFieldErrors(f, err.errors); showError(err); }
   });
   return h('div', {},
     card(t('Client login page'), h('p', { class: 'muted small' }, t('Clients log in here with their email and password. They only see their own shop — never WordPress.')), copyBox(loginUrl),
+      h('p', { class: 'muted small' }, t('Sign-up page:'), ' ', h('a', { href: signupUrl, target: '_blank', rel: 'noopener' }, signupUrl)),
       h('p', { class: 'muted small' }, t('Home page:'), ' ', h('a', { href: homeUrl, target: '_blank', rel: 'noopener' }, homeUrl))),
-    card(t('Prices & settings'), f));
+    f);
 }
 
 function copyBox(text, { multiline = false } = {}) {
@@ -277,7 +360,12 @@ async function manageShop(id, onChange) {
         h('button', { class: 'btn', type: 'button', onclick: async () => {
           try { await api.put(`platform/shops/${id}`, { paid_until: until.value, note: note.value }); toast(t('Saved')); refresh(); } catch (err) { showError(err); }
         } }, t('Save')),
-        shop.status === 'suspended'
+        shop.status === 'pending'
+          ? h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+            if (!(await confirmDialog(t('Approve {n} without a payment? The free trial starts now. (Approving their payment request also opens the shop.)', { n: shop.name }), { confirmText: t('Approve') }))) return;
+            try { await api.put(`platform/shops/${id}`, { status: 'active' }); toast(t('Shop approved')); refresh(); } catch (err) { showError(err); }
+          } }, icon('check', 16), t('Approve with free trial'))
+          : shop.status === 'suspended'
           ? h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => { try { await api.put(`platform/shops/${id}`, { status: 'active' }); toast(t('Shop re-activated')); refresh(); } catch (err) { showError(err); } } }, t('Re-activate shop'))
           : h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
             if (!(await confirmDialog(t('Suspend {n}? Their users will not be able to log in to the shop until you re-activate it. No data is deleted.', { n: shop.name }), { danger: true, confirmText: t('Suspend') }))) return;
