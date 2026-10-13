@@ -72,12 +72,14 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 
 ## Verified so far
 * `php tests/run.php`: 53 tests / ~5,400 assertions (unit, integration,
-  security, randomized ledger property test across seeds), also with
-  savepoints disabled.
-* `tests/e2e/smoke.mjs` run against WordPress 6.5 (SQLite integration):
-  login, setup wizard, POS sale, 26 screens, A4 + 80 mm print, mobile
-  viewport — all passing.
-* Not yet verified: MySQL/MariaDB on a real host, Web Bluetooth with a
+  security, randomized ledger property test across seeds), on SQLite, with
+  savepoints disabled, and on MariaDB 10.11 in strict mode with
+  ONLY_FULL_GROUP_BY (`BZL_TEST_MYSQL="mysql:host=…;dbname=…;user=…;password=…"`).
+* `tests/e2e/smoke.mjs` run against WordPress 6.5 on both MariaDB 10.11 and
+  the SQLite integration: login, setup wizard, POS sale, 26 screens, A4 +
+  80 mm print, mobile viewport — all passing. Upgrade from 1.0.0 → 1.0.1
+  verified (missing tables are created on the next page load).
+* Not yet verified: MySQL 8 specifically, real shared hosting, Web Bluetooth with a
   physical printer, Safari/iOS, very large data volumes.
 
 ## Testing plan per phase

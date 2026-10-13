@@ -39,7 +39,7 @@ namespace BizLedger\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.0.0';
+	public const VERSION = '1.0.1';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -854,7 +854,8 @@ final class Schema {
 			$lines[] = 'PRIMARY KEY  (id)';
 			foreach ( $def['indexes'] as $key => $cols ) {
 				$unique  = str_starts_with( $key, 'unique:' );
-				$iname   = $unique ? substr( $key, 7 ) : $key;
+				// Prefixed so no index name can collide with a reserved word (key, return, system, member…).
+				$iname   = $unique ? 'uniq_' . substr( $key, 7 ) : 'idx_' . $key;
 				$lines[] = ( $unique ? 'UNIQUE KEY ' : 'KEY ' ) . "{$iname} (" . implode( ',', $cols ) . ')';
 			}
 			$out[ $name ] = "CREATE TABLE {$table} (\n" . implode( ",\n", $lines ) . "\n) {$collate};";

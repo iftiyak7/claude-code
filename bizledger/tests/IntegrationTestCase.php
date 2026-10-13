@@ -30,11 +30,24 @@ abstract class IntegrationTestCase extends TestCase {
 	protected int $owner;
 
 	public function setUp(): void {
-		$this->db = PdoDatabase::sqliteMemory();
-		$this->db->savepoints = ! getenv( 'BZL_NO_SAVEPOINTS' );
-		foreach ( Schema::sqlite( $this->db ) as $sql ) {
-			$this->db->ddl( $sql );
+		$dsn = getenv( 'BZL_TEST_MYSQL' ); // e.g. "mysql:host=localhost;dbname=bzl_test;user=wp;password=wp"
+		if ( $dsn ) {
+			parse_str( str_replace( ';', '&', substr( $dsn, 6 ) ), $o );
+			$pdo      = new \PDO( "mysql:host={$o['host']};dbname={$o['dbname']};charset=utf8mb4", $o['user'] ?? 'root', $o['password'] ?? '' );
+			$this->db = new PdoDatabase( $pdo );
+			foreach ( array_keys( Schema::tables() ) as $table ) {
+				$this->db->ddl( 'DROP TABLE IF EXISTS ' . $this->db->table( $table ) );
+			}
+			foreach ( Schema::mysql( $this->db, 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci' ) as $sql ) {
+				$this->db->ddl( $sql );
+			}
+		} else {
+			$this->db = PdoDatabase::sqliteMemory();
+			foreach ( Schema::sqlite( $this->db ) as $sql ) {
+				$this->db->ddl( $sql );
+			}
 		}
+		$this->db->savepoints = ! getenv( 'BZL_NO_SAVEPOINTS' );
 		$this->users = new MemoryUsers();
 		$this->owner = $this->users->add( 'Owner', 'owner@example.com' );
 		$this->k     = new Kernel( $this->db, new Clock( new \DateTimeImmutable( '2026-03-15 10:00:00', new \DateTimeZone( 'UTC' ) ) ), new Events(), $this->users );

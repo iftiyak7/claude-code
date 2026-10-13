@@ -53,6 +53,7 @@ php tests/run.php                 # unit + integration tests (SQLite, no WordPre
 php tests/run.php Sales           # filter
 BZL_SEED=7 php tests/run.php Randomized
 BZL_NO_SAVEPOINTS=1 php tests/run.php   # simulate the SQLite-integration driver
+BZL_TEST_MYSQL="mysql:host=localhost;dbname=bzl_test;user=u;password=p" php tests/run.php  # real MySQL/MariaDB
 ```
 No build step: the front end is native ES modules in `assets/js`.
 

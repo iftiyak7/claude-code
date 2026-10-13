@@ -587,11 +587,11 @@ final class ReportService extends Service {
 		list( $bs, $bp )   = $this->branchSql( $branch, 's.branch_id' );
 
 		$groups = array(
-			'day'      => array( 's.sale_date', 's.sale_date', '' ),
-			'month'    => array( 'SUBSTR(s.sale_date,1,7)', 'SUBSTR(s.sale_date,1,7)', '' ),
+			'day'      => array( 's.sale_date', 'MAX(s.sale_date)', '' ),
+			'month'    => array( 'SUBSTR(s.sale_date,1,7)', 'MAX(SUBSTR(s.sale_date,1,7))', '' ),
 			'product'  => array( 'i.product_id', 'MAX(i.name)', '' ),
 			'customer' => array( 's.customer_id', "COALESCE(MAX(c.name), 'Walk-in')", "LEFT JOIN {$c} c ON c.id = s.customer_id" ),
-			'user'     => array( 's.created_by', 's.created_by', '' ),
+			'user'     => array( 's.created_by', 'MAX(s.created_by)', '' ),
 			'branch'   => array( 's.branch_id', 'MAX(b.name)', "LEFT JOIN {$b} b ON b.id = s.branch_id" ),
 			'category' => array( 'p.category_id', "COALESCE(MAX(cat.name), 'Uncategorised')", "LEFT JOIN {$p} p ON p.id = i.product_id LEFT JOIN {$cat} cat ON cat.id = p.category_id" ),
 		);
@@ -713,8 +713,8 @@ final class ReportService extends Service {
 		$groups            = array(
 			'supplier' => array( 'p.supplier_id', "COALESCE(MAX(c.name), 'Cash purchase')", "LEFT JOIN {$c} c ON c.id = p.supplier_id" ),
 			'product'  => array( 'i.product_id', 'MAX(i.name)', '' ),
-			'day'      => array( 'p.purchase_date', 'p.purchase_date', '' ),
-			'month'    => array( 'SUBSTR(p.purchase_date,1,7)', 'SUBSTR(p.purchase_date,1,7)', '' ),
+			'day'      => array( 'p.purchase_date', 'MAX(p.purchase_date)', '' ),
+			'month'    => array( 'SUBSTR(p.purchase_date,1,7)', 'MAX(SUBSTR(p.purchase_date,1,7))', '' ),
 		);
 		if ( ! isset( $groups[ $group ] ) ) {
 			throw ValidationException::field( 'group_by', 'Unknown grouping.' );

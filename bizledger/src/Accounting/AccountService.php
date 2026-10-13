@@ -227,18 +227,17 @@ final class AccountService extends Service {
 		}
 
 		$select = 'a.*';
-		$join   = '';
 		if ( ! empty( $args['with_balance'] ) ) {
-			$l       = $this->db->table( 'journal_lines' );
-			$as_of   = Text::date( $args['as_of'] ?? null );
-			$cond    = 'l.account_id = a.id AND l.business_id = a.business_id' . ( $as_of ? ' AND l.entry_date <= %s' : '' );
-			$select .= ', COALESCE(SUM(l.debit),0) AS total_debit, COALESCE(SUM(l.credit),0) AS total_credit';
-			$join    = " LEFT JOIN {$l} l ON {$cond}";
+			// Correlated sums (no GROUP BY) work under ONLY_FULL_GROUP_BY on every MySQL/MariaDB.
+			$l      = $this->db->table( 'journal_lines' );
+			$as_of  = Text::date( $args['as_of'] ?? null );
+			$cond   = 'l.account_id = a.id AND l.business_id = a.business_id' . ( $as_of ? ' AND l.entry_date <= %s' : '' );
+			$select .= ", (SELECT COALESCE(SUM(l.debit),0) FROM {$l} l WHERE {$cond}) AS total_debit, (SELECT COALESCE(SUM(l.credit),0) FROM {$l} l WHERE {$cond}) AS total_credit";
 			if ( $as_of ) {
-				array_unshift( $params, $as_of );
+				$params = array_merge( array( $as_of, $as_of ), $params );
 			}
 		}
-		$sql  = "SELECT {$select} FROM {$t} a{$join} WHERE " . implode( ' AND ', $where ) . ( $join ? ' GROUP BY a.id' : '' ) . ' ORDER BY a.code, a.name';
+		$sql  = "SELECT {$select} FROM {$t} a WHERE " . implode( ' AND ', $where ) . ' ORDER BY a.code, a.name';
 		$rows = $this->db->rows( $sql, $params );
 		return array_map( array( $this, 'hydrate' ), $rows );
 	}
