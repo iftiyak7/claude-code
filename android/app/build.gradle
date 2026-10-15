@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Website the app opens. Override with: gradle assembleRelease -PappUrl=https://example.com/app/
+def appUrl = project.findProperty('appUrl') ?: 'https://goriberhisab.tech/app/'
+def appVersionName = project.findProperty('appVersionName') ?: '1.5.0'
+def appVersionCode = (project.findProperty('appVersionCode') ?: '10500') as Integer
+
+android {
+    namespace 'tech.goriberhisab.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'tech.goriberhisab.app'
+        minSdk 24
+        targetSdk 34
+        versionCode appVersionCode
+        versionName appVersionName
+        buildConfigField 'String', 'APP_URL', "\"${appUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            // A fixed key so every build can update the installed app.
+            // For Google Play, replace with a key kept in CI secrets.
+            storeFile file('../keystore/goriber-hisab.jks')
+            storePassword System.getenv('GH_KEYSTORE_PASSWORD') ?: 'goriberhisab'
+            keyAlias 'goriberhisab'
+            keyPassword System.getenv('GH_KEY_PASSWORD') ?: 'goriberhisab'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
