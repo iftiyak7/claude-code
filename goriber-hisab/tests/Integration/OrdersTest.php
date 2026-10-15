@@ -201,4 +201,64 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertSame( 'outside', $fb['zone'] );
 		$this->assertSame( 'parser', $this->k->orders->parse( $this->ctx, 'Karim 01811111111', false )['reader'] );
 	}
+
+	public function testFraudCheckAcrossShopsAndCouriers(): void {
+		$this->assertSame( '01712345678', \GoriberHisab\Orders\OrderService::phoneKey( '+880 1712-345678' ) );
+		$this->assertSame( '', \GoriberHisab\Orders\OrderService::phoneKey( '12345' ) );
+		$p = $this->product( 'Saree', '500', '300', '20' );
+		$a = $this->order( $p, array( 'phone' => '+8801712345678' ) );
+		$this->k->orders->advance( $this->ctx, $this->k->orders->advance( $this->ctx, $a['id'], 'shipped', array( 'courier' => 'redx' ) )['id'], 'delivered' );
+		$b = $this->k->orders->advance( $this->ctx, $this->order( $p )['id'], 'shipped', array( 'courier' => 'redx' ) );
+		$this->k->orders->close( $this->ctx, $b['id'], 'returned' );
+
+		// Another shop on the same site.
+		$other_user = $this->users->add( 'Other', 'other@example.com' );
+		$other      = $this->k->contexts->forUser( $other_user, $this->k->businesses->create( $other_user, array( 'name' => 'Other Shop', 'currency_code' => 'BDT', 'decimals' => 2, 'timezone' => 'Asia/Dhaka', 'business_type' => 'retail' ) ) );
+		$op         = $this->k->products->create( $other, array( 'name' => 'Item', 'selling_price' => '100' ) )['id'];
+		$this->k->orders->close( $other, $this->k->orders->create( $other, array( 'customer_name' => 'N', 'phone' => '01712-345678', 'address' => 'Dhaka', 'items' => array( array( 'product_id' => $op, 'qty' => '1', 'unit_price' => '100' ) ) ) )['id'], 'cancelled' );
+
+		$r = $this->k->orders->risk( $this->ctx, '01712345678' );
+		$this->assertSame( 1, $r['shop']['delivered'] );
+		$this->assertSame( 1, $r['shop']['returned'] );
+		$this->assertSame( 1, $r['network']['cancelled'] );
+		$this->assertSame( 1, $r['network']['shops'] );
+		$this->assertSame( 33, $r['ratio'] );
+		$this->assertSame( 'risky', $r['level'] );
+		$this->assertSame( null, $r['couriers'] );
+		$this->assertSame( 'new', $this->k->orders->risk( $this->ctx, '01999999999' )['level'] );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->orders->risk( $this->ctx, '123' ) );
+
+		// Courier-check service: called once, then cached.
+		$calls = 0;
+		$this->k->setHttp(
+			function ( $m, $url, $h, $body ) use ( &$calls ) {
+				++$calls;
+				$this->assertSame( 'Bearer bdc-key', $h['Authorization'] );
+				$this->assertSame( '01712345678', json_decode( (string) $body, true )['phone'] );
+				return array( 200, '{"status":"success","courierData":{"pathao":{"name":"Pathao","total_parcel":10,"success_parcel":9,"cancelled_parcel":1},"steadfast":{"name":"Steadfast","total_parcel":5,"success_parcel":5,"cancelled_parcel":0},"redx":{"name":"RedX","total_parcel":0,"success_parcel":0,"cancelled_parcel":0},"summary":{"total_parcel":15,"success_parcel":14,"cancelled_parcel":1}}}' );
+			}
+		);
+		$this->k->platform->saveConfig( array( 'fraud_key' => 'bdc-key' ) );
+		$r = $this->k->orders->risk( $this->ctx, '01712345678' );
+		$this->assertSame( 2, count( $r['couriers'] ) );
+		$this->assertSame( 'Pathao', $r['couriers'][0]['name'] );
+		$this->assertSame( 14, $r['delivered'] );
+		$this->assertSame( 93, $r['ratio'] );
+		$this->assertSame( 'good', $r['level'] );
+		$this->k->orders->risk( $this->ctx, '01712345678' );
+		$this->assertSame( 1, $calls );
+		$this->k->orders->risk( $this->ctx, '01712345678', true );
+		$this->assertSame( 2, $calls );
+
+		// Service down: falls back to the cached answer and says why.
+		$this->k->setHttp( fn() => array( 401, '{"message":"Invalid API key"}' ) );
+		$this->k->platform->saveConfig( array( 'fraud_key' => 'bdc-key' ) );
+		$r = $this->k->orders->risk( $this->ctx, '01712345678', true );
+		$this->assertTrue( str_contains( $r['error'], 'Invalid API key' ) );
+		$this->assertSame( 2, count( $r['couriers'] ) );
+		$this->assertSame( 'bdc-••••••••••', $this->k->platform->adminConfig()['fraud_key'] );
+
+		$this->k->platform->saveConfig( array( 'fraud_network' => false, 'fraud_key' => '' ) );
+		$this->assertSame( null, $this->k->orders->risk( $this->ctx, '01712345678' )['network'] );
+	}
 }

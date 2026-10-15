@@ -213,6 +213,12 @@ function settingsForm(reload) {
     card(t('AI order reading (optional)'),
       h('p', { class: 'muted small' }, t('Paste-to-fill works without this. With an Anthropic (Claude) API key, messy messages are read even better. You pay Anthropic per use.')),
       field(t('Claude API key'), input('ai_key', cfg.ai_key || '', { autocomplete: 'off', placeholder: 'sk-ant-…' }), { hint: cfg.ai_enabled ? t('Connected') : t('Get a key at console.anthropic.com') })),
+    card(t('Customer fraud check'),
+      h('p', { class: 'muted small' }, t('When an order is entered, the phone number is checked: how many parcels this customer received or returned. Counts from all shops on this site are always available. For history from every courier (Pathao, Steadfast, RedX, Paperfly…), connect a courier-check service such as BD Courier.')),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'fraud_network', checked: cfg.fraud_network !== false }), h('span', {}, t('Share delivery counts between shops on this site (numbers only — no names or shop details)'))),
+      h('div', { class: 'form-grid' },
+        field(t('Courier-check API key'), input('fraud_key', cfg.fraud_key || '', { autocomplete: 'off' }), { hint: t('From your courier-check service account (for example bdcourier.com)') }),
+        field(t('Service address (optional)'), input('fraud_url', cfg.fraud_url || '', { type: 'url', placeholder: 'https://api.bdcourier.com/courier-check' }), { hint: t('Leave empty for BD Courier') }))),
     h('div', { class: 'form-actions sticky-actions' }, h('button', { class: 'btn btn-primary', type: 'submit' }, t('Save'))));
   f.addEventListener('submit', async (e) => {
     e.preventDefault();

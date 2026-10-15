@@ -211,6 +211,12 @@ final class Kernel {
 			case 'orders':
 				$orders = new OrderService( $d, $c, $e, $this->sales, $this->contacts, $this->payments, $this->finance, $this->accounts, $this->products, $this->numbers, $this->audit, $this->http() );
 				$orders->setAiKey( fn() => (string) $this->platform->config()['ai_key'] );
+				$orders->setRiskConfig(
+					function (): array {
+						$c = $this->platform->config();
+						return array( 'url' => (string) $c['fraud_url'], 'key' => (string) $c['fraud_key'], 'network' => ! empty( $c['fraud_network'] ) );
+					}
+				);
 				return $orders;
 			case 'platform':
 				$memory = array();

@@ -79,6 +79,18 @@ final class Installer {
 	 * @return array<string,callable>
 	 */
 	private static function migrations(): array {
-		return (array) apply_filters( 'goriber_hisab/migrations', array() );
+		$builtin = array(
+			// Orders get a normalised phone for the courier/fraud check.
+			'1.3.0' => static function ( $db ): void {
+				$t = $db->table( 'orders' );
+				foreach ( $db->rows( "SELECT id, phone FROM {$t} WHERE phone_key = ''" ) as $r ) {
+					$key = \GoriberHisab\Orders\OrderService::phoneKey( (string) $r['phone'] );
+					if ( '' !== $key ) {
+						$db->update( $t, array( 'phone_key' => $key ), array( 'id' => (int) $r['id'] ) );
+					}
+				}
+			},
+		);
+		return (array) apply_filters( 'goriber_hisab/migrations', $builtin );
 	}
 }

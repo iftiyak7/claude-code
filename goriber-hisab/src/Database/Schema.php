@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.2.0';
+	public const VERSION = '1.3.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -834,6 +834,7 @@ final class Schema {
 						'customer_id'     => 'fk',
 						'customer_name'   => 'str:191',
 						'phone'           => 'str:40',
+						'phone_key'       => 'str:20',
 						'address'         => 'text',
 						'area'            => 'str:100',
 						'items'           => 'json',
@@ -861,7 +862,22 @@ final class Schema {
 					'unique:number' => array( 'business_id', 'number' ),
 					'status'        => array( 'business_id', 'status', 'order_date' ),
 					'phone'         => array( 'business_id', 'phone' ),
+					'phone_key'     => array( 'phone_key' ),
 					'consignment'   => array( 'business_id', 'consignment_id' ),
+				),
+			),
+
+			/* Cached courier-history lookups (whole site, one row per phone + source). */
+			'phone_checks'        => array(
+				'columns' => array(
+					'id'         => 'id',
+					'phone'      => 'str:20',
+					'source'     => 'str:30',
+					'data'       => 'json',
+					'checked_at' => 'datetime',
+				),
+				'indexes' => array(
+					'unique:phone' => array( 'phone', 'source' ),
 				),
 			),
 

@@ -240,7 +240,8 @@ final class OrderService extends Service {
 				}
 			}
 			if ( isset( $data['phone'] ) && Text::phone( $data['phone'] ) ) {
-				$set['phone'] = Text::phone( $data['phone'] );
+				$set['phone']     = Text::phone( $data['phone'] );
+				$set['phone_key'] = self::phoneKey( $set['phone'] );
 			}
 			if ( $set ) {
 				$this->db->update( $this->db->table( 'orders' ), $set + array( 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => $id ) );
@@ -576,6 +577,127 @@ final class OrderService extends Service {
 
 	/* ------------------------------------------------------- Paste & fill */
 
+	/* ------------------------------------------------------------ Fraud check */
+
+	/**
+	 * @var (callable():array{url:string,key:string,network:bool})|null
+	 */
+	private $risk_config = null;
+
+	/**
+	 * @param callable():array{url:string,key:string,network:bool} $config Courier-check service + network sharing.
+	 */
+	public function setRiskConfig( callable $config ): void {
+		$this->risk_config = $config;
+	}
+
+	/**
+	 * "01XXXXXXXXX" for a Bangladeshi mobile number in any common format, else ''.
+	 */
+	public static function phoneKey( string $phone ): string {
+		$d = (string) preg_replace( '/\D/', '', $phone );
+		if ( 13 === strlen( $d ) && str_starts_with( $d, '880' ) ) {
+			$d = substr( $d, 2 );
+		} elseif ( 10 === strlen( $d ) && '1' === $d[0] ) {
+			$d = '0' . $d;
+		}
+		return preg_match( '/^01[3-9]\d{8}$/', $d ) ? $d : '';
+	}
+
+	/**
+	 * How reliable is this customer? Delivered vs. returned/cancelled parcels
+	 * in this shop, in every other shop on this site (counts only), and —
+	 * when a courier-check service is set up — at all the big couriers.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function risk( BusinessContext $ctx, string $phone, bool $refresh = false, int $exclude_order = 0 ): array {
+		$ctx->authorize( 'orders.view' );
+		$key = self::phoneKey( $phone );
+		if ( '' === $key ) {
+			throw ValidationException::field( 'phone', 'Enter an 11-digit mobile number (01XXXXXXXXX).' );
+		}
+		$cfg = $this->risk_config ? ( $this->risk_config )() : array( 'url' => '', 'key' => '', 'network' => true );
+		$t   = $this->db->table( 'orders' );
+
+		$tally = static function ( array $rows ): array {
+			$o = array( 'orders' => 0, 'delivered' => 0, 'returned' => 0, 'cancelled' => 0, 'active' => 0 );
+			foreach ( $rows as $r ) {
+				$n            = (int) $r['n'];
+				$o['orders'] += $n;
+				$st           = (string) $r['status'];
+				if ( isset( $o[ $st ] ) ) {
+					$o[ $st ] += $n;
+				} elseif ( in_array( $st, array( 'pending', 'confirmed', 'packed', 'shipped' ), true ) ) {
+					$o['active'] += $n;
+				}
+			}
+			return $o;
+		};
+		$shop = $tally( $this->db->rows( "SELECT status, COUNT(*) AS n FROM {$t} WHERE business_id = %d AND phone_key = %s AND id <> %d AND deleted_at IS NULL GROUP BY status", array( $ctx->business_id, $key, $exclude_order ) ) );
+
+		$network = null;
+		if ( ! empty( $cfg['network'] ) ) {
+			$network          = $tally( $this->db->rows( "SELECT status, COUNT(*) AS n FROM {$t} WHERE business_id <> %d AND phone_key = %s AND deleted_at IS NULL GROUP BY status", array( $ctx->business_id, $key ) ) );
+			$network['shops'] = (int) $this->db->value( "SELECT COUNT(DISTINCT business_id) FROM {$t} WHERE business_id <> %d AND phone_key = %s AND deleted_at IS NULL", array( $ctx->business_id, $key ) );
+		}
+
+		$couriers = null;
+		$error    = '';
+		$checked  = '';
+		if ( '' !== (string) $cfg['key'] ) {
+			$ct  = $this->db->table( 'phone_checks' );
+			$hit = $this->db->row( "SELECT data, checked_at FROM {$ct} WHERE phone = %s AND source = 'courier'", array( $key ) );
+			$fresh = $hit && (int) strtotime( $hit['checked_at'] . ' UTC' ) > $this->clock->now()->getTimestamp() - 86400;
+			if ( $hit && ( $fresh && ! $refresh ) ) {
+				$couriers = Json::decode( $hit['data'] );
+				$checked  = (string) $hit['checked_at'];
+			} else {
+				try {
+					$couriers = ( new CourierCheck( $this->http, (string) $cfg['url'], (string) $cfg['key'] ) )->check( $key );
+					$checked  = $this->now();
+					if ( $hit ) {
+						$this->db->update( $ct, array( 'data' => Json::encode( $couriers ), 'checked_at' => $checked ), array( 'phone' => $key, 'source' => 'courier' ) );
+					} else {
+						$this->db->insert( $ct, array( 'phone' => $key, 'source' => 'courier', 'data' => Json::encode( $couriers ), 'checked_at' => $checked ) );
+					}
+				} catch ( \Throwable $e ) {
+					$error = $e->getMessage();
+					if ( $hit ) {
+						$couriers = Json::decode( $hit['data'] );
+						$checked  = (string) $hit['checked_at'];
+					}
+				}
+			}
+		}
+
+		// Couriers already include parcels from this site, so prefer their numbers when we have them.
+		if ( $couriers ) {
+			$good = array_sum( array_column( $couriers, 'delivered' ) );
+			$bad  = array_sum( array_column( $couriers, 'cancelled' ) );
+		} else {
+			$good = $shop['delivered'] + ( $network['delivered'] ?? 0 );
+			$bad  = $shop['returned'] + $shop['cancelled'] + ( $network['returned'] ?? 0 ) + ( $network['cancelled'] ?? 0 );
+		}
+		$total = $good + $bad;
+		$ratio = $total ? (int) round( 100 * $good / $total ) : null;
+		$level = null === $ratio ? 'new' : ( $ratio >= 80 ? 'good' : ( $ratio >= 50 ? 'watch' : 'risky' ) );
+
+		return array(
+			'phone'      => $key,
+			'level'      => $level,
+			'ratio'      => $ratio,
+			'delivered'  => $good,
+			'failed'     => $bad,
+			'shop'       => $shop,
+			'network'    => $network,
+			'couriers'   => $couriers,
+			'checked_at' => $checked,
+			'error'      => $error,
+			'external'   => '' !== (string) $cfg['key'],
+		);
+	}
+
 	/**
 	 * @var (callable():string)|null
 	 */
@@ -833,6 +955,7 @@ final class OrderService extends Service {
 			'customer_id'     => $cid,
 			'customer_name'   => $name,
 			'phone'           => $phone,
+			'phone_key'       => self::phoneKey( $phone ),
 			'address'         => Text::multiline( $data['address'] ?? '', 1000 ),
 			'area'            => Text::line( $data['area'] ?? '', 100 ),
 			'items'           => Json::encode( $items ),

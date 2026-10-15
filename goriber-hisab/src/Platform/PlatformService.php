@@ -95,6 +95,9 @@ final class PlatformService extends Service {
 				'pay_rocket_type'      => 'personal',
 				'pay_bank'             => '',
 				'ai_key'               => '',
+				'fraud_url'            => '',
+				'fraud_key'            => '',
+				'fraud_network'        => true,
 			),
 			is_array( $stored ) ? $stored : array()
 		);
@@ -128,6 +131,16 @@ final class PlatformService extends Service {
 		// Masked keys come back unchanged from the form: keep the stored one.
 		if ( isset( $data['ai_key'] ) && ! str_contains( (string) $data['ai_key'], '•' ) ) {
 			$c['ai_key'] = trim( Text::line( $data['ai_key'], 300 ) );
+		}
+		if ( isset( $data['fraud_key'] ) && ! str_contains( (string) $data['fraud_key'], '•' ) ) {
+			$c['fraud_key'] = trim( Text::line( $data['fraud_key'], 300 ) );
+		}
+		if ( isset( $data['fraud_url'] ) ) {
+			$url            = trim( (string) $data['fraud_url'] );
+			$c['fraud_url'] = preg_match( '#^https://#i', $url ) ? substr( $url, 0, 300 ) : '';
+		}
+		if ( array_key_exists( 'fraud_network', $data ) ) {
+			$c['fraud_network'] = Text::bool( $data['fraud_network'] );
 		}
 		if ( isset( $data['whatsapp'] ) ) {
 			$c['whatsapp'] = Text::phone( $data['whatsapp'] );
@@ -181,6 +194,7 @@ final class PlatformService extends Service {
 		$c                = $this->config();
 		$c['ai_key']      = '' !== $c['ai_key'] ? substr( $c['ai_key'], 0, 7 ) . str_repeat( '•', 10 ) : '';
 		$c['ai_enabled']  = '' !== $this->config()['ai_key'];
+		$c['fraud_key']   = '' !== $c['fraud_key'] ? substr( $c['fraud_key'], 0, 4 ) . str_repeat( '•', 10 ) : '';
 		unset( $c['landing_content'] );
 		return $c;
 	}

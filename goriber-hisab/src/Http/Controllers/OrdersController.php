@@ -24,6 +24,7 @@ final class OrdersController extends Controller {
 			$this->route( 'GET', '/orders/courier', fn( BusinessContext $c ) => $o()->courierSettings( $c ) ),
 			$this->route( 'PUT', '/orders/courier', fn( BusinessContext $c, array $p ) => $o()->saveCourierSettings( $c, $p ) ),
 			$this->route( 'POST', '/orders/parse', array( $this, 'parse' ) ),
+			$this->route( 'GET', '/orders/check', array( $this, 'check' ) ),
 			$this->route( 'POST', '/orders/cod', fn( BusinessContext $c, array $p ) => $o()->collectCod( $c, (array) ( $p['ids'] ?? array() ), $p ) ),
 			$this->route( 'GET', '/orders/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $o()->get( $c, self::id( $r ) ) ),
 			$this->route( 'PUT', '/orders/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $o()->update( $c, self::id( $r ), $p ) ),
@@ -33,6 +34,16 @@ final class OrdersController extends Controller {
 			$this->route( 'POST', '/orders/(?P<id>\d+)/track', fn( BusinessContext $c, array $p, $r ) => $o()->refreshCourier( $c, self::id( $r ) ) ),
 			$this->route( 'POST', '/orders/(?P<id>\d+)/close', fn( BusinessContext $c, array $p, $r ) => $o()->close( $c, self::id( $r ), (string) ( $p['status'] ?? '' ), $p ) ),
 		);
+	}
+
+	/**
+	 * @param array<string,mixed> $p phone, refresh, order_id.
+	 * @return array<string,mixed>
+	 */
+	public function check( BusinessContext $ctx, array $p ): array {
+		// Paid courier lookups are cached a day per phone; still cap them per shop.
+		$this->k->limiter->hit( 'phone-check:' . $ctx->business_id, 600, DAY_IN_SECONDS );
+		return $this->k->orders->risk( $ctx, (string) ( $p['phone'] ?? '' ), ! empty( $p['refresh'] ), (int) ( $p['order_id'] ?? 0 ) );
 	}
 
 	/**

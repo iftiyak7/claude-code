@@ -644,3 +644,20 @@ button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
   .gh-sheet { box-sizing: border-box; width: 210mm; height: 297mm; display: grid; align-content: start; break-after: page; page-break-after: always; overflow: hidden; }
   .gh-sheet:last-child { break-after: auto; page-break-after: auto; }
 }
+
+/* ---------------------------------------------------------------- Fraud check */
+.risk-slot:empty { display: none; }
+.risk-card { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface); display: grid; gap: 6px; margin-top: 8px; }
+.risk-card.loading { opacity: .7; }
+.risk-ok { border-left-color: var(--ok); }
+.risk-warn { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn-bg) 50%, var(--surface)); }
+.risk-bad { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad-bg) 50%, var(--surface)); }
+.risk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.risk-refresh { margin-left: auto; min-height: 30px; padding: 4px 8px; }
+.risk-bar { height: 8px; border-radius: 99px; background: var(--bad-bg); overflow: hidden; }
+.risk-bar span { display: block; height: 100%; background: var(--ok); border-radius: 99px; }
+.risk-hint { margin: 0; }
+.risk-card p { margin: 0; }
+.risk-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.risk-table th, .risk-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+.risk-table .num { text-align: right; }

@@ -118,12 +118,22 @@ async function form(el) {
   const note = textarea('note', '', { rows: 2, placeholder: t('Size, colour, delivery time…') });
   let customerId = 0;
   const known = h('div', { class: 'muted small' });
+  const riskBox = h('div', { class: 'risk-slot' });
+  let riskFor = '';
+  const checkRisk = () => {
+    const q = phone.value.replace(/[^0-9]/g, '').replace(/^88(?=01)/, '');
+    if (q.length !== 11) { riskFor = ''; mount(riskBox); return; }
+    if (q === riskFor) return;
+    riskFor = q;
+    mount(riskBox, riskCard(q));
+  };
 
   area.addEventListener('change', () => { delivery.value = area.value === 'inside' ? cfg.charge_inside : cfg.charge_outside; paint(); });
   let lookupSeq = 0;
   phone.addEventListener('input', async () => {
     const q = phone.value.replace(/[^0-9]/g, '');
     customerId = 0; mount(known);
+    checkRisk();
     if (q.length < 11) return;
     const mine = ++lookupSeq;
     try {
@@ -193,7 +203,7 @@ async function form(el) {
     fillBtn.disabled = true; fillBtn.classList.add('busy');
     try {
       const r = await api.post('orders/parse', { text: pasteBox.value });
-      if (r.phone) { phone.value = r.phone; }
+      if (r.phone) { phone.value = r.phone; checkRisk(); }
       if (r.customer_name) name.value = r.customer_name;
       if (r.address) address.value = r.address;
       if (r.area) areaName.value = r.area;
@@ -215,6 +225,7 @@ async function form(el) {
       h('div', { class: 'row wrap' }, fillBtn, h('small', { class: 'muted' }, cfg.ai ? t('Reads with AI (Claude); works for messy messages too.') : t('Reads phone, name, address, district and your products automatically.'))))),
     card(t('Customer'), h('div', { class: 'form-grid' },
       field(t('Phone'), phone, { required: true }),
+      h('div', { class: 'field wide' }, riskBox),
       field(t('Name'), name, { required: true }),
       field(t('Address'), address, { wide: true }),
       field(t('Delivery area'), area),
@@ -289,7 +300,8 @@ async function detail(el, id) {
         o.customer_id && can('customers.view') ? h('a', { href: `#/customers/${o.customer_id}` }, t('Customer history')) : null,
         h('div', { class: 'row wrap' },
           h('a', { class: 'btn btn-sm', href: `https://wa.me/${o.phone.replace(/[^0-9]/g, '').replace(/^0/, '880')}`, target: '_blank', rel: 'noopener' }, 'WhatsApp'),
-          h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(parcel); toast(t('Copied')); } catch { /* ignore */ } } }, t('Copy parcel details')))),
+          h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(parcel); toast(t('Copied')); } catch { /* ignore */ } } }, t('Copy parcel details'))),
+        o.phone_key ? riskCard(o.phone_key, o.id) : null),
       card(t('Delivery'),
         h('dl', { class: 'kv' },
           h('dt', {}, t('Courier')), h('dd', {}, o.courier ? t(o.courier_name) : '—'),
@@ -441,4 +453,52 @@ async function courierSettings(done) {
     } catch (err) { showFieldErrors(f, err.errors); showError(err); }
   };
   const m = modal({ title: t('Courier settings'), body: f, actions: [h('button', { class: 'btn', type: 'button', onclick: save(true) }, t('Save & test')), h('button', { class: 'btn btn-primary', type: 'button', onclick: save(false) }, t('Save'))] });
+}
+
+/* ------------------------------------------------------------------ Fraud check */
+
+const RISK = {
+  new: ['info', 'New customer', 'No delivery history found for this number.'],
+  good: ['ok', 'Reliable customer', 'Usually receives parcels.'],
+  watch: ['warn', 'Be careful', 'Many parcels were not received. Take an advance or call first.'],
+  risky: ['bad', 'High risk', 'Most parcels were returned or cancelled. Take full advance payment.'],
+};
+
+/** Delivery history for a phone number: this shop, other shops here, and all couriers. */
+export function riskCard(phone, orderId = 0) {
+  const box = h('div', { class: 'risk-card loading' }, h('span', { class: 'muted small' }, t('Checking delivery history…')));
+  const load = async (refresh = false) => {
+    box.classList.add('loading');
+    try {
+      const r = await api.get('orders/check', { phone, refresh: refresh ? 1 : '', order_id: orderId || '' });
+      const [tone, title, hint] = RISK[r.level] || RISK.new;
+      const row = (label, x, failed) => h('tr', {}, h('td', {}, label), h('td', { class: 'num' }, String(x.total ?? x.orders)), h('td', { class: 'num ok-text' }, String(x.delivered)), h('td', { class: 'num bad-text' }, String(failed)));
+      const rows = [];
+      for (const c of r.couriers || []) rows.push(row(c.name, c, c.cancelled));
+      const sh = r.shop;
+      if (sh.orders) rows.push(row(t('This shop'), sh, sh.returned + sh.cancelled));
+      const nw = r.network;
+      if (nw && nw.orders) rows.push(row(t('Other shops on {brand} ({n})', { brand: state.me.platform?.brand || 'Goriber Hisab', n: nw.shops }), nw, nw.returned + nw.cancelled));
+      box.className = `risk-card risk-${tone}`;
+      mount(box,
+        h('div', { class: 'risk-head' },
+          h('span', { class: `badge badge-${tone}` }, t(title)),
+          r.ratio !== null ? h('strong', {}, t('{p}% received', { p: r.ratio })) : null,
+          h('span', { class: 'muted small' }, r.delivered + r.failed ? t('{d} received · {f} returned/cancelled', { d: r.delivered, f: r.failed }) : ''),
+          h('button', { class: 'btn btn-sm risk-refresh', type: 'button', title: t('Check again'), 'aria-label': t('Check again'), onclick: () => load(true) }, icon('refresh', 14))),
+        r.ratio !== null ? h('div', { class: 'risk-bar', role: 'img', 'aria-label': `${r.ratio}%` }, h('span', { style: `width:${r.ratio}%` })) : null,
+        h('p', { class: 'small risk-hint' }, t(hint)),
+        rows.length ? h('table', { class: 'risk-table' },
+          h('thead', {}, h('tr', {}, h('th', {}, t('Where')), h('th', { class: 'num' }, t('Total')), h('th', { class: 'num' }, t('Received')), h('th', { class: 'num' }, t('Not received')))),
+          h('tbody', {}, rows)) : null,
+        r.error ? h('p', { class: 'small bad-text' }, r.error) : null,
+        !r.external && state.me.platform?.admin ? h('p', { class: 'small muted' }, t('To see history from Pathao, Steadfast, RedX and other couriers, add a courier-check API key in Shops (clients) → Settings.')) : null,
+        r.checked_at ? h('p', { class: 'small muted' }, t('Courier data checked {d}', { d: datetime(r.checked_at) })) : null);
+    } catch (err) {
+      box.className = 'risk-card';
+      mount(box, h('span', { class: 'small muted' }, err.message || t('Could not check this number.')));
+    }
+  };
+  load();
+  return box;
 }
