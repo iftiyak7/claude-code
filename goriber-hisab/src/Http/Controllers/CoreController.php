@@ -74,7 +74,10 @@ final class CoreController extends Controller {
 			'types'       => BusinessService::TYPES,
 			'version'     => defined( 'GORIBER_HISAB_VERSION' ) ? GORIBER_HISAB_VERSION : 'dev',
 			'platform'    => array_merge(
-				array( 'admin' => current_user_can( 'manage_options' ) ),
+				array(
+					'admin' => current_user_can( 'manage_options' ) || $this->k->platform->isTeam( (int) $user->ID ),
+					'owner' => current_user_can( 'manage_options' ),
+				),
 				array_intersect_key( $this->k->platform->config(), array_flip( array( 'brand', 'support_phone' ) ) )
 			),
 		);

@@ -141,6 +141,7 @@ let shellBuilt = false;
 async function render(match) {
   const platformPage = match.path.startsWith('/platform') && state.me?.platform?.admin;
   if (state.me?.needs_setup && match.path !== '/setup' && !platformPage) {
+    if (!state.me.can_setup && state.me.platform?.admin) { navigate('/platform', true); return; } // platform team member
     if (!state.me.can_setup) {
       mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('No shop is linked to your account yet.')),
         h('p', {}, state.me.platform?.support_phone ? t('Please contact support: {p}', { p: state.me.platform.support_phone }) : t('Please contact the person who gave you this login.')),

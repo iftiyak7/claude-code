@@ -24,10 +24,14 @@ final class PlatformController extends Controller {
 		$admin = array( 'context' => false );
 		return array(
 			$this->route( 'GET', '/platform', fn() => $this->guard( fn() => $this->overview() ), $admin ),
-			$this->route( 'PUT', '/platform/config', fn( $n, array $p ) => $this->guard( fn() => $this->saveConfig( $p ) ), $admin ),
-			$this->route( 'GET', '/platform/landing', fn() => $this->guard( fn() => $this->landing() ), $admin ),
-			$this->route( 'PUT', '/platform/landing', fn( $n, array $p ) => $this->guard( fn() => array( 'content' => LandingContent::save( (array) ( $p['content'] ?? array() ) ) ) ), $admin ),
-			$this->route( 'POST', '/platform/landing/reset', fn() => $this->guard( fn() => $this->resetLanding() ), $admin ),
+			$this->route( 'PUT', '/platform/config', fn( $n, array $p ) => $this->ownerOnly( fn() => $this->saveConfig( $p ) ), $admin ),
+			$this->route( 'GET', '/platform/landing', fn() => $this->ownerOnly( fn() => $this->landing() ), $admin ),
+			$this->route( 'PUT', '/platform/landing', fn( $n, array $p ) => $this->ownerOnly( fn() => array( 'content' => LandingContent::save( (array) ( $p['content'] ?? array() ) ) ) ), $admin ),
+			$this->route( 'POST', '/platform/landing/reset', fn() => $this->ownerOnly( fn() => $this->resetLanding() ), $admin ),
+			$this->route( 'GET', '/platform/team', fn() => $this->ownerOnly( fn() => $this->k->platform->team() ), $admin ),
+			$this->route( 'POST', '/platform/team', fn( $n, array $p ) => $this->ownerOnly( fn() => $this->k->platform->addTeamMember( $p ) ), $admin + array( 'created' => true ) ),
+			$this->route( 'DELETE', '/platform/team/(?P<id>\d+)', fn( $n, array $p, $r ) => $this->ownerOnly( fn() => $this->k->platform->removeTeamMember( self::id( $r ) ) ), $admin ),
+			$this->route( 'POST', '/platform/team/(?P<id>\d+)/password', fn( $n, array $p, $r ) => $this->ownerOnly( fn() => $this->teamPassword( self::id( $r ), (string) ( $p['password'] ?? '' ) ) ), $admin ),
 			$this->route( 'GET', '/platform/shops', fn( $n, array $p ) => $this->guard( fn() => $this->k->platform->shops( $p ) ), $admin ),
 			$this->route( 'POST', '/platform/shops', fn( $n, array $p ) => $this->guard( fn() => $this->k->platform->openShop( get_current_user_id(), $p ) ), $admin + array( 'created' => true ) ),
 			$this->route( 'GET', '/platform/shops/(?P<id>\d+)', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->shop( self::id( $r ) ) ), $admin ),
@@ -66,7 +70,8 @@ final class PlatformController extends Controller {
 	 */
 	private function overview(): array {
 		return array(
-			'config'    => $this->k->platform->adminConfig(),
+			'config'    => current_user_can( 'manage_options' ) ? $this->k->platform->adminConfig() : $this->k->platform->publicConfig(),
+			'owner'     => current_user_can( 'manage_options' ),
 			'stats'     => $this->k->platform->stats(),
 			'login_url' => AppRoute::loginUrl(),
 			'home_url'  => home_url( '/' ),
@@ -109,7 +114,7 @@ final class PlatformController extends Controller {
 	 */
 	private function password( int $business_id, string $password ): array {
 		$owner = (int) $this->k->platform->shop( $business_id )['owner_id'];
-		if ( user_can( $owner, 'manage_options' ) ) {
+		if ( user_can( $owner, 'manage_options' ) || ( $this->k->platform->isTeam( $owner ) && ! current_user_can( 'manage_options' ) ) ) {
 			throw new PermissionException( __( 'Change an administrator password from your WordPress profile instead.', 'goriber-hisab' ) );
 		}
 		$this->k->platform->resetPassword( $business_id, $password );
@@ -121,9 +126,30 @@ final class PlatformController extends Controller {
 	 * @return mixed
 	 */
 	private function guard( callable $fn ) {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new PermissionException( __( 'Only the site owner can manage shops.', 'goriber-hisab' ) );
+		if ( ! current_user_can( 'manage_options' ) && ! $this->k->platform->isTeam( get_current_user_id() ) ) {
+			throw new PermissionException( __( 'Only the site owner and their team can manage shops.', 'goriber-hisab' ) );
 		}
 		return $fn();
+	}
+
+	/**
+	 * Prices, payment numbers, API keys, home page and the team itself.
+	 *
+	 * @param callable():mixed $fn Handler.
+	 * @return mixed
+	 */
+	private function ownerOnly( callable $fn ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			throw new PermissionException( __( 'Only the site owner can change this.', 'goriber-hisab' ) );
+		}
+		return $fn();
+	}
+
+	/**
+	 * @return array{ok:bool}
+	 */
+	private function teamPassword( int $user_id, string $password ): array {
+		$this->k->platform->resetTeamPassword( $user_id, $password );
+		return array( 'ok' => true );
 	}
 }

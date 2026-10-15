@@ -66,7 +66,14 @@ final class MemberService extends Service {
 				if ( '' === $name ) {
 					throw ValidationException::field( 'name', 'Enter the person\'s name.' );
 				}
-				$user_id = $this->users->create( $email, $name, Text::key( $data['login'] ?? '', 60 ) );
+				$password = (string) ( $data['password'] ?? '' );
+				if ( '' !== $password ) {
+					// Owner sets the password and tells the staff member; no email needed.
+					self::checkPassword( $password );
+					$user_id = $this->users->createClient( $email, $name, $password, Text::phone( $data['phone'] ?? '' ) );
+				} else {
+					$user_id = $this->users->create( $email, $name, Text::key( $data['login'] ?? '', 60 ) );
+				}
 			}
 		} elseif ( null === $this->users->get( $user_id ) ) {
 			throw ValidationException::field( 'user_id', 'User not found.' );
@@ -109,6 +116,9 @@ final class MemberService extends Service {
 		if ( isset( $data['status'] ) && in_array( $data['status'], array( 'active', 'suspended' ), true ) ) {
 			$clean['status'] = $data['status'];
 		}
+		if ( '' !== (string) ( $data['password'] ?? '' ) ) {
+			$this->resetPassword( $ctx, $before, (string) $data['password'] );
+		}
 		$clean['updated_by'] = $ctx->user_id;
 		$clean['updated_at'] = $this->now();
 		$this->db->update( $t, $clean, array( 'id' => $member_id ) );
@@ -129,6 +139,34 @@ final class MemberService extends Service {
 		}
 		$this->db->update( $t, array( 'status' => 'removed', 'updated_by' => $ctx->user_id, 'updated_at' => $this->now() ), array( 'id' => $member_id ) );
 		$this->audit->log( $ctx, 'delete', 'member', $member_id, sprintf( 'User #%d removed from business', (int) $member['user_id'] ) );
+	}
+
+	/**
+	 * A shop owner sets a new password for their staff member (forgotten
+	 * password, staff without email access). Only for people who belong to
+	 * this shop alone and are not site staff.
+	 *
+	 * @param array<string,mixed> $member Membership row.
+	 */
+	private function resetPassword( BusinessContext $ctx, array $member, string $password ): void {
+		$user_id = (int) $member['user_id'];
+		if ( $user_id === $ctx->user_id ) {
+			throw ValidationException::field( 'password', 'Change your own password from your profile.' );
+		}
+		$t     = $this->db->table( 'business_users' );
+		$other = (int) $this->db->value( "SELECT COUNT(*) FROM {$t} WHERE user_id = %d AND business_id <> %d AND status <> 'removed'", array( $user_id, $ctx->business_id ) );
+		if ( $other > 0 || $this->users->isPrivileged( $user_id ) ) {
+			throw ValidationException::field( 'password', 'This person also uses other shops or this website, so only they can change their password.' );
+		}
+		self::checkPassword( $password );
+		$this->users->setPassword( $user_id, $password );
+		$this->audit->log( $ctx, 'update', 'member', (int) $member['id'], sprintf( 'Password reset for user #%d', $user_id ) );
+	}
+
+	private static function checkPassword( string $password ): void {
+		if ( strlen( $password ) < 8 ) {
+			throw ValidationException::field( 'password', 'Use at least 8 characters for the password.' );
+		}
 	}
 
 	/**

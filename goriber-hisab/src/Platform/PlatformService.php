@@ -98,6 +98,7 @@ final class PlatformService extends Service {
 				'fraud_url'            => '',
 				'fraud_key'            => '',
 				'fraud_network'        => true,
+				'team'                 => array(),
 			),
 			is_array( $stored ) ? $stored : array()
 		);
@@ -478,6 +479,81 @@ final class PlatformService extends Service {
 			$this->db->update( $this->db->table( 'businesses' ), $set, array( 'id' => $business_id ) );
 		}
 		return $this->shop( $business_id );
+	}
+
+	/* --------------------------------------------------------------- Team */
+
+	/**
+	 * People who help run the platform (approve payments, open and manage
+	 * shops) without being WordPress administrators.
+	 *
+	 * @return array<int,array{id:int,name:string,email:string}>
+	 */
+	public function team(): array {
+		$out = array();
+		foreach ( array_map( 'intval', (array) $this->config()['team'] ) as $id ) {
+			$u = $this->users->get( $id );
+			if ( $u ) {
+				$out[] = array( 'id' => $id, 'name' => (string) $u['name'], 'email' => (string) $u['email'] );
+			}
+		}
+		return $out;
+	}
+
+	public function isTeam( int $user_id ): bool {
+		return $user_id > 0 && in_array( $user_id, array_map( 'intval', (array) $this->config()['team'] ), true );
+	}
+
+	/**
+	 * @param array<string,mixed> $data email, name, password (for a new login).
+	 * @return array<int,array{id:int,name:string,email:string}>
+	 */
+	public function addTeamMember( array $data ): array {
+		$email = Text::email( $data['email'] ?? '' );
+		if ( '' === $email ) {
+			throw ValidationException::field( 'email', 'Enter a valid email address.' );
+		}
+		$id = $this->users->findByEmail( $email );
+		if ( ! $id ) {
+			$name     = Text::line( $data['name'] ?? '' );
+			$password = (string) ( $data['password'] ?? '' );
+			if ( '' === $name ) {
+				throw ValidationException::field( 'name', 'Enter the person\'s name.' );
+			}
+			if ( strlen( $password ) < 8 ) {
+				throw ValidationException::field( 'password', 'Password must be at least 8 characters.' );
+			}
+			$id = $this->users->createClient( $email, $name, $password, Text::phone( $data['phone'] ?? '' ) );
+		}
+		$c = $this->config();
+		if ( ! in_array( $id, array_map( 'intval', (array) $c['team'] ), true ) ) {
+			$c['team'][] = $id;
+			( $this->save )( $c );
+		}
+		return $this->team();
+	}
+
+	/**
+	 * @return array<int,array{id:int,name:string,email:string}>
+	 */
+	public function removeTeamMember( int $user_id ): array {
+		$c         = $this->config();
+		$c['team'] = array_values( array_filter( array_map( 'intval', (array) $c['team'] ), static fn( $id ) => $id !== $user_id ) );
+		( $this->save )( $c );
+		return $this->team();
+	}
+
+	/**
+	 * New password for a team member who only uses the app.
+	 */
+	public function resetTeamPassword( int $user_id, string $password ): void {
+		if ( ! $this->isTeam( $user_id ) || $this->users->isPrivileged( $user_id ) ) {
+			throw ValidationException::field( 'password', 'Only app-only team members can be given a new password here.' );
+		}
+		if ( strlen( $password ) < 8 ) {
+			throw ValidationException::field( 'password', 'Password must be at least 8 characters.' );
+		}
+		$this->users->setPassword( $user_id, $password );
 	}
 
 	public function resetPassword( int $business_id, string $password ): void {

@@ -15,6 +15,7 @@ export default async function users(el) {
   const [members, meta] = await Promise.all([api.get('members'), api.get('roles')]);
   const reload = () => users(el);
   const p = page(t('Users & permissions'), {
+    subtitle: t('Give your staff their own login. Choose what each person can see and do — for example a cashier who can only sell.'),
     actions: [h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => memberForm(null, meta, reload) }, icon('plus', 16), t('Add user'))],
   });
   p.body.append(card(null, simpleTable([
@@ -61,7 +62,10 @@ function memberForm(member, meta, onDone) {
   const f = h('form', { class: 'form' },
     !member ? h('div', { class: 'form-grid' },
       field(t('Email'), input('email', '', { type: 'email', required: true, autofocus: true }), { required: true, hint: t('Existing WordPress users are linked; new people get an email to set their password.') }),
-      field(t('Name'), input('name', ''), { hint: t('Needed for new people') })) : h('p', {}, h('strong', {}, member.name), ` · ${member.email}`),
+      field(t('Name'), input('name', ''), { hint: t('Needed for new people') }),
+      field(t('Password'), input('password', '', { type: 'text', autocomplete: 'new-password', minlength: 8 }), { hint: t('Set a password and give it to your staff — they log in with email + password. Leave empty to send them an email instead.') })) : h('div', {},
+      h('p', {}, h('strong', {}, member.name), ` · ${member.email}`),
+      member.user_id !== state.me.user.id ? field(t('New password'), input('password', '', { type: 'text', autocomplete: 'new-password', minlength: 8 }), { hint: t('Only if they forgot it. Leave empty to keep the current password.') }) : null),
     h('div', { class: 'form-grid' },
       field(t('Role'), roleSel),
       branchesSel ? field(t('Branches (none = all)'), branchesSel) : null,

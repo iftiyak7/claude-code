@@ -95,4 +95,8 @@ final class WpUserDirectory implements UserDirectory {
 	public function setPassword( int $id, string $password ): void {
 		wp_set_password( $password, $id );
 	}
+
+	public function isPrivileged( int $id ): bool {
+		return user_can( $id, 'edit_posts' ) || user_can( $id, 'manage_options' );
+	}
 }

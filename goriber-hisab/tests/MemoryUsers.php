@@ -69,4 +69,13 @@ final class MemoryUsers implements UserDirectory {
 	public function setPassword( int $id, string $password ): void {
 		$this->passwords[ $id ] = $password;
 	}
+
+	/**
+	 * @var array<int,bool>
+	 */
+	public array $privileged = array();
+
+	public function isPrivileged( int $id ): bool {
+		return ! empty( $this->privileged[ $id ] );
+	}
 }

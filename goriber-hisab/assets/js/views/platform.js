@@ -59,7 +59,7 @@ export default async function platform(el, params, query) {
       stat(t('Payment requests'), String(s.pending), { tone: s.pending ? 'warn' : '', onclick: () => go('payments') }),
       stat(t('Collected this month'), tk(s.collected_month), { tone: 'ok' }),
       stat(t('Collected total'), tk(s.collected_total))),
-    tabs([['shops', t('Shops')], ['payments', `${t('Payments')}${s.pending ? ` (${s.pending})` : ''}`], ['settings', t('Prices & settings')], ['home', t('Home page')]], tab, go));
+    tabs([['shops', t('Shops')], ['payments', `${t('Payments')}${s.pending ? ` (${s.pending})` : ''}`], ...(o.owner ? [['settings', t('Prices & settings')], ['home', t('Home page')], ['team', t('Team')]] : [])], tab, go));
   const body = h('div', { class: 'tab-body' });
   p.body.append(body);
   mount(el, p.el);
@@ -114,11 +114,51 @@ export default async function platform(el, params, query) {
       ],
     });
     body.append(card(null, table.el));
-  } else if (tab === 'home') {
+  } else if (tab === 'home' && o.owner) {
     homeEditor(body);
-  } else {
+  } else if (tab === 'team' && o.owner) {
+    teamTab(body);
+  } else if (o.owner) {
     body.append(settingsForm(reload));
   }
+}
+
+/* ------------------------------------------------------------ Team */
+
+async function teamTab(root) {
+  mount(root, spinner());
+  const team = await api.get('platform/team');
+  const again = () => teamTab(root);
+  const f = h('form', { class: 'form' },
+    h('div', { class: 'form-grid' },
+      field(t('Email'), input('email', '', { type: 'email', required: true }), { required: true }),
+      field(t('Name'), input('name', '')),
+      field(t('Password'), input('password', '', { type: 'text', autocomplete: 'new-password', minlength: 8 }), { hint: t('For a new login. Existing users keep their password.') })),
+    h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'submit' }, icon('plus', 16), t('Add to team'))));
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api.post('platform/team', values(f)); toast(t('Added')); again(); } catch (err) { showFieldErrors(f, err.errors || {}); showError(err); }
+  });
+  const pw = (m) => {
+    const inp = input('password', '', { type: 'text', minlength: 8, autocomplete: 'new-password' });
+    const dlg = modal({ title: t('New password for {n}', { n: m.name }), size: 'sm', body: h('div', { class: 'form' }, field(t('New password'), inp)),
+      actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+        try { await api.post(`platform/team/${m.id}/password`, { password: inp.value }); dlg.close(); toast(t('Password changed')); } catch (err) { showError(err); }
+      } }, t('Save'))] });
+  };
+  mount(root,
+    card(t('Your team'),
+      h('p', { class: 'muted small' }, t('Team members log in at the same login page and can open shops, approve payments and manage clients. They cannot change prices, payment numbers, API keys or the home page, and have no WordPress access.')),
+      team.length ? simpleTable([
+        { label: t('Name'), render: (m) => h('span', {}, h('strong', {}, m.name), h('small', { class: 'muted' }, ` ${m.email}`)) },
+        { label: '', render: (m) => h('div', { class: 'row' },
+          h('button', { class: 'btn btn-sm', type: 'button', onclick: () => pw(m) }, t('Change password')),
+          h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => {
+            if (!(await confirmDialog(t('Remove {n} from the team?', { n: m.name }), { danger: true, confirmText: t('Remove') }))) return;
+            try { await api.del(`platform/team/${m.id}`); again(); } catch (err) { showError(err); }
+          } }, t('Remove'))) },
+      ], team) : empty(t('No team members yet.'))),
+    card(t('Add a team member'), f));
 }
 
 /* ------------------------------------------------------------ Home page editor */

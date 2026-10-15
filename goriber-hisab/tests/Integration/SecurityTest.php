@@ -103,4 +103,42 @@ final class SecurityTest extends IntegrationTestCase {
 		$this->assertSame( 'update', $log['items'][0]['action'] );
 		$this->assertMoney( '12', $log['items'][0]['changes']['selling_price'][1] );
 	}
+
+	public function testOwnerCreatesStaffWithPasswordAndResetsIt(): void {
+		$m = $this->k->members->add( $this->ctx, array( 'email' => 'cashier@example.com', 'name' => 'Cashier', 'password' => 'secret123', 'role' => 'sales' ) );
+		$this->assertSame( 'secret123', $this->users->passwords[ $m['user_id'] ] );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->members->add( $this->ctx, array( 'email' => 'x@example.com', 'name' => 'X', 'password' => 'short', 'role' => 'sales' ) ) );
+
+		$this->k->members->update( $this->ctx, $m['id'], array( 'password' => 'newpass99' ) );
+		$this->assertSame( 'newpass99', $this->users->passwords[ $m['user_id'] ] );
+
+		// Not for site staff, nor for people who also belong to another shop.
+		$this->users->privileged[ $m['user_id'] ] = true;
+		$this->assertThrows( ValidationException::class, fn() => $this->k->members->update( $this->ctx, $m['id'], array( 'password' => 'hijack123' ) ) );
+		unset( $this->users->privileged[ $m['user_id'] ] );
+		$other_owner = $this->users->add( 'Other', 'o2@example.com' );
+		$other       = $this->k->contexts->forUser( $other_owner, $this->k->businesses->create( $other_owner, array( 'name' => 'Other', 'currency_code' => 'BDT', 'decimals' => 2, 'timezone' => 'Asia/Dhaka', 'business_type' => 'retail' ) ) );
+		$this->k->members->add( $other, array( 'user_id' => $m['user_id'], 'role' => 'sales' ) );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->members->update( $this->ctx, $m['id'], array( 'password' => 'hijack123' ) ) );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->members->update( $this->ctx, $this->k->members->list( $this->ctx )[0]['id'], array( 'password' => 'mine12345' ) ) );
+		$this->assertSame( 'newpass99', $this->users->passwords[ $m['user_id'] ] );
+	}
+
+	public function testPlatformTeam(): void {
+		$p    = $this->k->platform;
+		$team = $p->addTeamMember( array( 'email' => 'helper@example.com', 'name' => 'Helper', 'password' => 'helper123' ) );
+		$this->assertSame( 1, count( $team ) );
+		$id = $team[0]['id'];
+		$this->assertTrue( $p->isTeam( $id ) );
+		$this->assertFalse( $p->isTeam( $this->owner ) );
+		$this->assertSame( 'helper123', $this->users->passwords[ $id ] );
+		$p->addTeamMember( array( 'email' => 'helper@example.com' ) ); // existing user, no duplicate
+		$this->assertSame( 1, count( $p->team() ) );
+		$p->resetTeamPassword( $id, 'another123' );
+		$this->assertSame( 'another123', $this->users->passwords[ $id ] );
+		$this->assertThrows( ValidationException::class, fn() => $p->resetTeamPassword( $this->owner, 'another123' ) );
+		$this->assertThrows( ValidationException::class, fn() => $p->addTeamMember( array( 'email' => 'new@example.com', 'name' => 'New', 'password' => '1' ) ) );
+		$this->assertSame( array(), $p->removeTeamMember( $id ) );
+		$this->assertFalse( $p->isTeam( $id ) );
+	}
 }

@@ -37,4 +37,10 @@ interface UserDirectory {
 	public function createClient( string $email, string $name, string $password, string $phone = '' ): int;
 
 	public function setPassword( int $id, string $password ): void;
+
+	/**
+	 * Site staff (can edit content or administer WordPress). Shop owners may
+	 * never reset these accounts' passwords.
+	 */
+	public function isPrivileged( int $id ): bool;
 }
