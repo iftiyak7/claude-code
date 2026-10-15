@@ -23,6 +23,8 @@ final class CatalogController extends Controller {
 		return array(
 			$this->route( 'GET', '/products', fn( BusinessContext $c, array $a ) => $p->list( $c, $a ) ),
 			$this->route( 'POST', '/products', fn( BusinessContext $c, array $a ) => $p->create( $c, $a ), array( 'created' => true ) ),
+			$this->route( 'GET', '/products/labels', fn( BusinessContext $c, array $a ) => $p->labelItems( $c, self::ids( $a['ids'] ?? '' ) ) ),
+			$this->route( 'POST', '/products/barcodes', fn( BusinessContext $c, array $a ) => $p->generateBarcodes( $c, self::ids( $a['ids'] ?? '' ) ) ),
 			$this->route( 'GET', '/products/lookup', fn( BusinessContext $c, array $a ) => $p->findByCode( $c, (string) ( $a['code'] ?? '' ) ) ),
 			$this->route( 'GET', '/products/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $p->get( $c, self::id( $r ) ) ),
 			$this->route( 'PUT', '/products/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $p->update( $c, self::id( $r ), $a ) ),
@@ -58,5 +60,14 @@ final class CatalogController extends Controller {
 	private function ok( $ignored = null ): array {
 		unset( $ignored );
 		return array( 'ok' => true );
+	}
+
+	/**
+	 * @param mixed $raw "1,2,3" or an array.
+	 * @return int[]
+	 */
+	private static function ids( $raw ): array {
+		$list = is_array( $raw ) ? $raw : explode( ',', (string) $raw );
+		return array_values( array_filter( array_map( 'intval', $list ) ) );
 	}
 }

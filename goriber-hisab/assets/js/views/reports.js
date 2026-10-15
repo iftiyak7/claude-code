@@ -8,10 +8,11 @@ import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
 import { t } from '../core/i18n.js';
 import { money, qty, date, today } from '../core/format.js';
-import { page, card, simpleTable, dateRange, select, input, spinner, empty, downloadText, stat } from '../core/ui.js';
+import { page, card, simpleTable, dateRange, select, input, spinner, empty, downloadText, downloadBlob, stat } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { lineChart } from '../core/chart.js';
 import { zip } from '../core/zip.js';
+import { printHere } from '../core/printer.js';
 
 const REPORTS = [
   ['Sales', [
@@ -88,9 +89,7 @@ function exportAll() {
     const period = range.range || `${range.from}_${range.to}`;
     const biz = (state.ctx.business?.name || 'business').replace(/[^\p{L}\p{N}]+/gu, '-');
     const blob = zip(files);
-    const a = h('a', { href: URL.createObjectURL(blob), download: `${biz}-reports-${period}-${today()}.zip` });
-    document.body.append(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    downloadBlob(`${biz}-reports-${period}-${today()}.zip`, blob);
     btn.disabled = false;
     status.textContent = t('{n} reports downloaded.', { n: files.length }) + (failed.length ? ` ${t('Skipped')}: ${failed.join(', ')}` : '');
   } }, icon('download', 16), t('Download all reports (ZIP)'));
@@ -127,7 +126,7 @@ async function run(el, name, query) {
     actions: [
       ...controls,
       h('button', { class: 'btn btn-sm', type: 'button', onclick: () => lastCsv && downloadText(`${name}-${today()}.csv`, lastCsv) }, icon('download', 16), 'CSV'),
-      h('button', { class: 'btn btn-sm', type: 'button', onclick: () => window.print() }, icon('printer', 16), t('Print / PDF')),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: printHere }, icon('printer', 16), t('Print / PDF')),
     ],
   });
   p.body.append(out);

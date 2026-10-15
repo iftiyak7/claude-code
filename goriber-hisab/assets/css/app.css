@@ -621,3 +621,26 @@ button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .trial-card p { margin: 4px 0 0; }
 .or-line { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; color: var(--muted); font-size: .85rem; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* ---------------------------------------------------------------- Barcode labels */
+.label-opts { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.label-preview { display: grid; justify-items: center; gap: 6px; padding: 16px; background: var(--surface-2); border-radius: var(--radius-sm); overflow: auto; }
+.label-preview-box { background: #fff; color: #000; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.gh-label { box-sizing: border-box; padding: 1.2mm 1.5mm; display: flex; flex-direction: column; align-items: stretch; justify-content: center; text-align: center; overflow: hidden; line-height: 1.15; color: #000; background: #fff; font-family: system-ui, sans-serif; }
+.gh-label > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gh-l-shop { font-size: .8em; opacity: .85; }
+.gh-l-name { font-weight: 700; }
+.gh-l-bar { flex: 1 1 auto; min-height: 4mm; display: flex; }
+.gh-l-bar svg { width: 100%; height: 100%; fill: #000; }
+.gh-l-foot { display: flex; justify-content: space-between; gap: 2mm; font-size: .9em; }
+.gh-l-foot:has(> :only-child) { justify-content: center; }
+#label-print-root { display: none; }
+@media print {
+  body:has(#label-print-root) > *:not(#label-print-root) { display: none !important; }
+  body:has(#label-print-root) { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  #label-print-root { display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .gh-roll .gh-label { break-after: page; page-break-after: always; }
+  .gh-roll .gh-label:last-child { break-after: auto; page-break-after: auto; }
+  .gh-sheet { box-sizing: border-box; width: 210mm; height: 297mm; display: grid; align-content: start; break-after: page; page-break-after: always; overflow: hidden; }
+  .gh-sheet:last-child { break-after: auto; page-break-after: auto; }
+}

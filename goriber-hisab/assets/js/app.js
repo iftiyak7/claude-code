@@ -52,6 +52,7 @@ route('/purchases/:id/return', v('returns'), { doc: 'purchase' });
 route('/returns/:id', v('returns'));
 route('/products', v('products'));
 route('/products/new', v('products'));
+route('/products/labels', v('labels'));
 route('/products/:id', v('products'));
 route('/products/:id/edit', v('products'));
 route('/inventory', v('inventory'));

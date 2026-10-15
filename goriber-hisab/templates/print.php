@@ -111,11 +111,15 @@ $is_void  = 'void' === ( $doc['status'] ?? '' );
 	body.tpl-compact .head img { max-height: 40px; }
 	@media print { .toolbar { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
+<script>
+function ghPrint(){var n=window.GoriberHisabNative;if(n&&n.printPage){n.printPage();}else{window.print();}}
+function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.close();}}
+</script>
 </head>
 <body class="tpl-<?php echo esc_attr( sanitize_key( (string) $settings['invoice.template'] ) ); ?>">
 <div class="toolbar">
-	<button type="button" class="primary" onclick="window.print()"><?php esc_html_e( 'Print', 'goriber-hisab' ); ?></button>
-	<button type="button" onclick="window.close()"><?php esc_html_e( 'Close', 'goriber-hisab' ); ?></button>
+	<button type="button" class="primary" onclick="ghPrint()"><?php esc_html_e( 'Print', 'goriber-hisab' ); ?></button>
+	<button type="button" onclick="ghClose()"><?php esc_html_e( 'Close', 'goriber-hisab' ); ?></button>
 </div>
 <div class="page">
 <?php if ( $is_void ) : ?>
@@ -374,7 +378,7 @@ $is_void  = 'void' === ( $doc['status'] ?? '' );
 <?php endif; ?>
 </div>
 <?php if ( $view['auto'] ) : ?>
-<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},250);});</script>
+<script>window.addEventListener('load',function(){setTimeout(ghPrint,250);});</script>
 <?php endif; ?>
 </body>
 </html>

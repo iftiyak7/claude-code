@@ -44,6 +44,15 @@ export function openPrint(type, id, opts) {
 
 }
 
+/**
+ * Print the current page (its @media print view). Inside the Android app
+ * window.print() does nothing, so the native print service is used there.
+ */
+export function printHere() {
+  if (window.GoriberHisabNative?.printPage) window.GoriberHisabNative.printPage();
+  else window.print();
+}
+
 /* -------------------------------------------------------------- Bluetooth */
 
 // Common BLE printer GATT services (generic serial + popular vendors).

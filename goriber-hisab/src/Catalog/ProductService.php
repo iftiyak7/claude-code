@@ -361,10 +361,99 @@ final class ProductService extends Service {
 	}
 
 	/**
-	 * EAN-13 style internal barcode ("2" prefix = in-store use).
+	 * Give every product and variant without a barcode its own in-store code.
+	 *
+	 * @param int[] $ids Limit to these products (empty = whole catalogue).
+	 * @return array{products:int,variants:int}
 	 */
-	public static function internalBarcode( int $id ): string {
-		$body = '2' . str_pad( (string) $id, 11, '0', STR_PAD_LEFT );
+	public function generateBarcodes( BusinessContext $ctx, array $ids = array() ): array {
+		$ctx->authorize( 'products.edit' );
+		$pt   = $this->db->table( 'products' );
+		$vt   = $this->db->table( 'product_variants' );
+		$ids  = array_values( array_filter( array_map( 'intval', $ids ) ) );
+		$only = $ids ? ' AND product_id IN (' . implode( ',', $ids ) . ')' : '';
+		$done = array( 'products' => 0, 'variants' => 0 );
+		$this->db->transaction(
+			function () use ( $ctx, $pt, $vt, $ids, $only, &$done ) {
+				$pids = $this->db->rows(
+					"SELECT id FROM {$pt} WHERE business_id = %d AND deleted_at IS NULL AND (barcode IS NULL OR barcode = '')" . ( $ids ? ' AND id IN (' . implode( ',', $ids ) . ')' : '' ),
+					array( $ctx->business_id )
+				);
+				foreach ( $pids as $r ) {
+					$this->db->update( $pt, array( 'barcode' => self::internalBarcode( (int) $r['id'] ) ), array( 'id' => (int) $r['id'], 'business_id' => $ctx->business_id ) );
+					++$done['products'];
+				}
+				$vids = $this->db->rows(
+					"SELECT id FROM {$vt} WHERE business_id = %d AND deleted_at IS NULL AND (barcode IS NULL OR barcode = ''){$only}",
+					array( $ctx->business_id )
+				);
+				foreach ( $vids as $r ) {
+					$this->db->update( $vt, array( 'barcode' => self::internalBarcode( (int) $r['id'], '29' ) ), array( 'id' => (int) $r['id'], 'business_id' => $ctx->business_id ) );
+					++$done['variants'];
+				}
+				if ( $done['products'] || $done['variants'] ) {
+					$this->audit->log( $ctx, 'update', 'product', 0, sprintf( 'Barcodes generated for %d products and %d variants', $done['products'], $done['variants'] ) );
+				}
+			}
+		);
+		return $done;
+	}
+
+	/**
+	 * What to print on labels: one row per product, or per variant when it has them.
+	 *
+	 * @param int[] $ids Product ids.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function labelItems( BusinessContext $ctx, array $ids ): array {
+		$ctx->authorize( 'products.view' );
+		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) ), 0, 300 );
+		if ( ! $ids ) {
+			return array();
+		}
+		$pt    = $this->db->table( 'products' );
+		$vt    = $this->db->table( 'product_variants' );
+		$in    = implode( ',', $ids );
+		$rows  = $this->db->rows( "SELECT id, name, sku, barcode, selling_price, has_variants FROM {$pt} WHERE business_id = %d AND deleted_at IS NULL AND id IN ({$in})", array( $ctx->business_id ) );
+		$vars  = $this->db->rows( "SELECT id, product_id, name, sku, barcode, selling_price FROM {$vt} WHERE business_id = %d AND deleted_at IS NULL AND product_id IN ({$in}) ORDER BY id", array( $ctx->business_id ) );
+		$by    = array();
+		foreach ( $vars as $v ) {
+			$by[ (int) $v['product_id'] ][] = $v;
+		}
+		$order = array_flip( $ids );
+		usort( $rows, static fn( $a, $b ) => $order[ (int) $a['id'] ] <=> $order[ (int) $b['id'] ] );
+		$out = array();
+		foreach ( $rows as $p ) {
+			$pid = (int) $p['id'];
+			if ( ! empty( $by[ $pid ] ) ) {
+				foreach ( $by[ $pid ] as $v ) {
+					$price = Decimal::of( $v['selling_price'] ?? 0 ) > 0 ? $v['selling_price'] : $p['selling_price'];
+					$out[] = array(
+						'product_id' => $pid,
+						'variant_id' => (int) $v['id'],
+						'name'       => $p['name'] . ' — ' . $v['name'],
+						'code'       => (string) ( $v['barcode'] ?: $v['sku'] ?: '' ),
+						'price'      => Decimal::toString( Decimal::of( $price ) ),
+					);
+				}
+				continue;
+			}
+			$out[] = array(
+				'product_id' => $pid,
+				'variant_id' => 0,
+				'name'       => $p['name'],
+				'code'       => (string) ( $p['barcode'] ?: $p['sku'] ?: '' ),
+				'price'      => Decimal::toString( Decimal::of( $p['selling_price'] ) ),
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * EAN-13 style internal barcode ("2" prefix = in-store use; "29" for variants).
+	 */
+	public static function internalBarcode( int $id, string $prefix = '2' ): string {
+		$body = $prefix . str_pad( (string) $id, 12 - strlen( $prefix ), '0', STR_PAD_LEFT );
 		$sum  = 0;
 		for ( $i = 0; $i < 12; $i++ ) {
 			$sum += (int) $body[ $i ] * ( 0 === $i % 2 ? 1 : 3 );

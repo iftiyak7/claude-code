@@ -83,6 +83,7 @@ final class PlatformService extends Service {
 				'payment_instructions' => '',
 				'support_phone'        => '',
 				'whatsapp'             => '',
+				'apk_url'              => '',
 				'landing'              => true,
 				'signup'               => true,
 				'signup_trial'         => 'instant',
@@ -131,6 +132,10 @@ final class PlatformService extends Service {
 		if ( isset( $data['whatsapp'] ) ) {
 			$c['whatsapp'] = Text::phone( $data['whatsapp'] );
 		}
+		if ( isset( $data['apk_url'] ) ) {
+			$url          = trim( (string) $data['apk_url'] );
+			$c['apk_url'] = preg_match( '#^https?://#i', $url ) ? substr( $url, 0, 500 ) : '';
+		}
 		foreach ( array( 'brand', 'currency', 'support_phone' ) as $k ) {
 			if ( isset( $data[ $k ] ) ) {
 				$c[ $k ] = Text::line( $data[ $k ], 100 );
@@ -164,7 +169,7 @@ final class PlatformService extends Service {
 	 */
 	public function publicConfig(): array {
 		$c = $this->config();
-		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'trial_days', 'pay_bkash', 'pay_bkash_type', 'pay_nagad', 'pay_nagad_type', 'pay_rocket', 'pay_rocket_type', 'pay_bank', 'signup_trial' ) ) );
+		return array_intersect_key( $c, array_flip( array( 'brand', 'monthly_price', 'yearly_price', 'currency', 'payment_instructions', 'support_phone', 'whatsapp', 'apk_url', 'trial_days', 'pay_bkash', 'pay_bkash_type', 'pay_nagad', 'pay_nagad_type', 'pay_rocket', 'pay_rocket_type', 'pay_bank', 'signup_trial' ) ) );
 	}
 
 	/**

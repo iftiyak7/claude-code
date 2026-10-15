@@ -371,11 +371,22 @@ export function dateRange(onChange, initial = 'this_month') {
 }
 
 export function downloadText(filename, text, type = 'text/csv') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
+  downloadBlob(filename, new Blob([text], { type: `${type};charset=utf-8` }));
+}
+
+/** Save a file: browser download, or the phone's Downloads folder in the Android app. */
+export function downloadBlob(filename, blob) {
+  const native = window.GoriberHisabNative;
+  if (native?.saveFile) {
+    const r = new FileReader();
+    r.onload = () => native.saveFile(filename, blob.type || 'application/octet-stream', String(r.result).split(',')[1] || '');
+    r.readAsDataURL(blob);
+    return;
+  }
   const a = h('a', { href: URL.createObjectURL(blob), download: filename });
   document.body.append(a);
   a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
 }
 
 export { money, date };

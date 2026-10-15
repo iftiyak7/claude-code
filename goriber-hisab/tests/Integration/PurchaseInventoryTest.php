@@ -168,6 +168,30 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertBooksBalanced( 'variants' );
 	}
 
+	public function testBarcodesGeneratedAndLabelled(): void {
+		$a  = $this->product( 'Soap', '40' );
+		$b  = $this->product( 'Shirt', '500', '0', '0', array( 'barcode' => 'KEEP1' ) );
+		$vm = $this->k->products->saveVariant( $this->ctx, $b, array( 'attributes' => array( 'size' => 'M' ) ) );
+		$vl = $this->k->products->saveVariant( $this->ctx, $b, array( 'attributes' => array( 'size' => 'L' ), 'selling_price' => '550', 'barcode' => 'L-1' ) );
+		$done = $this->k->products->generateBarcodes( $this->ctx );
+		$this->assertSame( array( 'products' => 1, 'variants' => 1 ), $done );
+		$soap = $this->k->products->get( $this->ctx, $a );
+		$this->assertSame( \GoriberHisab\Catalog\ProductService::internalBarcode( $a ), $soap['barcode'] );
+		$this->assertSame( 13, strlen( $soap['barcode'] ) );
+		$this->assertSame( 'KEEP1', $this->k->products->get( $this->ctx, $b )['barcode'] );
+		$this->assertSame( $a, $this->k->products->findByCode( $this->ctx, $soap['barcode'] )['product']['id'] );
+		$this->assertSame( array( 'products' => 0, 'variants' => 0 ), $this->k->products->generateBarcodes( $this->ctx ) );
+
+		$items = $this->k->products->labelItems( $this->ctx, array( $b, $a ) );
+		$this->assertSame( 3, count( $items ) );
+		$this->assertSame( $vm['id'], $items[0]['variant_id'] );
+		$this->assertSame( '29', substr( $items[0]['code'], 0, 2 ) );
+		$this->assertMoney( '500', $items[0]['price'] );
+		$this->assertSame( 'L-1', $items[1]['code'] );
+		$this->assertMoney( '550', $items[1]['price'] );
+		$this->assertSame( 'Soap', $items[2]['name'] );
+	}
+
 	public function testServiceProductsSkipStock(): void {
 		$svc  = $this->product( 'Repair', '300', '0', '0', array( 'type' => 'service' ) );
 		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $svc, 'qty' => '2' ) ), 'payments' => array( array( 'amount' => '600' ) ) ) );

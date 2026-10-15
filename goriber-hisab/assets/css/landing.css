@@ -188,3 +188,9 @@ section h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); color: var(--navy); }
 .band-cta { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn.primary:not(.big) { padding: 0 16px; }
 @media (max-width: 620px) { .hide-sm { display: none; } }
+
+/* Android app download */
+.apk-link { display: inline-flex; align-items: center; gap: 10px; margin-top: 14px; padding: 8px 16px 8px 12px; border-radius: 12px; background: #0b1a2e; color: #fff; text-decoration: none; font-weight: 700; line-height: 1.15; }
+.apk-link svg { color: #3ddc84; }
+.apk-link small { display: block; font-weight: 500; font-size: .75rem; opacity: .75; }
+.apk-link:hover { background: #142a47; }
