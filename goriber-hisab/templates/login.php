@@ -71,6 +71,9 @@ $phone = (string) ( $platform['support_phone'] ?: $platform['whatsapp'] );
 		<?php if ( ! empty( $platform['signup'] ) ) : ?>
 			<p class="help"><?php echo esc_html( $L( 'নতুন দোকান খুলতে চান?', 'Want to open a new shop?' ) ); ?> <a href="<?php echo esc_url( \GoriberHisab\Admin\AppRoute::signupUrl() ); ?>"><?php echo esc_html( $L( 'সাইন আপ করুন', 'Sign up' ) ); ?></a></p>
 		<?php endif; ?>
+		<?php if ( ! str_contains( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ), 'GoriberHisabApp' ) ) : // phpcs:ignore WordPress.Security.ValidatedSanitizedInput ?>
+			<p class="help"><a href="<?php echo esc_url( \GoriberHisab\Admin\AppRoute::downloadUrl() ); ?>" rel="nofollow">📱 <?php echo esc_html( $L( 'অ্যান্ড্রয়েড অ্যাপ ডাউনলোড করুন (অফলাইনেও চলে)', 'Download the Android app (works offline)' ) ); ?></a></p>
+		<?php endif; ?>
 		<?php if ( '' !== $phone ) : ?>
 			<p class="help"><?php echo esc_html( $L( 'অ্যাকাউন্ট নেই বা সমস্যা হচ্ছে?', 'No account yet or need help?' ) ); ?> <a href="tel:<?php echo esc_attr( preg_replace( '/[^0-9+]/', '', $phone ) ); ?>"><?php echo esc_html( $phone ); ?></a></p>
 		<?php endif; ?>

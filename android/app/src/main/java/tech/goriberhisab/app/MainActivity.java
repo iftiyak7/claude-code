@@ -28,11 +28,13 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -53,6 +55,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private PermissionRequest pendingPermission;
     private NativeBridge bridge;
+    private LocalWeb local;
+    private View splash;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -68,6 +72,20 @@ public class MainActivity extends Activity {
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         FrameLayout.LayoutParams barParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 8);
         root.addView(bar, barParams);
+
+        // Native splash until the first screen is drawn: no white flash.
+        FrameLayout cover = new FrameLayout(this);
+        cover.setBackgroundColor(Color.parseColor("#0B1A2E"));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.ic_mark);
+        int size = (int) (96 * getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size);
+        lp.gravity = android.view.Gravity.CENTER;
+        cover.addView(logo, lp);
+        root.addView(cover, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        splash = cover;
+        cover.postDelayed(this::hideSplash, 6000);
+        web.setBackgroundColor(Color.parseColor("#F4F7FB"));
         setContentView(root);
 
         WebSettings s = web.getSettings();
@@ -82,13 +100,16 @@ public class MainActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setTextZoom(100);
         s.setUserAgentString(s.getUserAgentString() + " GoriberHisabApp/" + BuildConfig.VERSION_NAME);
-        s.setCacheMode(isOnline() ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT); // offline is handled by LocalWeb + the web app's saved data
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             ServiceWorkerController.getInstance().getServiceWorkerWebSettings().setAllowContentAccess(true);
         }
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+
+        local = new LocalWeb(this);
+        local.setUserAgent(s.getUserAgentString());
 
         bridge = new NativeBridge(this, web);
         web.addJavascriptInterface(bridge, "GoriberHisabNative");
@@ -110,6 +131,20 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                try {
+                    return local.intercept(request, appUrl());
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                hideSplash();
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 bar.setVisibility(View.GONE);
                 CookieManager.getInstance().flush();
@@ -118,6 +153,7 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    hideSplash();
                     showOffline();
                 }
             }
@@ -176,6 +212,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void hideSplash() {
+        if (splash == null) {
+            return;
+        }
+        final View v = splash;
+        splash = null;
+        v.animate().alpha(0f).setDuration(180).withEndAction(() -> ((ViewGroup) v.getParent()).removeView(v)).start();
+    }
+
     String appUrl() {
         SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
         return p.getString("url", BuildConfig.APP_URL);
@@ -208,7 +253,7 @@ public class MainActivity extends Activity {
 
     void reloadApp() {
         runOnUiThread(() -> {
-            web.getSettings().setCacheMode(isOnline() ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            web.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
             web.loadUrl(appUrl());
         });
     }
@@ -226,6 +271,7 @@ public class MainActivity extends Activity {
                         String url = input.getText().toString().trim();
                         if (url.startsWith("https://") || url.startsWith("http://")) {
                             setAppUrl(url);
+                            local.forgetShell();
                             reloadApp();
                         } else {
                             Toast.makeText(this, "Start the address with https://", Toast.LENGTH_LONG).show();
@@ -312,6 +358,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         bridge.close();
+        local.close();
         web.destroy();
         super.onDestroy();
     }

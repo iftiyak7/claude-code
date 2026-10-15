@@ -213,6 +213,8 @@ final class AppRoute {
 			$this->manifest();
 		} elseif ( 'sw.js' === $path ) {
 			$this->serviceWorker();
+		} elseif ( 'download' === $path || 'download/goriber-hisab.apk' === $path ) {
+			$this->downloadApp();
 		} elseif ( 'login' === $path ) {
 			$this->login();
 		} elseif ( 'signup' === $path ) {
@@ -222,6 +224,40 @@ final class AppRoute {
 		} else {
 			$this->shell( $mode );
 		}
+		exit;
+	}
+
+	/** Latest Android app built by GitHub Actions (the plugin zip usually carries its own copy). */
+	public const APK_RELEASE = 'https://github.com/iftiyak7/claude-code/releases/latest/download/goriber-hisab.apk';
+
+	/** Where people download the Android app: a short link on this website. */
+	public static function downloadUrl(): string {
+		return self::url( 'download' );
+	}
+
+	/**
+	 * Send the APK shipped inside the plugin, or else forward to the owner's
+	 * link / the latest GitHub release.
+	 *
+	 * @return never
+	 */
+	private function downloadApp(): void {
+		$file = GORIBER_HISAB_DIR . 'assets/app/goriber-hisab.apk';
+		if ( is_readable( $file ) ) {
+			while ( ob_get_level() ) {
+				ob_end_clean();
+			}
+			header( 'Content-Type: application/vnd.android.package-archive' );
+			header( 'Content-Disposition: attachment; filename="goriber-hisab.apk"' );
+			header( 'Content-Length: ' . (string) filesize( $file ) );
+			header( 'X-Content-Type-Options: nosniff' );
+			readfile( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			exit;
+		}
+		$config = $this->k->platform->config();
+		$url    = '' !== (string) ( $config['apk_url'] ?? '' ) ? (string) $config['apk_url'] : self::APK_RELEASE;
+		// phpcs:ignore WordPress.Security.SafeRedirect -- the owner's own link or GitHub.
+		wp_redirect( $url );
 		exit;
 	}
 
@@ -252,6 +288,9 @@ final class AppRoute {
 			'adminUrl'  => esc_url_raw( admin_url() ),
 			'appOnly'   => ( new ClientAccess( $this->k ) )->isAppOnly( (int) $user->ID ),
 			'userName'  => $user->display_name,
+			'userId'    => (int) $user->ID,
+			'loginUrl'  => esc_url_raw( self::loginUrl() ),
+			'ajaxUrl'   => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 		);
 		$asset  = static fn( string $p ) => esc_url( GORIBER_HISAB_URL . 'assets/' . $p . '?v=' . GORIBER_HISAB_VERSION );
 		?>

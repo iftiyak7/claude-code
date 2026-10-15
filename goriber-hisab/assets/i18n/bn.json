@@ -1408,5 +1408,7 @@
 "{n} barcodes created": "{n}টি বারকোড তৈরি হয়েছে",
 "{n} items have no barcode yet.": "{n}টি পণ্যের এখনো বারকোড নেই।",
 "{n} labels": "{n}টি লেবেল",
-"{p}% received": "{p}% নিয়েছে"
+"{p}% received": "{p}% নিয়েছে",
+"Optional. The home page and login page always have a \"Download Android app\" button. Leave this empty to use the app that comes with the plugin.": "ঐচ্ছিক। হোম পেজ ও লগইন পেজে সবসময় \"অ্যান্ড্রয়েড অ্যাপ ডাউনলোড\" বাটন থাকে। খালি রাখলে প্লাগিনের সাথে আসা অ্যাপটিই ডাউনলোড হবে।",
+"No internet — showing data saved on this phone ({d}).": "ইন্টারনেট নেই — ফোনে সেভ থাকা তথ্য দেখাচ্ছে ({d})।"
 }

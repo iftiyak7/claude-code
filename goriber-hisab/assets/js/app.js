@@ -4,11 +4,11 @@
  */
 import { h, mount, $, debounce } from './core/dom.js';
 import { icon } from './core/icons.js';
-import { api } from './core/api.js';
+import { api, clearSavedReads } from './core/api.js';
 import { state, can, canAny, setBusiness, on, emit } from './core/state.js';
 import { route, start, navigate, current } from './core/router.js';
 import { loadLanguage, t, currentLang } from './core/i18n.js';
-import { spinner, empty, modal } from './core/ui.js';
+import { spinner, empty, modal, toast } from './core/ui.js';
 import { sync, queued, refreshSnapshot } from './core/offline.js';
 
 const NAV = [
@@ -95,6 +95,21 @@ route('/subscription', v('subscription'));
 const app = document.getElementById('app');
 let main;
 
+// Logging out forgets the data saved on this device for offline use.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('a[href]');
+  if (a && window.BZL.logoutUrl && a.href === new URL(window.BZL.logoutUrl, location.href).href) clearSavedReads();
+}, true);
+
+// Offline (or server down): tell the person they are looking at saved data.
+let savedNoticeAt = 0;
+document.addEventListener('gh:saved-data', (e) => {
+  if (Date.now() - savedNoticeAt < 60000) return;
+  savedNoticeAt = Date.now();
+  const d = new Date(e.detail).toLocaleString(currentLang() === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  toast(t('No internet — showing data saved on this phone ({d}).', { d }), 'info', 5000);
+});
+
 async function boot() {
   try {
     const cookieLang = (document.cookie.match(/(?:^|; )gh_lang=(bn|en)/) || [])[1];
@@ -120,6 +135,7 @@ async function loadSession() {
   try {
     state.me = await api.get('me', { business: state.businessId, branch: state.branchId });
   } catch (err) {
+    if (err.status === 401 && window.BZL.loginUrl) { location.replace(window.BZL.loginUrl); throw err; }
     mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('Could not load Goriber Hisab')), h('p', {}, err.message),
       h('button', { class: 'btn btn-primary', onclick: () => location.reload() }, t('Try again'))));
     throw err;
@@ -318,8 +334,14 @@ function globalSearch() {
 }
 
 function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (window.GoriberHisabNative) {
+    // The Android app carries the whole app inside it; a service worker would only get in the way.
+    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+    return;
+  }
   // Service workers need a real path scope: only for the pretty /app/ URL.
-  if (!('serviceWorker' in navigator) || window.BZL.mode === 'admin' || window.BZL.appUrl.includes('?')) return;
+  if (window.BZL.mode === 'admin' || window.BZL.appUrl.includes('?')) return;
   navigator.serviceWorker.register(`${window.BZL.appUrl}sw.js`, { scope: window.BZL.appUrl }).catch(() => { /* optional */ });
 }
 

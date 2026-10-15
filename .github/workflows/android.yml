@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'android/**'
+      - 'goriber-hisab/assets/**'
+      - 'goriber-hisab/goriber-hisab.php'
       - '.github/workflows/android.yml'
   workflow_dispatch:
     inputs:
@@ -34,9 +36,10 @@ jobs:
         working-directory: android
         run: |
           URL="${{ github.event.inputs.app_url }}"
+          WEB=$(sed -n "s/.*'GORIBER_HISAB_VERSION', '\([^']*\)'.*/\1/p" ../goriber-hisab/goriber-hisab.php)
           gradle assembleRelease --no-daemon --stacktrace \
             -PappUrl="${URL:-https://goriberhisab.tech/app/}" \
-            -PappVersionName="1.5.${{ github.run_number }}" \
+            -PappVersionName="${WEB}.${{ github.run_number }}" \
             -PappVersionCode="$((10500 + ${{ github.run_number }}))"
           mkdir -p ../dist
           cp app/build/outputs/apk/release/app-release.apk ../dist/goriber-hisab.apk
@@ -50,11 +53,11 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-v1.5.${{ github.run_number }}
-          name: Goriber Hisab Android 1.5.${{ github.run_number }}
+          tag_name: android-${{ github.run_number }}
+          name: Goriber Hisab Android (build ${{ github.run_number }})
           target_commitish: ${{ github.sha }}
           make_latest: true
           body: |
-            Goriber Hisab Android app.
+            Goriber Hisab Android app — the whole app is inside, so it opens instantly and works offline.
             Install: download goriber-hisab.apk on the phone, open it, allow "Install unknown apps" once.
           files: dist/goriber-hisab.apk
