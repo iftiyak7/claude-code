@@ -90,11 +90,11 @@ export function card(title, ...children) {
   return h('div', { class: 'card' }, title ? h('h3', { class: 'card-title' }, title) : null, children);
 }
 
-export function stat(label, value, { tone = '', hint = '', onclick } = {}) {
-  return h(onclick ? 'button' : 'div', { class: `stat ${tone}`, type: onclick ? 'button' : null, onclick },
-    h('span', { class: 'stat-label' }, label),
+export function stat(label, value, { tone = '', hint = '', onclick, change = null } = {}) {
+  return h(onclick ? 'button' : 'div', { class: `stat ${tone} ${onclick ? 'clickable' : ''}`, type: onclick ? 'button' : null, onclick },
+    h('span', { class: 'stat-label' }, label, onclick ? h('span', { class: 'stat-go', 'aria-hidden': 'true' }, '›') : null),
     h('strong', { class: 'stat-value' }, value ?? '—'),
-    hint ? h('span', { class: 'stat-hint' }, hint) : null);
+    hint || change ? h('span', { class: 'stat-hint' }, hint || '', change ? h('span', { class: `stat-change ${change.good ? 'up' : 'down'}` }, `${hint ? ' · ' : ''}${change.text}`) : null) : null);
 }
 
 export function empty(message, action) {

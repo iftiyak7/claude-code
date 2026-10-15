@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.3.0';
+	public const VERSION = '1.4.0';
 
 	/**
 	 * Common audit columns appended to document tables.

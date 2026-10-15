@@ -8,6 +8,7 @@ import { t } from '../core/i18n.js';
 import { money, date } from '../core/format.js';
 import { page, dataTable, card, field, input, textarea, money_input, bindForm, toast, showError, badge, confirmDialog, tabs, simpleTable, checkbox, downloadText, empty, spinner } from '../core/ui.js';
 import { icon } from '../core/icons.js';
+import { whatsappUrl, reminderText } from '../core/remind.js';
 import { navigate } from '../core/router.js';
 import { openPrint } from '../core/printer.js';
 import { collectPayment, payPurchase } from './payments.js';
@@ -62,6 +63,7 @@ async function profile(el, type, id, query) {
     actions: [
       isCustomer && can('payments.receive') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => collectPayment(c, { onDone: reload }) }, icon('cash', 16), t('Receive payment')) : null,
       !isCustomer && can('payments.pay') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => payPurchase(c, { onDone: reload }) }, icon('cash', 16), t('Pay')) : null,
+      isCustomer && c.phone && Number(c.balance) > 0 ? h('a', { class: 'btn btn-sm wa-btn', href: whatsappUrl(c.phone, reminderText(c.name, c.balance)), target: '_blank', rel: 'noopener' }, t('Remind on WhatsApp')) : null,
       isCustomer && can('pos.use') ? h('a', { class: 'btn btn-sm', href: '#/pos' }, icon('pos', 16), t('New sale')) : null,
       !isCustomer && can('purchases.create') ? h('a', { class: 'btn btn-sm', href: '#/purchases/new' }, icon('plus', 16), t('New purchase')) : null,
       can('invoices.print') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => openPrint('statement', id, { paper: 'a4', autoprint: false, extra: { kind: type } }) }, icon('printer', 16), t('Statement')) : null,

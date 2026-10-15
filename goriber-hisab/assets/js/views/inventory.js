@@ -80,12 +80,20 @@ function refLink(m) {
 
 /** Adjustment dialog (count correction, damage, found stock). */
 export function stockAdjust(product, variant, onDone) {
-  const mode = select('mode', [['remove', t('Remove (damage, loss, own use)')], ['add', t('Add (found, gift)')], ['set', t('Set counted quantity')]], 'remove');
-  const f = h('form', { class: 'form' }, h('div', { class: 'form-grid' },
+  const mode = select('mode', [
+    ['opening', t('Add stock I already have (not profit)')],
+    ['remove', t('Remove (damage, loss, own use)')],
+    ['add', t('Add found / gift stock (counts as profit)')],
+    ['set', t('Set counted quantity')],
+  ], 'opening');
+  const hint = h('p', { class: 'callout small' }, t('Bought new stock from a supplier? Enter it as a Purchase instead, so the cost, supplier and payment are recorded.'));
+  const f = h('form', { class: 'form' }, hint, h('div', { class: 'form-grid' },
     field(t('What happened?'), mode),
     field(t('Quantity'), money_input('qty', '', { required: true, autofocus: true }), { required: true }),
     can('products.cost') ? field(t('Unit cost (for additions)'), money_input('unit_cost', ''), { hint: t('Defaults to the current average cost') }) : null,
-    field(t('Reason'), input('reason', '', { required: true, placeholder: t('e.g. Damaged in transit') }), { required: true, wide: true })));
+    field(t('Reason'), input('reason', '', { placeholder: t('e.g. Damaged in transit') }), { wide: true })));
+  const sync = () => { hint.hidden = !['opening', 'add'].includes(mode.value); };
+  mode.addEventListener('change', sync); sync();
   const m = modal({
     title: t('Adjust stock: {p}', { p: product.name + (variant ? ` - ${variant.name}` : '') }),
     body: f,

@@ -14,6 +14,7 @@ use GoriberHisab\Database\Database;
 use GoriberHisab\Support\Clock;
 use GoriberHisab\Support\Decimal;
 use GoriberHisab\Support\Events;
+use GoriberHisab\Support\NotFoundException;
 use GoriberHisab\Support\Service;
 use GoriberHisab\Support\Text;
 use GoriberHisab\Support\ValidationException;
@@ -87,9 +88,34 @@ final class ReportService extends Service {
 		);
 
 
+		// Same length period just before, for "▲ 12%" hints.
+		$days      = (int) ( ( strtotime( $to ) - strtotime( $from ) ) / 86400 ) + 1;
+		$prev_to   = ( new \DateTimeImmutable( $from ) )->modify( '-1 day' );
+		$prev_from = $prev_to->modify( '-' . ( $days - 1 ) . ' days' );
+		$previous  = $this->periodMetrics( $ctx, $prev_from->format( 'Y-m-d' ), $prev_to->format( 'Y-m-d' ), $branch, $profit_ok );
+		$yesterday = ( new \DateTimeImmutable( $today ) )->modify( '-1 day' )->format( 'Y-m-d' );
+
+		$top_dues = $this->db->rows(
+			"SELECT id, name, phone, balance FROM {$ct} WHERE business_id = %d AND type = 'customer' AND balance > 0 AND deleted_at IS NULL ORDER BY balance DESC LIMIT 5",
+			array( $ctx->business_id )
+		);
+		$low_items = $this->db->rows(
+			"SELECT p.id, p.name, p.min_stock,
+				COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) AS qty
+			FROM {$pt} p
+			WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active' AND p.min_stock > 0
+			AND COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) <= p.min_stock
+			ORDER BY qty ASC LIMIT 6",
+			array( $ctx->branch_id, $ctx->business_id, $ctx->branch_id )
+		);
+
 		return array(
 			'from'          => $from,
 			'to'            => $to,
+			'previous'      => $previous,
+			'yesterday'     => $this->periodMetrics( $ctx, $yesterday, $yesterday, $branch, $profit_ok ),
+			'top_dues'      => array_map( static fn( $r ) => array( 'id' => (int) $r['id'], 'name' => $r['name'], 'phone' => (string) $r['phone'], 'balance' => Decimal::toString( Decimal::of( $r['balance'] ) ) ), $top_dues ),
+			'low_items'     => array_map( static fn( $r ) => array( 'id' => (int) $r['id'], 'name' => $r['name'], 'qty' => Decimal::toString( Decimal::of( $r['qty'] ) ), 'min_stock' => Decimal::toString( Decimal::of( $r['min_stock'] ) ) ), $low_items ),
 			'today'         => $today_block,
 			'overview'      => $overview,
 			'charts'        => $this->series( $ctx, $from, $to, $branch, $profit_ok ),
@@ -97,6 +123,210 @@ final class ReportService extends Service {
 			'top_products'  => $this->topProducts( $ctx, $from, $to, $branch, 5 ),
 			'recent_sales'  => $this->recentSales( $ctx, $branch ),
 		);
+	}
+
+	/**
+	 * What lies behind one dashboard number: a short summary and the documents.
+	 *
+	 * @param array<string,mixed> $args metric, range|from|to, branch_id.
+	 * @return array<string,mixed>
+	 */
+	public function drilldown( BusinessContext $ctx, array $args ): array {
+		$ctx->authorize( 'dashboard.view' );
+		list( $from, $to ) = $this->range( $ctx, $args );
+		$branch            = $this->branchFilter( $ctx, $args );
+		list( $bs, $bp )   = $this->branchSql( $branch, 'x.branch_id' );
+		$base              = array_merge( array( $ctx->business_id, $from, $to ), $bp );
+		$metric            = (string) ( $args['metric'] ?? '' );
+		$ct                = $this->db->table( 'contacts' );
+		$m                 = static fn( $v ): string => Decimal::toString( Decimal::of( $v ?? 0 ) );
+		$out               = array(
+			'metric'  => $metric,
+			'from'    => $from,
+			'to'      => $to,
+			'summary' => array(),
+			'items'   => array(),
+		);
+
+		switch ( $metric ) {
+			case 'sales':
+			case 'due':
+				$st    = $this->db->table( 'sales' );
+				$where = 'due' === $metric ? ' AND x.due_amount > 0' : '';
+				$rows  = $this->db->rows(
+					"SELECT x.id, x.number, x.sale_date AS date, x.total, x.paid_amount, x.due_amount, x.payment_status, x.channel, c.name AS contact, c.phone
+					FROM {$st} x LEFT JOIN {$ct} c ON c.id = x.customer_id
+					WHERE x.business_id = %d AND x.status = 'completed' AND x.sale_date BETWEEN %s AND %s{$bs}{$where}
+					ORDER BY x.sale_date DESC, x.id DESC LIMIT 300",
+					$base
+				);
+				$total = $paid = $due = 0;
+				foreach ( $rows as $r ) {
+					$total += Decimal::of( $r['total'] );
+					$paid  += Decimal::of( $r['paid_amount'] );
+					$due   += Decimal::of( $r['due_amount'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/sales/' . $r['id'], 'title' => $r['number'], 'sub' => $r['contact'] ?: '', 'phone' => (string) $r['phone'], 'date' => $r['date'], 'amount' => $m( $r['total'] ), 'due' => $m( $r['due_amount'] ), 'status' => $r['payment_status'] );
+				}
+				$out['summary'] = array(
+					array( 'label' => 'Invoices', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Total', 'value' => Decimal::toString( $total ) ),
+					array( 'label' => 'Paid', 'value' => Decimal::toString( $paid ), 'tone' => 'ok' ),
+					array( 'label' => 'Due', 'value' => Decimal::toString( $due ), 'tone' => $due > 0 ? 'warn' : '' ),
+				);
+				$out['link'] = '/sales';
+				break;
+
+			case 'purchases':
+				$pt   = $this->db->table( 'purchases' );
+				$rows = $this->db->rows(
+					"SELECT x.id, x.number, x.purchase_date AS date, x.total, x.due_amount, x.payment_status, c.name AS contact
+					FROM {$pt} x LEFT JOIN {$ct} c ON c.id = x.supplier_id
+					WHERE x.business_id = %d AND x.status = 'completed' AND x.purchase_date BETWEEN %s AND %s{$bs}
+					ORDER BY x.purchase_date DESC, x.id DESC LIMIT 300",
+					$base
+				);
+				$total = $due = 0;
+				foreach ( $rows as $r ) {
+					$total += Decimal::of( $r['total'] );
+					$due   += Decimal::of( $r['due_amount'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/purchases/' . $r['id'], 'title' => $r['number'], 'sub' => $r['contact'] ?: '', 'date' => $r['date'], 'amount' => $m( $r['total'] ), 'due' => $m( $r['due_amount'] ), 'status' => $r['payment_status'] );
+				}
+				$out['summary'] = array(
+					array( 'label' => 'Purchases', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Total', 'value' => Decimal::toString( $total ) ),
+					array( 'label' => 'Unpaid', 'value' => Decimal::toString( $due ), 'tone' => $due > 0 ? 'warn' : '' ),
+				);
+				$out['link'] = '/purchases';
+				break;
+
+			case 'expenses':
+				$et   = $this->db->table( 'expenses' );
+				$at   = $this->db->table( 'accounts' );
+				$rows = $this->db->rows(
+					"SELECT x.id, x.number, x.expense_date AS date, x.amount, x.description, a.name AS category
+					FROM {$et} x LEFT JOIN {$at} a ON a.id = x.account_id
+					WHERE x.business_id = %d AND x.status = 'completed' AND x.expense_date BETWEEN %s AND %s{$bs}
+					ORDER BY x.expense_date DESC, x.id DESC LIMIT 300",
+					$base
+				);
+				$by    = array();
+				$total = 0;
+				foreach ( $rows as $r ) {
+					$total += Decimal::of( $r['amount'] );
+					$by[ (string) $r['category'] ] = ( $by[ (string) $r['category'] ] ?? 0 ) + Decimal::of( $r['amount'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/expenses/' . $r['id'], 'title' => (string) $r['category'], 'sub' => trim( (string) $r['description'] ), 'date' => $r['date'], 'amount' => $m( $r['amount'] ) );
+				}
+				arsort( $by );
+				$out['summary'][] = array( 'label' => 'Total', 'value' => Decimal::toString( $total ) );
+				foreach ( array_slice( $by, 0, 5, true ) as $name => $v ) {
+					$out['summary'][] = array( 'label' => $name, 'value' => Decimal::toString( $v ), 'raw' => true );
+				}
+				$out['link'] = '/expenses';
+				break;
+
+			case 'collection':
+				$pm   = $this->db->table( 'payments' );
+				$at   = $this->db->table( 'accounts' );
+				$rows = $this->db->rows(
+					"SELECT x.id, x.number, x.payment_date AS date, x.amount, x.source, a.name AS account, c.name AS contact
+					FROM {$pm} x LEFT JOIN {$at} a ON a.id = x.account_id LEFT JOIN {$ct} c ON c.id = x.contact_id
+					WHERE x.business_id = %d AND x.status = 'completed' AND x.direction = 'in' AND x.source IN ('sale','collection') AND x.payment_date BETWEEN %s AND %s{$bs}
+					ORDER BY x.payment_date DESC, x.id DESC LIMIT 300",
+					$base
+				);
+				$by    = array();
+				$total = 0;
+				foreach ( $rows as $r ) {
+					$total += Decimal::of( $r['amount'] );
+					$by[ (string) $r['account'] ] = ( $by[ (string) $r['account'] ] ?? 0 ) + Decimal::of( $r['amount'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/payments/' . $r['id'], 'title' => $r['contact'] ?: (string) $r['number'], 'sub' => (string) $r['account'], 'date' => $r['date'], 'amount' => $m( $r['amount'] ) );
+				}
+				$out['summary'][] = array( 'label' => 'Total', 'value' => Decimal::toString( $total ), 'tone' => 'ok' );
+				foreach ( $by as $name => $v ) {
+					$out['summary'][] = array( 'label' => $name, 'value' => Decimal::toString( $v ), 'raw' => true );
+				}
+				$out['link'] = '/payments';
+				break;
+
+			case 'profit':
+				$ctx->authorize( 'reports.profit' );
+				$pl = $this->profitTotals( $ctx, $from, $to, $branch );
+				$out['summary'] = array(
+					array( 'label' => 'Sales (net of returns)', 'value' => Decimal::toString( $pl['revenue'] ) ),
+					array( 'label' => 'Cost of goods sold', 'value' => Decimal::toString( -$pl['cogs'] ) ),
+					array( 'label' => 'Gross profit', 'value' => Decimal::toString( $pl['gross'] ), 'tone' => $pl['gross'] < 0 ? 'bad' : 'ok' ),
+					array( 'label' => 'Other income', 'value' => Decimal::toString( $pl['other_income'] ) ),
+					array( 'label' => 'Expenses', 'value' => Decimal::toString( -$pl['expenses'] ) ),
+					array( 'label' => 'Net profit', 'value' => Decimal::toString( $pl['net'] ), 'tone' => $pl['net'] < 0 ? 'bad' : 'ok' ),
+				);
+				$out['items'] = array_map(
+					static fn( $r ) => array( 'link' => '/sales/' . $r['id'], 'title' => $r['number'], 'sub' => $r['customer_name'] ?: '', 'date' => $r['sale_date'], 'amount' => $r['profit'], 'note' => $r['margin'] . '%' ),
+					array_slice( $this->invoiceProfit( $ctx, array( 'from' => $from, 'to' => $to, 'per_page' => 100 ) + $args )['items'], 0, 100 )
+				);
+				$out['link'] = '/reports/profit-loss';
+				break;
+
+			case 'customer_due':
+			case 'supplier_due':
+				$type = 'customer_due' === $metric ? 'customer' : 'supplier';
+				$rows = $this->db->rows(
+					"SELECT id, name, phone, balance, last_activity_at FROM {$ct} WHERE business_id = %d AND type = %s AND balance > 0 AND deleted_at IS NULL ORDER BY balance DESC LIMIT 300",
+					array( $ctx->business_id, $type )
+				);
+				$total = 0;
+				foreach ( $rows as $r ) {
+					$total += Decimal::of( $r['balance'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/' . $type . 's/' . $r['id'], 'title' => $r['name'], 'sub' => (string) $r['phone'], 'phone' => (string) $r['phone'], 'date' => $r['last_activity_at'] ? substr( (string) $r['last_activity_at'], 0, 10 ) : '', 'amount' => $m( $r['balance'] ) );
+				}
+				$out['summary'] = array(
+					array( 'label' => 'customer' === $type ? 'Customers with due' : 'Suppliers to pay', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Total', 'value' => Decimal::toString( $total ), 'tone' => 'warn' ),
+				);
+				$out['link'] = 'customer' === $type ? '/reports/dues' : '/reports/dues?type=supplier';
+				break;
+
+			case 'stock':
+				$ctx->authorize( 'inventory.view' );
+				$pt   = $this->db->table( 'products' );
+				$sl   = $this->db->table( 'stock_levels' );
+				$cost = $ctx->can( 'products.cost' );
+				$rows = $this->db->rows(
+					"SELECT p.id, p.name, p.min_stock, COALESCE(SUM(s.qty),0) AS qty, COALESCE(SUM(s.value),0) AS value
+					FROM {$pt} p LEFT JOIN {$sl} s ON s.product_id = p.id AND s.business_id = p.business_id
+					WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'
+					GROUP BY p.id, p.name, p.min_stock ORDER BY (COALESCE(SUM(s.qty),0) <= p.min_stock) DESC, value DESC LIMIT 300",
+					array( $ctx->business_id )
+				);
+				$total = 0;
+				$low   = 0;
+				foreach ( $rows as $r ) {
+					$is_low = Decimal::of( $r['qty'] ) <= Decimal::of( $r['min_stock'] ) && Decimal::of( $r['min_stock'] ) > 0;
+					$low   += $is_low ? 1 : 0;
+					$total += Decimal::of( $r['value'] );
+					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/products/' . $r['id'], 'title' => $r['name'], 'qty' => $m( $r['qty'] ), 'amount' => $cost ? $m( $r['value'] ) : null, 'low' => $is_low );
+				}
+				$out['summary'] = array(
+					array( 'label' => 'Products', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Low on stock', 'value' => (string) $low, 'count' => true, 'tone' => $low ? 'warn' : '' ),
+				);
+				if ( $cost ) {
+					$out['summary'][] = array( 'label' => 'Stock value', 'value' => Decimal::toString( $total ) );
+				}
+				$out['link'] = '/inventory';
+				break;
+
+			case 'cash':
+				$ctx->authorize( 'accounting.view' );
+				foreach ( $this->accounts->list( $ctx, array( 'payment' => true, 'with_balance' => true ) ) as $acc ) {
+					$out['items'][] = array( 'id' => (int) $acc['id'], 'link' => '/accounting/ledger/' . $acc['id'], 'title' => $acc['name'], 'sub' => $acc['subtype'], 'amount' => $m( $acc['balance'] ) );
+				}
+				$out['link'] = '/accounting';
+				break;
+
+			default:
+				throw new NotFoundException( 'Unknown number.' );
+		}
+		return $out;
 	}
 
 	/**

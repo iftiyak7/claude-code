@@ -90,6 +90,27 @@ final class Installer {
 					}
 				}
 			},
+			// Stock "added" by adjustment before 1.6 was booked as a gain (profit). Shops used it
+			// for stock they already had, so move those additions to opening balance equity.
+			'1.4.0' => static function ( $db ): void {
+				$a = $db->table( 'accounts' );
+				$e = $db->table( 'journal_entries' );
+				$l = $db->table( 'journal_lines' );
+				foreach ( $db->rows( "SELECT business_id, id FROM {$a} WHERE system_key = 'inventory_adjustment'" ) as $adj ) {
+					$open = (int) $db->value( "SELECT id FROM {$a} WHERE business_id = %d AND system_key = 'opening_balance'", array( (int) $adj['business_id'] ) );
+					if ( ! $open ) {
+						continue;
+					}
+					$lines = $db->rows(
+						"SELECT l.id FROM {$l} l JOIN {$e} e ON e.id = l.entry_id
+						WHERE l.business_id = %d AND l.account_id = %d AND l.credit > 0 AND e.source = 'stock_adjustment'",
+						array( (int) $adj['business_id'], (int) $adj['id'] )
+					);
+					foreach ( $lines as $line ) {
+						$db->update( $l, array( 'account_id' => $open ), array( 'id' => (int) $line['id'] ) );
+					}
+				}
+			},
 		);
 		return (array) apply_filters( 'goriber_hisab/migrations', $builtin );
 	}

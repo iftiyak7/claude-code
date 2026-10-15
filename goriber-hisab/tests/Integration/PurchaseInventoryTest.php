@@ -168,6 +168,42 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertBooksBalanced( 'variants' );
 	}
 
+	public function testStockAlreadyInHandIsNotProfit(): void {
+		$p = $this->product( 'Honey', '300', '200' );
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'opening', 'qty' => '50', 'unit_cost' => '200' ) );
+		$this->assertSame( '50.0000', $this->qty( $p ) );
+		$this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'qty' => '12' ) ), 'payments' => array( array( 'amount' => '3600' ) ) ) );
+		$d = $this->k->reports->dashboard( $this->ctx, array( 'range' => 'today' ) );
+		$this->assertMoney( '3600', $d['today']['sales'] );
+		$this->assertMoney( '1200', $d['today']['profit'], 'profit = 12 × (300 − 200), the 50 added are not income' );
+		// Found stock is still a gain.
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'add', 'qty' => '1', 'unit_cost' => '200', 'reason' => 'Found' ) );
+		$this->assertMoney( '1400', $this->k->reports->dashboard( $this->ctx, array( 'range' => 'today' ) )['today']['profit'] );
+		$this->assertBooksBalanced( 'opening adjust' );
+	}
+
+	public function testDashboardDrilldown(): void {
+		$p = $this->product( 'Honey', '300', '200', '20' );
+		$c = $this->customer( 'Karim' );
+		$this->k->sales->create( $this->ctx, array( 'customer_id' => $c, 'items' => array( array( 'product_id' => $p, 'qty' => '2' ) ), 'payments' => array( array( 'amount' => '100' ) ) ) );
+		$this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '300' ) ) ) );
+		$r = $this->k->reports;
+		$d = $r->drilldown( $this->ctx, array( 'metric' => 'sales', 'range' => 'today' ) );
+		$this->assertSame( 2, count( $d['items'] ) );
+		$this->assertMoney( '900', $d['summary'][1]['value'] );
+		$this->assertMoney( '500', $d['summary'][3]['value'] );
+		$this->assertSame( 1, count( $r->drilldown( $this->ctx, array( 'metric' => 'due', 'range' => 'today' ) )['items'] ) );
+		$cd = $r->drilldown( $this->ctx, array( 'metric' => 'customer_due' ) );
+		$this->assertSame( 'Karim', $cd['items'][0]['title'] );
+		$pl = $r->drilldown( $this->ctx, array( 'metric' => 'profit', 'range' => 'today' ) );
+		$this->assertMoney( '300', end( $pl['summary'] )['value'] );
+		$this->assertSame( 2, count( $pl['items'] ) );
+		$this->assertMoney( '400', $r->drilldown( $this->ctx, array( 'metric' => 'collection', 'range' => 'today' ) )['summary'][0]['value'] );
+		$this->assertSame( 1, count( $r->drilldown( $this->ctx, array( 'metric' => 'stock' ) )['items'] ) );
+		$this->assertTrue( count( $r->drilldown( $this->ctx, array( 'metric' => 'cash' ) )['items'] ) > 0 );
+		$this->assertThrows( \GoriberHisab\Support\NotFoundException::class, fn() => $r->drilldown( $this->ctx, array( 'metric' => 'nope' ) ) );
+	}
+
 	public function testBarcodesGeneratedAndLabelled(): void {
 		$a  = $this->product( 'Soap', '40' );
 		$b  = $this->product( 'Shirt', '500', '0', '0', array( 'barcode' => 'KEEP1' ) );

@@ -11,6 +11,7 @@ import { page, stat, card, dateRange, spinner, badge, empty, checkbox, modal } f
 import { lineChart } from '../core/chart.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
+import { whatsappUrl, smsUrl, reminderText } from '../core/remind.js';
 
 const WIDGETS = [['sales', 'Sales'], ['purchases', 'Purchases'], ['expenses', 'Expenses'], ['profit', 'Profit'], ['collection', 'Collection'], ['due', 'Due'], ['stock', 'Stock'], ['cash', 'Cash & bank']];
 
@@ -64,25 +65,41 @@ export default async function dashboard(el) {
     const T = d.today;
     const O = d.overview;
 
+    const P = d.previous || {};
+    const Y = d.yesterday || {};
+    // "▲ 12%" against the period before (or yesterday for today's cards). Lower is better for costs.
+    const change = (cur, prev, lowerIsBetter = false, vs = '') => {
+      const a = Number(cur); const b = Number(prev);
+      if (!b || !Number.isFinite(a) || !Number.isFinite(b)) return null;
+      const pct = Math.round(((a - b) / Math.abs(b)) * 100);
+      if (!pct) return null;
+      return { text: `${pct > 0 ? '▲' : '▼'} ${Math.abs(pct)}% ${vs}`, good: lowerIsBetter ? pct < 0 : pct > 0 };
+    };
+    const vsY = t('vs yesterday');
+    const vsP = t('vs previous');
+    const todayR = { range: 'today' };
+    const drill = (metric, title, r = range) => () => drillDown(metric, title, r);
+
     const today = h('div', { class: 'stats' },
-      show('sales') && stat(t("Today's sales"), money(T.sales), { hint: t('{n} invoices', { n: T.sales_count }), onclick: () => navigate('/sales') }),
-      show('purchases') && stat(t("Today's purchases"), money(T.purchases)),
-      show('expenses') && stat(t("Today's expenses"), money(T.expenses)),
-      show('profit') && T.profit !== null && stat(t("Today's profit"), money(T.profit), { tone: Number(T.profit) < 0 ? 'bad' : 'ok' }),
-      show('collection') && stat(t("Today's collection"), money(T.collection), { tone: 'ok' }),
-      show('due') && stat(t("Today's due"), money(T.sales_due), { tone: Number(T.sales_due) > 0 ? 'warn' : '' }));
+      show('sales') && stat(t("Today's sales"), money(T.sales), { hint: t('{n} invoices', { n: T.sales_count }), change: change(T.sales, Y.sales, false, vsY), onclick: drill('sales', t("Today's sales"), todayR) }),
+      show('purchases') && stat(t("Today's purchases"), money(T.purchases), { onclick: drill('purchases', t("Today's purchases"), todayR) }),
+      show('expenses') && stat(t("Today's expenses"), money(T.expenses), { change: change(T.expenses, Y.expenses, true, vsY), onclick: drill('expenses', t("Today's expenses"), todayR) }),
+      show('profit') && T.profit !== null && stat(t("Today's profit"), money(T.profit), { tone: Number(T.profit) < 0 ? 'bad' : 'ok', change: change(T.profit, Y.profit, false, vsY), onclick: drill('profit', t("Today's profit"), todayR) }),
+      show('collection') && stat(t("Today's collection"), money(T.collection), { tone: 'ok', onclick: drill('collection', t("Today's collection"), todayR) }),
+      show('due') && stat(t("Today's due"), money(T.sales_due), { tone: Number(T.sales_due) > 0 ? 'warn' : '', onclick: drill('due', t("Today's due"), todayR) }));
 
     const overview = h('div', { class: 'stats' },
-      show('sales') && stat(t('Total sales'), money(O.sales), { hint: Number(O.returns) ? t('Returns {x}', { x: money(O.returns) }) : '' }),
-      show('purchases') && stat(t('Total purchases'), money(O.purchases)),
-      O.revenue !== null && stat(t('Revenue'), money(O.revenue)),
-      show('expenses') && stat(t('Expenses'), money(O.expenses)),
-      show('profit') && O.profit !== null && stat(t('Net profit'), money(O.profit), { tone: Number(O.profit) < 0 ? 'bad' : 'ok', hint: O.gross_profit !== null ? t('Gross {x}', { x: money(O.gross_profit) }) : '' }),
-      show('due') && stat(t('Customer due'), money(O.customer_due), { tone: 'warn', onclick: () => navigate('/reports/dues') }),
-      show('due') && stat(t('Supplier due'), money(O.supplier_due), { onclick: () => navigate('/reports/dues?type=supplier') }),
-      show('stock') && O.stock_value !== null && stat(t('Stock value'), money(O.stock_value), { hint: d.low_stock ? t('{n} low on stock', { n: d.low_stock }) : '', tone: d.low_stock ? 'warn' : '', onclick: () => navigate('/inventory?low=1') }),
-      show('cash') && O.cash_balance !== null && stat(t('Cash balance'), money(O.cash_balance)),
-      show('cash') && O.bank_balance !== null && stat(t('Bank & mobile'), money(O.bank_balance)));
+      show('sales') && stat(t('Total sales'), money(O.sales), { hint: Number(O.returns) ? t('Returns {x}', { x: money(O.returns) }) : '', change: change(O.sales, P.sales, false, vsP), onclick: drill('sales', t('Sales')) }),
+      show('purchases') && stat(t('Total purchases'), money(O.purchases), { onclick: drill('purchases', t('Purchases')) }),
+      O.revenue !== null && stat(t('Revenue'), money(O.revenue), { change: change(O.revenue, P.revenue, false, vsP), onclick: drill('profit', t('Profit & loss')) }),
+      show('expenses') && stat(t('Expenses'), money(O.expenses), { change: change(O.expenses, P.expenses, true, vsP), onclick: drill('expenses', t('Expenses')) }),
+      show('profit') && O.profit !== null && stat(t('Net profit'), money(O.profit), { tone: Number(O.profit) < 0 ? 'bad' : 'ok', hint: O.gross_profit !== null ? t('Gross {x}', { x: money(O.gross_profit) }) : '', change: change(O.profit, P.profit, false, vsP), onclick: drill('profit', t('Profit & loss')) }),
+      show('collection') && stat(t('Collection'), money(O.collection), { tone: 'ok', change: change(O.collection, P.collection, false, vsP), onclick: drill('collection', t('Collection')) }),
+      show('due') && stat(t('Customer due'), money(O.customer_due), { tone: 'warn', onclick: drill('customer_due', t('Customer due')) }),
+      show('due') && stat(t('Supplier due'), money(O.supplier_due), { onclick: drill('supplier_due', t('Supplier due')) }),
+      show('stock') && O.stock_value !== null && stat(t('Stock value'), money(O.stock_value), { hint: d.low_stock ? t('{n} low on stock', { n: d.low_stock }) : '', tone: d.low_stock ? 'warn' : '', onclick: drill('stock', t('Stock')) }),
+      show('cash') && O.cash_balance !== null && stat(t('Cash balance'), money(O.cash_balance), { onclick: drill('cash', t('Cash & bank')) }),
+      show('cash') && O.bank_balance !== null && stat(t('Bank & mobile'), money(O.bank_balance), { onclick: drill('cash', t('Cash & bank')) }));
 
     const pts = d.charts.points;
     const series = [{ key: 'sales', label: t('Sales') }, { key: 'purchases', label: t('Purchases') }, { key: 'expenses', label: t('Expenses') }];
@@ -101,11 +118,52 @@ export default async function dashboard(el) {
         h('span', {}, money(s.total), ' ', badge(s.payment_status))))))
       : empty(t('No sales yet.'), can('pos.use') ? h('a', { class: 'btn btn-primary', href: '#/pos' }, t('Make your first sale')) : null));
 
+    const dues = (d.top_dues || []).length ? card(t('Who owes you the most'), h('ul', { class: 'mini-list' }, d.top_dues.map((c) => h('li', {},
+      h('a', { href: `#/customers/${c.id}` }, h('strong', {}, c.name), h('br'), h('small', { class: 'muted' }, c.phone || '')),
+      h('span', { class: 'row' }, h('strong', { class: 'warn-text' }, money(c.balance)),
+        c.phone ? h('a', { class: 'btn btn-sm wa-btn', href: whatsappUrl(c.phone, reminderText(c.name, c.balance)), target: '_blank', rel: 'noopener', title: t('Remind on WhatsApp') }, t('Remind')) : null)))),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: drill('customer_due', t('Customer due')) }, t('See all'))) : null;
+    const lows = (d.low_items || []).length ? card(t('Running out'), h('ul', { class: 'mini-list' }, d.low_items.map((p) => h('li', {},
+      h('a', { href: `#/products/${p.id}` }, p.name),
+      h('span', { class: 'bad-text' }, t('{q} left (min {m})', { q: qty(p.qty), m: qty(p.min_stock) }))))),
+      can('purchases.create') ? h('a', { class: 'btn btn-sm', href: '#/purchases/new' }, t('Buy stock')) : null) : null;
+
     mount(content,
       h('h2', { class: 'section-title' }, t('Today')), today,
       h('h2', { class: 'section-title' }, t('{from} – {to}', { from: date(d.from), to: date(d.to) })), overview,
       charts,
+      dues || lows ? h('div', { class: 'grid-2' }, dues, lows) : null,
       h('div', { class: 'grid-2' }, top, recent));
   }
   await load();
+}
+
+/** What lies behind a number: summary + documents, each one opens. */
+async function drillDown(metric, title, range) {
+  const body = h('div', {}, spinner());
+  const m = modal({ title, size: 'lg', body });
+  try {
+    const r = await api.get('reports/drilldown', { metric, ...range });
+    const go = (path) => { m.close(); navigate(path); };
+    const isDue = metric === 'customer_due';
+    mount(body,
+      h('p', { class: 'muted small' }, ['customer_due', 'supplier_due', 'stock', 'cash'].includes(metric) ? t('As of today') : (r.from === r.to ? date(r.from) : `${date(r.from)} – ${date(r.to)}`)),
+      r.summary.length ? h('div', { class: 'drill-summary' }, r.summary.map((x) => h('div', {},
+        h('small', {}, x.raw ? x.label : t(x.label)),
+        h('strong', { class: x.tone || '' }, x.count ? x.value : money(x.value))))) : null,
+      r.items.length ? h('ul', { class: 'drill-list' }, r.items.map((it) => h('li', {},
+        h('a', { href: `#${it.link}`, onclick: (e) => { e.preventDefault(); go(it.link); } },
+          h('strong', {}, it.title || '—'),
+          h('small', {}, [it.sub, it.date ? date(it.date) : '', it.qty !== undefined ? t('{q} in stock', { q: qty(it.qty) }) : ''].filter(Boolean).join(' · '))),
+        h('span', { class: 'amt' },
+          it.amount !== null && it.amount !== undefined ? h('strong', { class: it.low ? 'low' : '' }, money(it.amount)) : (it.low ? h('strong', { class: 'low' }, t('Low')) : null),
+          Number(it.due) > 0 && metric !== 'due' ? h('small', { class: 'warn-text' }, t('Due {x}', { x: money(it.due) })) : null,
+          metric === 'due' && Number(it.due) > 0 ? h('small', { class: 'warn-text' }, t('Due {x}', { x: money(it.due) })) : null,
+          it.note ? h('small', { class: 'muted' }, it.note) : null),
+        (isDue || metric === 'due') && it.phone ? h('a', { class: 'btn btn-sm wa-btn', href: whatsappUrl(it.phone, reminderText(it.sub && !isDue ? it.sub : it.title, isDue ? it.amount : it.due)), target: '_blank', rel: 'noopener', title: t('Remind on WhatsApp') }, 'WhatsApp') : null,
+        isDue && it.phone ? h('a', { class: 'btn btn-sm', href: smsUrl(it.phone, reminderText(it.title, it.amount)), title: t('Send SMS') }, 'SMS') : null))) : empty(t('Nothing here for this period.')),
+      r.link ? h('div', { class: 'row', style: 'margin-top:12px' }, h('button', { class: 'btn', type: 'button', onclick: () => go(r.link) }, t('See all'), ' ›')) : null);
+  } catch (err) {
+    mount(body, empty(err.message));
+  }
 }

@@ -247,10 +247,11 @@ public class NativeBridge {
                         if (a == null) {
                             throw new IOException("No Bluetooth");
                         }
-                        a.cancelDiscovery();
+                        if (!a.isEnabled()) {
+                            throw new IOException("Bluetooth is off");
+                        }
                         BluetoothDevice dev = a.getRemoteDevice(prefs().getString("printer_address", ""));
-                        socket = dev.createRfcommSocketToServiceRecord(SPP);
-                        socket.connect();
+                        socket = connect(a, dev);
                     }
                     OutputStream out = socket.getOutputStream();
                     // Small chunks: cheap printers have tiny buffers.
@@ -263,11 +264,60 @@ public class NativeBridge {
                 } catch (Exception e) {
                     closeSocket();
                     if (attempt == 1) {
-                        toast("Printer not reachable. Is it on and nearby? (" + e.getMessage() + ")");
+                        toast("প্রিন্টার পাওয়া যায়নি। প্রিন্টার চালু ও কাছে আছে কিনা দেখুন, ফোনের Bluetooth-এ পেয়ার করা আছে কিনা দেখুন।\nPrinter not reachable (" + e.getMessage() + ")");
                     }
                 }
             }
         });
+    }
+
+    /**
+     * Cheap thermal printers differ: try the standard serial channel, then the
+     * "insecure" one, then channel 1 directly. Discovery is only stopped when
+     * we may (Android 12+ needs a separate scan permission for that).
+     */
+    @SuppressLint("MissingPermission")
+    private BluetoothSocket connect(BluetoothAdapter a, BluetoothDevice dev) throws IOException {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+                    || activity.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+                a.cancelDiscovery();
+            }
+        } catch (SecurityException ignored) {
+            // Not allowed to touch discovery; connecting works without it.
+        }
+        IOException last = null;
+        for (int way = 0; way < 3; way++) {
+            BluetoothSocket s = null;
+            try {
+                if (way == 0) {
+                    s = dev.createRfcommSocketToServiceRecord(SPP);
+                } else if (way == 1) {
+                    s = dev.createInsecureRfcommSocketToServiceRecord(SPP);
+                } else {
+                    s = (BluetoothSocket) dev.getClass().getMethod("createRfcommSocket", int.class).invoke(dev, 1);
+                }
+                if (s == null) {
+                    continue;
+                }
+                s.connect();
+                return s;
+            } catch (IOException e) {
+                last = e;
+            } catch (SecurityException e) {
+                last = new IOException("Bluetooth permission is missing. Allow \"Nearby devices\" for Goriber Hisab in phone settings.");
+            } catch (Exception e) {
+                last = new IOException(e.getMessage());
+            }
+            if (s != null) {
+                try {
+                    s.close();
+                } catch (IOException ignored) {
+                    // already closed
+                }
+            }
+        }
+        throw last != null ? last : new IOException("Could not connect");
     }
 
     private void closeSocket() {

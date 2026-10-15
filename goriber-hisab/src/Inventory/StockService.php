@@ -232,7 +232,13 @@ final class StockService extends Service {
 		if ( ! (int) $product['track_stock'] ) {
 			throw ValidationException::field( 'product_id', 'Stock is not tracked for this product.' );
 		}
-		$mode = in_array( $data['mode'] ?? '', array( 'set', 'add', 'remove' ), true ) ? $data['mode'] : 'add';
+		$mode = in_array( $data['mode'] ?? '', array( 'set', 'add', 'remove', 'opening' ), true ) ? $data['mode'] : 'add';
+		// "opening": stock the shop already had (not bought now, not a gain) — booked to opening
+		// balance equity like a product's opening stock, so it never shows up as profit.
+		$opening = 'opening' === $mode;
+		if ( $opening ) {
+			$mode = 'add';
+		}
 		try {
 			$qty = Decimal::of( $data['qty'] ?? 0 );
 		} catch ( \InvalidArgumentException $e ) {
@@ -243,12 +249,15 @@ final class StockService extends Service {
 		}
 		$date   = Text::date( $data['date'] ?? null ) ?? $this->today( $ctx );
 		$reason = Text::line( $data['reason'] ?? '', 191 );
+		if ( '' === $reason && $opening ) {
+			$reason = 'Stock already in hand';
+		}
 		if ( '' === $reason ) {
 			throw ValidationException::field( 'reason', 'Please give a reason for the adjustment.' );
 		}
 
 		return $this->db->transaction(
-			function () use ( $ctx, $product, $product_id, $variant_id, $mode, $qty, $data, $date, $reason ) {
+			function () use ( $ctx, $product, $product_id, $variant_id, $mode, $qty, $data, $date, $reason, $opening ) {
 				$current = $this->onHand( $ctx, $product_id, $variant_id );
 				$delta   = 'set' === $mode ? $qty - $current : ( 'add' === $mode ? $qty : -$qty );
 				if ( 0 === $delta ) {
@@ -273,7 +282,7 @@ final class StockService extends Service {
 					$this->in( $ctx, array( 'product_id' => $product_id, 'variant_id' => $variant_id, 'qty' => $delta, 'value' => $value ), $meta );
 					$lines = array(
 						array( 'account' => 'inventory', 'debit' => $value ),
-						array( 'account' => 'inventory_adjustment', 'credit' => $value ),
+						array( 'account' => $opening ? 'opening_balance' : 'inventory_adjustment', 'credit' => $value ),
 					);
 				} else {
 					$res   = $this->out( $ctx, array( 'product_id' => $product_id, 'variant_id' => $variant_id, 'qty' => -$delta ), $meta );

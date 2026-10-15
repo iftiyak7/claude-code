@@ -13,6 +13,7 @@ import { t } from '../core/i18n.js';
 import { money, qty as fmtQty, dec, str, mul, places } from '../core/format.js';
 import { combobox, modal, toast, showError, input, field, confirmDialog, empty, spinner, money_input } from '../core/ui.js';
 import { icon } from '../core/icons.js';
+import { whatsappUrl } from '../core/remind.js';
 import { onScan, scanWithCamera, cameraSupported } from '../core/scanner.js';
 import { printSale, openPrint } from '../core/printer.js';
 import { cacheGet, queueSale, refreshSnapshot } from '../core/offline.js';
@@ -550,9 +551,24 @@ export default async function pos(el) {
       actions: [
         h('button', { class: 'btn', type: 'button', onclick: () => printSale(sale) }, icon('printer', 16), t('Receipt')),
         h('button', { class: 'btn', type: 'button', onclick: () => openPrint('sale', sale.id, { paper: 'a4' }) }, t('A4 invoice')),
+        sale.customer?.phone ? h('a', { class: 'btn wa-btn', href: whatsappUrl(sale.customer.phone, billText(sale)), target: '_blank', rel: 'noopener' }, t('Send bill on WhatsApp')) : null,
         h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, t('New sale')),
       ],
     });
+  }
+
+  /** Short bill for WhatsApp: items, total, paid and due. */
+  function billText(sale) {
+    const shop = state.business?.name || '';
+    const lines = (sale.items || []).map((i) => `• ${i.name} × ${fmtQty(i.qty)} = ${money(i.total ?? i.net_amount ?? 0)}`);
+    return [
+      `${shop} — ${t('Invoice')} ${sale.number}`,
+      ...lines,
+      `${t('Total')}: ${money(sale.total)}`,
+      `${t('Paid')}: ${money(sale.paid_amount)}`,
+      Number(sale.due_amount) > 0 ? `${t('Due')}: ${money(sale.due_amount)}` : null,
+      t('Thank you for shopping with us!'),
+    ].filter(Boolean).join('\n');
   }
 
   function reset(clearHeld = true) {

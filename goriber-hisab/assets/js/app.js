@@ -95,6 +95,20 @@ route('/subscription', v('subscription'));
 const app = document.getElementById('app');
 let main;
 
+// Phones: while typing, hide the bottom menu and keep the field in view above the Save bar.
+const typing = (el) => el && el.matches?.('input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select, [contenteditable]');
+let kbTimer;
+document.addEventListener('focusin', (e) => {
+  if (!typing(e.target) || window.innerWidth >= 1024) return;
+  clearTimeout(kbTimer);
+  document.body.classList.add('kb-open');
+  setTimeout(() => { if (document.activeElement === e.target) e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 350);
+});
+document.addEventListener('focusout', () => {
+  clearTimeout(kbTimer);
+  kbTimer = setTimeout(() => { if (!typing(document.activeElement)) document.body.classList.remove('kb-open'); }, 150);
+});
+
 // Logging out forgets the data saved on this device for offline use.
 document.addEventListener('click', (e) => {
   const a = e.target.closest?.('a[href]');
