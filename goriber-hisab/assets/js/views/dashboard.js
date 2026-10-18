@@ -130,10 +130,10 @@ export default async function dashboard(el) {
       can('purchases.create') ? h('a', { class: 'btn btn-sm', href: '#/purchases/new' }, t('Buy stock')) : null) : null;
 
     // Stock lights: red = order now, yellow = getting low, green = fine.
-    const lightsBox = show('stock') && (can('inventory.view') || can('products.view')) ? card(null) : null;
+    const lightsBox = show('stock') && (can('inventory.view') || can('products.view')) ? h('div', { class: 'card lights-card' }) : null;
     if (lightsBox) {
       api.get('stock/lights', { limit: 8 }).then((L) => {
-        const warn = L.items.filter((p) => p.level !== 'green').slice(0, 6);
+        const warn = L.items.filter((p) => p.level !== 'green').slice(0, 3);
         mount(lightsBox, h('div', { class: 'card-head' }, h('h3', { class: 'card-title' }, t('Stock status')), h('a', { class: 'btn btn-sm', href: '#/stock-status' }, t('See all'))),
           lightCounts(L),
           warn.length ? h('ul', { class: 'list light-list' }, warn.map(lightRow)) : h('p', { class: 'ok-text small' }, t('All products have enough stock.')));
@@ -141,9 +141,9 @@ export default async function dashboard(el) {
     }
 
     mount(content,
-      lightsBox,
       h('h2', { class: 'section-title' }, t('Today')), today,
       h('h2', { class: 'section-title' }, t('{from} – {to}', { from: date(d.from), to: date(d.to) })), overview,
+      lightsBox,
       charts,
       dues || lows ? h('div', { class: 'grid-2' }, dues, lows) : null,
       h('div', { class: 'grid-2' }, top, recent));

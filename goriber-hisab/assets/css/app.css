@@ -847,3 +847,18 @@ html.own-pull, html.own-pull body { overscroll-behavior-y: contain; }
 :root[data-theme="dark"] .lq-red { color: #f87171; } :root[data-theme="dark"] .lq-yellow { color: #fbbf24; } :root[data-theme="dark"] .lq-green { color: #4ade80; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lq-red { color: #f87171; } :root:not([data-theme="light"]) .lq-yellow { color: #fbbf24; } :root:not([data-theme="light"]) .lq-green { color: #4ade80; } }
 .pill > .light.light { width: 10px; height: 10px; min-width: 0; padding: 0; margin: 0 2px 0 0; border-radius: 50%; }
+/* Dashboard: compact stock lights */
+.lights-card { padding: 12px 14px; margin: 14px 0; }
+.lights-card .card-head { margin-bottom: 8px; }
+.lights-card .card-title { font-size: .95rem; }
+.lights-card .light-counts { display: flex; flex-wrap: wrap; gap: 6px; }
+.lights-card .light-count { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; }
+.lights-card .light-count b { font-size: 1rem; }
+.lights-card .light-count span { font-size: .8rem; font-weight: 500; }
+.lights-card .light-count small { display: none; }
+.lights-card .light { width: 10px; height: 10px; }
+.lights-card .light-list { margin-top: 6px; }
+.lights-card .list.light-list > li { padding: 4px 2px; min-height: 0; font-size: .88rem; }
+.lights-card .list.light-list > li > a { padding: 6px 2px; min-height: 0; }
+.lights-card .light-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: 20px; }
+.lights-card .list.light-list > li:last-child { border-bottom: 1px solid var(--border); }
