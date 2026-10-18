@@ -373,4 +373,47 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertSame( 2, $all['items'][1]['invoices'] );
 		$this->assertSame( array( 'Never Bought' ), $name( $c->list( $this->ctx, 'customer', array( 'inactive_days' => '30' ) ) ) );
 	}
+
+	public function testMergeOrdersAndAddProducts(): void {
+		$saree  = $this->product( 'Saree', '500', '300', '20' );
+		$scarf  = $this->product( 'Scarf', '200', '100', '20' );
+		$morning = $this->order( $saree, array( 'advance' => '100' ) );          // 2 × 500 - 20 + 70
+		$evening = $this->order( $scarf, array( 'phone' => '+8801712345678' ) ); // same number, other format
+		$this->assertSame( array( $evening['id'] ), array_column( $this->k->orders->siblings( $this->ctx, $morning['id'] ), 'id' ) );
+
+		// Both pending: one order, delivery charged once.
+		$m = $this->k->orders->merge( $this->ctx, $morning['id'], $evening['id'] );
+		$this->assertSame( 2, count( $m['items'] ) );
+		$this->assertMoney( '40', $m['discount'] );
+		$this->assertMoney( '70', $m['delivery_charge'] );
+		$this->assertMoney( '2030', $m['total'] ); // 2×500 + 2×500 - 40 + 70
+		$this->assertSame( 'cancelled', $this->k->orders->get( $this->ctx, $evening['id'] )['status'] );
+
+		// Confirmed order: add products → its sale and stock follow.
+		$c = $this->k->orders->confirm( $this->ctx, $m['id'], array() );
+		$this->assertSame( '18.0000', $this->qty( $saree ) );
+		$c = $this->k->orders->addItems( $this->ctx, $c['id'], array( array( 'product_id' => $saree, 'qty' => '1', 'unit_price' => '500' ) ) );
+		$this->assertSame( '17.0000', $this->qty( $saree ) );
+		$this->assertMoney( '2530', $c['total'] );
+		$this->assertMoney( '2430', $c['cod_amount'] ); // advance 100 kept
+		$this->assertSame( 2, count( $c['items'] ) );   // saree qty 3, not a new line
+		$this->assertMoney( '2530', $this->k->sales->get( $this->ctx, $c['sale_id'] )['total'] );
+
+		// Another confirmed order with its own advance merged in: advance moves, its stock comes back.
+		$third = $this->order( $scarf, array( 'advance' => '50', 'delivery_charge' => '70', 'discount' => '0' ) );
+		$third = $this->k->orders->confirm( $this->ctx, $third['id'], array() );
+		$this->assertSame( '16.0000', $this->qty( $scarf ) );
+		$all = $this->k->orders->merge( $this->ctx, $c['id'], $third['id'] );
+		$this->assertSame( '16.0000', $this->qty( $scarf ) ); // third's sale voided (+2), merged sale takes 2 again
+		$this->assertMoney( '3530', $all['total'] );          // + 2 scarves × 500, delivery once
+		$this->assertMoney( '150', $all['advance'] );
+		$this->assertMoney( '3380', $all['cod_amount'] );
+		$this->assertSame( 2, count( $all['items'] ) );
+		$this->assertSame( 'void', $this->k->sales->get( $this->ctx, $third['sale_id'] )['status'] );
+		$this->assertBooksBalanced( 'merge' );
+
+		$shipped = $this->k->orders->advance( $this->ctx, $this->order( $saree )['id'], 'shipped', array( 'courier' => 'redx' ) );
+		$this->assertThrows( ConflictException::class, fn() => $this->k->orders->merge( $this->ctx, $all['id'], $shipped['id'] ) );
+		$this->assertThrows( ConflictException::class, fn() => $this->k->orders->addItems( $this->ctx, $shipped['id'], array( array( 'product_id' => $saree, 'qty' => '1' ) ) ) );
+	}
 }

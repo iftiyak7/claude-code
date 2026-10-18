@@ -55,7 +55,7 @@ export default async function contacts(el, params, query) {
     fetch: (q) => api.get(plural, q),
     rowHref: (r) => `/${plural}/${r.id}`,
     columns: [
-      { label: t('Name'), render: (r) => h('span', {}, h('strong', {}, r.name), r.company ? h('small', { class: 'muted' }, ` ${r.company}`) : null) },
+      { label: t('Name'), render: (r) => h('span', { class: 'name-cell' }, avatar(r, 32), h('span', {}, h('strong', {}, r.name), r.company ? h('small', { class: 'muted' }, ` ${r.company}`) : null)) },
       { label: t('ID'), hide: 'sm', key: 'code' },
       { label: t('Phone'), render: (r) => (r.phone ? h('span', { class: 'phone-cell' }, r.phone,
         h('a', { class: 'wa-mini', href: whatsappUrl(r.phone, ''), target: '_blank', rel: 'noopener', title: 'WhatsApp', 'aria-label': 'WhatsApp', onclick: (e) => e.stopPropagation() }, waIcon())) : '—') },
@@ -96,6 +96,25 @@ async function profile(el, type, id, query) {
   });
 
   const sm = c.summary;
+  const canEdit = can(`${plural}.edit`);
+  const photoInput = h('input', { type: 'file', accept: 'image/*', hidden: true });
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    try {
+      const up = await api.upload(await shrinkImage(file), 'contact');
+      await api.put(`${plural}/${id}`, { image_id: up.id });
+      toast(t('Photo saved')); reload();
+    } catch (err) { showError(err); }
+  });
+  p.body.append(h('div', { class: 'profile-head' },
+    h('button', { class: 'avatar-btn', type: 'button', title: canEdit ? t('Change photo') : '', disabled: !canEdit, onclick: () => photoInput.click() },
+      avatar(c, 72, true), canEdit ? h('span', { class: 'avatar-cam' }, icon('camera', 14)) : null),
+    h('div', {}, h('strong', { class: 'profile-name' }, c.name),
+      canEdit ? h('div', { class: 'row wrap' },
+        h('button', { class: 'btn btn-sm', type: 'button', onclick: () => photoInput.click() }, icon('camera', 14), c.image_id ? t('Change photo') : t('Add photo')),
+        c.image_id ? h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => { try { await api.put(`${plural}/${id}`, { image_id: 0 }); reload(); } catch (err) { showError(err); } } }, t('Remove photo')) : null) : null),
+    photoInput));
   if (c.phone) {
     p.body.append(h('div', { class: 'contact-strip' },
       h('span', { class: 'muted' }, c.phone),
@@ -296,4 +315,28 @@ async function fullHistory(root, id) {
     ], H.orders)) : null,
     card(t('Every purchase'), h('div', { class: 'row wrap hist-tools' }, search, filter), list));
   paintList();
+}
+
+/** Photo, or the initials on a colour picked from the name. */
+function avatar(c, size = 36, large = false) {
+  const url = large ? (c.photo_url || c.image_url) : c.image_url;
+  if (url) return h('img', { class: 'avatar', src: url, alt: '', width: size, height: size, loading: 'lazy', style: `width:${size}px;height:${size}px` });
+  const initials = String(c.name || '?').trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] || '').join('').toUpperCase();
+  let hue = 0;
+  for (const ch of String(c.name || '')) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+  return h('span', { class: 'avatar', style: `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.38)}px;background:hsl(${hue} 55% 92%);color:hsl(${hue} 55% 30%)` }, initials);
+}
+
+/** Phone photos are big: resize to at most 800px before uploading. */
+async function shrinkImage(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 400 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 800 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+    return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+  } catch { return file; }
 }

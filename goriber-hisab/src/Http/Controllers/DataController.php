@@ -62,8 +62,9 @@ final class DataController extends Controller {
 			'logo'    => 'business.manage',
 			'product' => 'products.edit',
 			'receipt' => 'expenses.create',
+			'contact' => 'customers.edit',
 		)[ $purpose ] ?? null;
-		if ( null === $needed || ( ! $ctx->can( $needed ) && ! ( 'receipt' === $purpose && $ctx->can( 'purchases.create' ) ) && ! ( 'product' === $purpose && $ctx->can( 'products.create' ) ) ) ) {
+		if ( null === $needed || ( ! $ctx->can( $needed ) && ! ( 'receipt' === $purpose && $ctx->can( 'purchases.create' ) ) && ! ( 'product' === $purpose && $ctx->can( 'products.create' ) ) && ! ( 'contact' === $purpose && ( $ctx->can( 'customers.create' ) || $ctx->can( 'suppliers.edit' ) ) ) ) ) {
 			throw new PermissionException( 'You cannot upload this file.' );
 		}
 		$files = $request->get_file_params();
@@ -76,7 +77,7 @@ final class DataController extends Controller {
 			throw ValidationException::field( 'file', sprintf( 'File is too large (max %s).', size_format( $max ) ) );
 		}
 		$check = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'], self::MIMES );
-		if ( empty( $check['type'] ) || ( 'logo' === $purpose || 'product' === $purpose ) && ! str_starts_with( (string) $check['type'], 'image/' ) ) {
+		if ( empty( $check['type'] ) || in_array( $purpose, array( 'logo', 'product', 'contact' ), true ) && ! str_starts_with( (string) $check['type'], 'image/' ) ) {
 			throw ValidationException::field( 'file', 'Only JPG, PNG, WebP images or PDF receipts are allowed.' );
 		}
 

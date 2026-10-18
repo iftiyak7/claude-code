@@ -163,6 +163,56 @@ function riderForm(o, done) {
   });
 }
 
+/** Add more products to an order that has not gone to the courier yet. */
+function addProducts(o, done) {
+  const lines = [];
+  const list = h('div', { class: 'add-lines' });
+  const paint = () => mount(list, lines.length ? lines.map((l, i) => h('div', { class: 'row add-line' },
+    h('span', { class: 'grow' }, l.name),
+    h('input', { class: 'input input-sm', type: 'number', min: '0.001', step: 'any', value: l.qty, style: 'width:72px', 'aria-label': t('Qty'), oninput: (e) => { l.qty = e.target.value; } }),
+    h('input', { class: 'input input-sm', type: 'number', min: '0', step: 'any', value: l.unit_price, style: 'width:96px', 'aria-label': t('Price'), oninput: (e) => { l.unit_price = e.target.value; } }),
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { lines.splice(i, 1); paint(); } }, icon('x', 16)))) : h('p', { class: 'muted small' }, t('Search and pick products to add.')));
+  const push = (pr, v) => {
+    const vid = v ? v.id : 0;
+    const price = String(Number((v && Number(v.selling_price)) ? v.selling_price : pr.selling_price));
+    const same = lines.find((l) => l.product_id === pr.id && l.variant_id === vid);
+    if (same) same.qty = String(Number(same.qty) + 1); else lines.push({ product_id: pr.id, variant_id: vid, name: pr.name + (v ? ` - ${v.name}` : ''), qty: '1', unit_price: price });
+    paint();
+  };
+  const picker = combobox({
+    placeholder: t('Add product — search or scan'),
+    search: async (q) => (await api.get('products', { search: q, per_page: 12 })).items,
+    label: (x) => x.name,
+    sub: (x) => `${money(x.selling_price)}${x.track_stock ? ' · ' + t('Stock') + ' ' + fmtQty(x.stock_qty) : ''}`,
+    onPick: async (x) => {
+      picker.clear();
+      if (x.has_variants) {
+        const full = await api.get(`products/${x.id}`);
+        if (full.variants.length) {
+          const vm = modal({ title: x.name, size: 'sm', body: h('div', { class: 'variant-list' }, full.variants.map((v) => h('button', { class: 'tile', type: 'button', onclick: () => { vm.close(); push(full, v); } }, h('span', { class: 'tile-name' }, v.name), h('span', { class: 'tile-price' }, money(v.selling_price))))) });
+          return;
+        }
+      }
+      push(x, null);
+    },
+  });
+  paint();
+  const m = modal({
+    title: t('Add products to {n}', { n: o.number }), size: 'md',
+    body: h('div', { class: 'form' }, picker.el, list,
+      o.sale_id ? h('p', { class: 'muted small' }, t('The invoice, stock and amount to collect update automatically.')) : null),
+    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+      if (!lines.length) { picker.input.focus(); return; }
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        await api.post(`orders/${o.id}/items`, { items: lines.map(({ product_id, variant_id, qty, unit_price }) => ({ product_id, variant_id, qty, unit_price })) });
+        m.close(); toast(t('Products added')); done?.();
+      } catch (err) { b.disabled = false; showError(err); }
+    } }, icon('plus', 16), t('Add to order'))],
+  });
+  setTimeout(() => picker.input.focus(), 50);
+}
+
 /** The one obvious next step for an order, right in the list. */
 function nextButton(o, done) {
   if (!can('orders.manage')) return '';
@@ -202,13 +252,23 @@ async function form(el) {
   let customerId = 0;
   const known = h('div', { class: 'muted small' });
   const riskBox = h('div', { class: 'risk-slot' });
+  const openBox = h('div', { class: 'risk-slot' });
   let riskFor = '';
   const checkRisk = () => {
     const q = phone.value.replace(/[^0-9]/g, '').replace(/^88(?=01)/, '');
-    if (q.length !== 11) { riskFor = ''; mount(riskBox); return; }
+    if (q.length !== 11) { riskFor = ''; mount(riskBox); mount(openBox); return; }
     if (q === riskFor) return;
     riskFor = q;
     mount(riskBox, riskCard(q));
+    // Same customer ordered earlier today and it hasn't gone out yet? Offer to add to that order.
+    api.get('orders', { search: q, status: 'active', per_page: 3 }).then((r) => {
+      const open = (r.items || []).filter((x) => ['pending', 'confirmed', 'packed'].includes(x.status));
+      mount(openBox, open.length ? h('div', { class: 'callout merge-callout' },
+        h('strong', {}, t('This customer already has an open order')),
+        open.map((x) => h('div', { class: 'row wrap' },
+          h('span', {}, `${x.number} · ${date(x.order_date)} · ${money(x.total)}`),
+          h('a', { class: 'btn btn-sm btn-primary', href: `#/orders/${x.id}` }, t('Add products to it instead'))))) : null);
+    }).catch(() => {});
   };
 
   area.addEventListener('change', () => { delivery.value = area.value === 'inside' ? cfg.charge_inside : cfg.charge_outside; paint(); });
@@ -308,7 +368,7 @@ async function form(el) {
       h('div', { class: 'row wrap' }, fillBtn, h('small', { class: 'muted' }, cfg.ai ? t('Reads with AI (Claude); works for messy messages too.') : t('Reads phone, name, address, district and your products automatically.'))))),
     card(t('Customer'), h('div', { class: 'form-grid' },
       field(t('Phone'), phone, { required: true }),
-      h('div', { class: 'field wide' }, riskBox),
+      h('div', { class: 'field wide' }, openBox, riskBox),
       field(t('Name'), name, { required: true }),
       field(t('Address'), address, { wide: true }),
       field(t('Delivery area'), area),
@@ -356,6 +416,7 @@ async function detail(el, id) {
   const open = ['pending', 'confirmed', 'packed'].includes(o.status);
   const actions = [];
   if (m && o.status === 'pending') actions.push(h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: run(() => api.post(`orders/${id}/confirm`), t('Confirmed — stock and accounts updated')) }, icon('check', 16), t('Confirm order')));
+  if (m && open) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: () => addProducts(o, reload) }, icon('plus', 16), t('Add products')));
   if (m && o.status === 'confirmed') actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: run(() => api.post(`orders/${id}/status`, { status: 'packed' }), t('Marked packed')) }, t('Mark packed')));
   if (m && open) actions.push(h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => { try { await ship(o); reload(); } catch (err) { showError(err); } } }, icon('purchases', 16), t('Send to courier')));
   if (o.status === 'shipped' && o.courier === 'steadfast' && o.consignment_id) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: run(() => api.post(`orders/${id}/track`), t('Tracking updated')) }, t('Check delivery status')));
@@ -375,7 +436,22 @@ async function detail(el, id) {
 
   const parcel = [o.customer_name, o.phone, [o.address, o.area].filter(Boolean).join(', '), `${t('COD')}: ${dec(o.cod_amount) / 10000}`, o.note].filter(Boolean).join('\n');
   const p = page(o.number, { back: '/orders', subtitle: `${date(o.order_date)} · ${t(SOURCES[o.source] || o.source)}`, actions });
+  const mergeBox = h('div');
+  if (m && open) {
+    api.get(`orders/${id}/siblings`).then((list) => {
+      if (!list.length) return;
+      mount(mergeBox, h('div', { class: 'callout merge-callout' },
+        h('strong', {}, t('This customer has another open order')),
+        list.map((x) => h('div', { class: 'row wrap' },
+          h('a', { href: `#/orders/${x.id}` }, x.number), h('span', { class: 'muted small' }, `${date(x.order_date)} · ${money(x.total)} · ${t(STATUS[x.status]?.[1] || x.status)}`),
+          h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: async () => {
+            if (!(await confirmDialog(t('Merge {a} into this order? Products, discount and advance are added together, delivery is charged once, and {a} is cancelled.', { a: x.number }), { confirmText: t('Merge') }))) return;
+            try { await api.post(`orders/${id}/merge`, { source_id: x.id }); toast(t('Orders merged')); reload(); } catch (err) { showError(err); }
+          } }, t('Merge into this order'))))));
+    }).catch(() => {});
+  }
   p.body.append(...[
+    mergeBox,
     timeline,
     h('div', { class: 'grid-2' },
       card(t('Customer'),

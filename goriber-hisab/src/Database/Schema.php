@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.7.0';
+	public const VERSION = '1.8.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -381,6 +381,7 @@ final class Schema {
 						'balance'         => 'money',
 						'credit_limit'    => 'money',
 						'notes'           => 'text',
+						'image_id'        => 'fk',
 						'last_activity_at' => 'datetime_null',
 						'status'          => 'str:20',
 					),

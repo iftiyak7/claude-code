@@ -460,6 +460,7 @@ final class ContactService extends Service {
 			'tax_number'   => Text::line( $data['tax_number'] ?? '', 60 ),
 			'credit_limit' => Decimal::toString( $limit ),
 			'notes'        => Text::multiline( $data['notes'] ?? '' ),
+			'image_id'     => max( 0, (int) ( $data['image_id'] ?? 0 ) ),
 		);
 	}
 
@@ -483,6 +484,9 @@ final class ContactService extends Service {
 		foreach ( array( 'opening_balance', 'balance', 'credit_limit' ) as $f ) {
 			$row[ $f ] = Decimal::toString( Decimal::of( $row[ $f ] ) );
 		}
+		$row['image_id']  = (int) ( $row['image_id'] ?? 0 );
+		$row['image_url'] = $row['image_id'] && function_exists( 'wp_get_attachment_image_url' ) ? (string) wp_get_attachment_image_url( $row['image_id'], 'thumbnail' ) : '';
+		$row['photo_url'] = $row['image_id'] && function_exists( 'wp_get_attachment_image_url' ) ? (string) wp_get_attachment_image_url( $row['image_id'], 'medium' ) : '';
 		unset( $row['deleted_at'], $row['deleted_by'] );
 		return $row;
 	}

@@ -1595,5 +1595,22 @@
 "Not bought for 90 days": "৯০ দিন কেনেননি",
 "Any area": "সব এলাকা",
 "Last": "শেষ",
-"{n} found": "{n} জন পাওয়া গেছে"
+"{n} found": "{n} জন পাওয়া গেছে",
+"Add products": "পণ্য যোগ করুন",
+"This customer has another open order": "এই গ্রাহকের আরেকটি চলমান অর্ডার আছে",
+"Merge {a} into this order? Products, discount and advance are added together, delivery is charged once, and {a} is cancelled.": "{a} কি এই অর্ডারের সাথে একসাথে করবেন? পণ্য, ছাড় ও অগ্রিম যোগ হবে, ডেলিভারি চার্জ একবারই লাগবে, আর {a} বাতিল হবে।",
+"Merge": "একসাথে করুন",
+"Orders merged": "অর্ডার একসাথে করা হয়েছে",
+"Merge into this order": "এই অর্ডারে একসাথে করুন",
+"Search and pick products to add.": "যোগ করার পণ্য খুঁজে বাছুন।",
+"Add products to {n}": "{n}-এ পণ্য যোগ করুন",
+"The invoice, stock and amount to collect update automatically.": "রসিদ, স্টক ও আদায়ের টাকা নিজে থেকে আপডেট হবে।",
+"Products added": "পণ্য যোগ হয়েছে",
+"Add to order": "অর্ডারে যোগ করুন",
+"This customer already has an open order": "এই গ্রাহকের আগে থেকেই একটি চলমান অর্ডার আছে",
+"Add products to it instead": "নতুন না করে ওটাতেই যোগ করুন",
+"Photo saved": "ছবি সেভ হয়েছে",
+"Change photo": "ছবি বদলান",
+"Add photo": "ছবি দিন",
+"Remove photo": "ছবি সরান"
 }

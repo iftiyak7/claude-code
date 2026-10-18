@@ -442,6 +442,232 @@ final class OrderService extends Service {
 		return $this->get( $ctx, $id );
 	}
 
+	/* ------------------------------------------------------- Merge / add products */
+
+	private const OPEN = array( 'pending', 'confirmed', 'packed' );
+
+	/**
+	 * Other open orders (not yet with the courier) from the same phone number.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function siblings( BusinessContext $ctx, int $id ): array {
+		$ctx->authorize( 'orders.view' );
+		$row = $this->findScoped( $ctx, 'orders', $id, 'Order' );
+		if ( '' === (string) $row['phone_key'] ) {
+			return array();
+		}
+		$t = $this->db->table( 'orders' );
+		return array_map(
+			static fn( $r ) => array( 'id' => (int) $r['id'], 'number' => $r['number'], 'order_date' => $r['order_date'], 'status' => $r['status'], 'total' => Decimal::toString( Decimal::of( $r['total'] ) ), 'created_at' => $r['created_at'] ),
+			$this->db->rows(
+				"SELECT id, number, order_date, status, total, created_at FROM {$t} WHERE business_id = %d AND phone_key = %s AND id <> %d AND deleted_at IS NULL AND status IN ('pending','confirmed','packed') ORDER BY id",
+				array( $ctx->business_id, $row['phone_key'], $id )
+			)
+		);
+	}
+
+	/**
+	 * Add products to an order that has not gone to the courier yet.
+	 *
+	 * @param array<int,array<string,mixed>> $items product_id, variant_id, qty, unit_price.
+	 * @return array<string,mixed>
+	 */
+	public function addItems( BusinessContext $ctx, int $id, array $items ): array {
+		$ctx->authorize( 'orders.manage' );
+		$row = $this->findScoped( $ctx, 'orders', $id, 'Order' );
+		$this->assertOpen( $row );
+		if ( ! $items ) {
+			throw ValidationException::field( 'items', 'Add at least one product.' );
+		}
+		$order = $this->present( $ctx, $row );
+		$this->db->transaction(
+			function () use ( $ctx, $row, $order, $items ) {
+				$this->rewrite( $ctx, $row, array( 'items' => self::combine( (array) $order['items'], $items ) ) );
+				$this->audit->log( $ctx, 'update', 'order', (int) $row['id'], 'Products added to order ' . $row['number'] );
+			}
+		);
+		return $this->get( $ctx, $id );
+	}
+
+	/**
+	 * Merge two orders of the same customer into one parcel: products, discount
+	 * and advance are added up; the delivery charge is kept once. The other
+	 * order is cancelled with a note (its sale voided, its advance moved over).
+	 *
+	 * @return array<string,mixed> The merged order.
+	 */
+	public function merge( BusinessContext $ctx, int $target_id, int $source_id ): array {
+		$ctx->authorize( 'orders.manage' );
+		if ( $target_id === $source_id ) {
+			throw ValidationException::field( 'source_id', 'Choose another order.' );
+		}
+		$target = $this->findScoped( $ctx, 'orders', $target_id, 'Order' );
+		$source = $this->findScoped( $ctx, 'orders', $source_id, 'Order' );
+		$this->assertOpen( $target );
+		$this->assertOpen( $source );
+		if ( (string) $target['phone_key'] !== (string) $source['phone_key'] && (int) $target['customer_id'] !== (int) $source['customer_id'] ) {
+			throw new ConflictException( 'These orders belong to different customers.' );
+		}
+		// Keep the one that already has a sale, so payments stay where they are.
+		if ( 'pending' === $target['status'] && 'pending' !== $source['status'] ) {
+			list( $target, $source ) = array( $source, $target );
+		}
+		$t = $this->present( $ctx, $target );
+		$s = $this->present( $ctx, $source );
+		$this->db->transaction(
+			function () use ( $ctx, $target, $source, $t, $s ) {
+				$source_advance_paid = (int) $source['sale_id'] > 0;
+				$moved               = array();
+				if ( $source_advance_paid ) {
+					// Voiding the sale reverses its payments; note them so they are taken again on the merged sale.
+					$pa    = $this->db->table( 'payment_allocations' );
+					$pt    = $this->db->table( 'payments' );
+					$moved = $this->db->rows(
+						"SELECT p.account_id, a.amount, p.reference FROM {$pa} a JOIN {$pt} p ON p.id = a.payment_id
+						WHERE a.business_id = %d AND a.document_type = 'sale' AND a.document_id = %d AND p.status = 'completed'",
+						array( $ctx->business_id, (int) $source['sale_id'] )
+					);
+					$this->sales->void( $ctx, (int) $source['sale_id'], 'Merged into order ' . $target['number'] );
+				}
+				$this->db->update(
+					$this->db->table( 'orders' ),
+					array(
+						'status'     => 'cancelled',
+						'note'       => trim( $source['note'] . "\nMerged into " . $target['number'] ),
+						'updated_at' => $this->now(),
+						'updated_by' => $ctx->user_id,
+					),
+					array( 'id' => (int) $source['id'] )
+				);
+				$changes = array(
+					'items'    => self::combine( (array) $t['items'], (array) $s['items'] ),
+					'discount' => Decimal::toString( Decimal::of( $t['discount'] ) + Decimal::of( $s['discount'] ) ),
+					'advance'  => Decimal::toString( Decimal::of( $t['advance'] ) + Decimal::of( $s['advance'] ) ),
+					'note'     => trim( $t['note'] . ( '' !== trim( (string) $s['note'] ) ? "\n" . $s['note'] : '' ) . "\nMerged with " . $source['number'] ),
+				);
+				$this->rewrite( $ctx, $target, $changes );
+				// The other order's advance now pays the merged order.
+				if ( 'pending' !== $target['status'] ) {
+					if ( ! $source_advance_paid && Decimal::of( $s['advance'] ) > 0 ) {
+						$moved = array( array( 'account_id' => $this->accounts->systemId( $ctx->business_id, 'mobile' ), 'amount' => $s['advance'], 'reference' => '' ) );
+					}
+					$fresh = $this->findScoped( $ctx, 'orders', (int) $target['id'], 'Order' );
+					foreach ( $moved as $pay ) {
+						$this->payments->receive(
+							$ctx,
+							array(
+								'contact_id' => (int) $fresh['customer_id'],
+								'account_id' => (int) $pay['account_id'],
+								'amount'     => Decimal::toString( Decimal::of( $pay['amount'] ) ),
+								'reference'  => (string) $pay['reference'],
+								'note'       => 'Advance for order ' . $source['number'] . ' (merged)',
+								'sale_id'    => (int) $fresh['sale_id'],
+							)
+						);
+					}
+					if ( $moved ) {
+						$this->syncFromSale( $ctx, (int) $target['id'] );
+					}
+				}
+				$this->audit->log( $ctx, 'merge', 'order', (int) $target['id'], 'Order ' . $source['number'] . ' merged into ' . $target['number'] );
+			}
+		);
+		return $this->get( $ctx, (int) $target['id'] );
+	}
+
+	/**
+	 * @param array<string,mixed> $row Order row.
+	 */
+	private function assertOpen( array $row ): void {
+		if ( ! in_array( $row['status'], self::OPEN, true ) ) {
+			throw new ConflictException( sprintf( 'Order %s is already %s. Only orders not yet sent to the courier can be changed.', $row['number'], $row['status'] ) );
+		}
+	}
+
+	/**
+	 * Same product + variant + price adds up; anything else is a new line.
+	 *
+	 * @param array<int,array<string,mixed>> $a Lines.
+	 * @param array<int,array<string,mixed>> $b Lines to add.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private static function combine( array $a, array $b ): array {
+		$out = array();
+		foreach ( array_merge( $a, $b ) as $l ) {
+			$pid   = (int) ( $l['product_id'] ?? 0 );
+			$vid   = (int) ( $l['variant_id'] ?? 0 );
+			$price = isset( $l['unit_price'] ) && '' !== (string) $l['unit_price'] ? Decimal::toString( Decimal::of( $l['unit_price'] ) ) : '';
+			$k     = $pid . ':' . $vid . ':' . $price;
+			if ( isset( $out[ $k ] ) && '' !== $price ) {
+				$out[ $k ]['qty'] = Decimal::toString( Decimal::of( $out[ $k ]['qty'] ) + Decimal::of( $l['qty'] ?? 1 ) );
+				continue;
+			}
+			$out[ '' === $price ? $k . ':' . count( $out ) : $k ] = array(
+				'product_id' => $pid,
+				'variant_id' => $vid,
+				'qty'        => (string) ( $l['qty'] ?? '1' ),
+				'unit_price' => $price,
+			);
+		}
+		return array_map( static function ( $l ) {
+			if ( '' === $l['unit_price'] ) {
+				unset( $l['unit_price'] );
+			}
+			return $l;
+		}, array_values( $out ) );
+	}
+
+	/**
+	 * Apply new content to an order; for a confirmed order also edit its sale
+	 * (stock, accounts and payments follow).
+	 *
+	 * @param array<string,mixed> $row     Order row.
+	 * @param array<string,mixed> $changes items, discount, advance, note.
+	 */
+	private function rewrite( BusinessContext $ctx, array $row, array $changes ): void {
+		$clean = $this->validate( $ctx, array_merge( $this->present( $ctx, $row ), $changes ) );
+		$keep  = array_intersect_key( $clean, array_flip( array( 'items', 'subtotal', 'discount', 'delivery_charge', 'total', 'advance', 'cod_amount', 'note' ) ) );
+		$this->db->update( $this->db->table( 'orders' ), $keep + array( 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => (int) $row['id'] ) );
+		if ( 'pending' === $row['status'] || ! (int) $row['sale_id'] ) {
+			return;
+		}
+		$this->sales->update(
+			$ctx,
+			(int) $row['sale_id'],
+			array(
+				'items'           => array_map(
+					static fn( $l ) => array(
+						'product_id' => (int) $l['product_id'],
+						'variant_id' => (int) ( $l['variant_id'] ?? 0 ),
+						'qty'        => $l['qty'],
+						'unit_price' => $l['unit_price'],
+					),
+					Json::decode( $clean['items'] )
+				),
+				'discount_type'   => 'fixed',
+				'discount_value'  => $clean['discount'],
+				'shipping_amount' => $clean['delivery_charge'],
+			)
+		);
+		$this->syncFromSale( $ctx, (int) $row['id'] );
+	}
+
+	/** Order total / COD follow the sale after an edit. */
+	private function syncFromSale( BusinessContext $ctx, int $id ): void {
+		$row  = $this->findScoped( $ctx, 'orders', $id, 'Order' );
+		$sale = $this->sales->get( $ctx, (int) $row['sale_id'] );
+		$this->db->update(
+			$this->db->table( 'orders' ),
+			array(
+				'total'      => $sale['total'],
+				'cod_amount' => $sale['due_amount'],
+				'advance'    => Decimal::toString( Decimal::of( $sale['paid_amount'] ) ),
+			),
+			array( 'id' => $id )
+		);
+	}
+
 	/**
 	 * Move along the pipeline: packed, shipped (with courier details), delivered.
 	 *
