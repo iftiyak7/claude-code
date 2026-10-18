@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.5.0';
+	public const VERSION = '1.6.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -894,6 +894,25 @@ final class Schema {
 				'indexes' => array(
 					'unique:uuid' => array( 'uuid' ),
 					'date'        => array( 'business_id', 'move_date' ),
+				),
+			),
+
+			/* Every SMS sent through the gateway (cost tracking, troubleshooting). */
+			'sms_log'             => array(
+				'columns' => array(
+					'id'          => 'id',
+					'business_id' => 'fk',
+					'phone'       => 'str:20',
+					'message'     => 'text',
+					'ref_type'    => 'str:20',
+					'ref_id'      => 'fk',
+					'status'      => 'str:20',
+					'response'    => 'str:255',
+					'created_by'  => 'fk',
+					'created_at'  => 'datetime',
+				),
+				'indexes' => array(
+					'business' => array( 'business_id', 'created_at' ),
 				),
 			),
 

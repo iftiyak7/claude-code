@@ -99,6 +99,9 @@ final class PlatformService extends Service {
 				'fraud_key'            => '',
 				'fraud_network'        => true,
 				'team'                 => array(),
+				'sms_url'              => '',
+				'sms_key'              => '',
+				'sms_sender'           => '',
 			),
 			is_array( $stored ) ? $stored : array()
 		);
@@ -132,6 +135,19 @@ final class PlatformService extends Service {
 		// Masked keys come back unchanged from the form: keep the stored one.
 		if ( isset( $data['ai_key'] ) && ! str_contains( (string) $data['ai_key'], '•' ) ) {
 			$c['ai_key'] = trim( Text::line( $data['ai_key'], 300 ) );
+		}
+		if ( isset( $data['sms_key'] ) && ! str_contains( (string) $data['sms_key'], '•' ) ) {
+			$c['sms_key'] = trim( Text::line( $data['sms_key'], 300 ) );
+		}
+		if ( isset( $data['sms_url'] ) ) {
+			$url          = trim( (string) $data['sms_url'] );
+			$c['sms_url'] = preg_match( '#^https?://#i', $url ) && str_contains( $url, '{message}' ) && ( str_contains( $url, '{phone}' ) || str_contains( $url, '{phone_local}' ) ) ? substr( $url, 0, 500 ) : '';
+			if ( '' !== $url && '' === $c['sms_url'] ) {
+				throw ValidationException::field( 'sms_url', 'The address must start with http(s):// and contain {phone} and {message}.' );
+			}
+		}
+		if ( isset( $data['sms_sender'] ) ) {
+			$c['sms_sender'] = Text::line( $data['sms_sender'], 40 );
 		}
 		if ( isset( $data['fraud_key'] ) && ! str_contains( (string) $data['fraud_key'], '•' ) ) {
 			$c['fraud_key'] = trim( Text::line( $data['fraud_key'], 300 ) );
@@ -196,6 +212,8 @@ final class PlatformService extends Service {
 		$c['ai_key']      = '' !== $c['ai_key'] ? substr( $c['ai_key'], 0, 7 ) . str_repeat( '•', 10 ) : '';
 		$c['ai_enabled']  = '' !== $this->config()['ai_key'];
 		$c['fraud_key']   = '' !== $c['fraud_key'] ? substr( $c['fraud_key'], 0, 4 ) . str_repeat( '•', 10 ) : '';
+		$c['sms_key']     = '' !== $c['sms_key'] ? substr( $c['sms_key'], 0, 4 ) . str_repeat( '•', 10 ) : '';
+		$c['sms_presets'] = \GoriberHisab\Notifications\SmsService::PRESETS;
 		unset( $c['landing_content'] );
 		return $c;
 	}

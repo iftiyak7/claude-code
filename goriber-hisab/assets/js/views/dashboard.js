@@ -11,7 +11,7 @@ import { page, stat, card, dateRange, spinner, badge, empty, checkbox, modal } f
 import { lineChart } from '../core/chart.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
-import { whatsappUrl, smsUrl, reminderText } from '../core/remind.js';
+import { whatsappUrl, reminderText, sendReminderSms } from '../core/remind.js';
 
 const WIDGETS = [['sales', 'Sales'], ['purchases', 'Purchases'], ['expenses', 'Expenses'], ['profit', 'Profit'], ['collection', 'Collection'], ['due', 'Due'], ['stock', 'Stock'], ['cash', 'Cash & bank']];
 
@@ -161,7 +161,7 @@ async function drillDown(metric, title, range) {
           metric === 'due' && Number(it.due) > 0 ? h('small', { class: 'warn-text' }, t('Due {x}', { x: money(it.due) })) : null,
           it.note ? h('small', { class: 'muted' }, it.note) : null),
         (isDue || metric === 'due') && it.phone ? h('a', { class: 'btn btn-sm wa-btn', href: whatsappUrl(it.phone, reminderText(it.sub && !isDue ? it.sub : it.title, isDue ? it.amount : it.due)), target: '_blank', rel: 'noopener', title: t('Remind on WhatsApp') }, 'WhatsApp') : null,
-        isDue && it.phone ? h('a', { class: 'btn btn-sm', href: smsUrl(it.phone, reminderText(it.title, it.amount)), title: t('Send SMS') }, 'SMS') : null))) : empty(t('Nothing here for this period.')),
+        isDue && it.phone ? h('button', { class: 'btn btn-sm', type: 'button', title: t('Send SMS'), onclick: (e) => { e.currentTarget.disabled = true; sendReminderSms(it.phone, it.title, it.amount, it.id); } }, 'SMS') : null))) : empty(t('Nothing here for this period.')),
       r.link ? h('div', { class: 'row', style: 'margin-top:12px' }, h('button', { class: 'btn', type: 'button', onclick: () => go(r.link) }, t('See all'), ' ›')) : null);
   } catch (err) {
     mount(body, empty(err.message));

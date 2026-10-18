@@ -253,6 +253,7 @@ function settingsForm(reload) {
     card(t('AI order reading (optional)'),
       h('p', { class: 'muted small' }, t('Paste-to-fill works without this. With an Anthropic (Claude) API key, messy messages are read even better. You pay Anthropic per use.')),
       field(t('Claude API key'), input('ai_key', cfg.ai_key || '', { autocomplete: 'off', placeholder: 'sk-ant-…' }), { hint: cfg.ai_enabled ? t('Connected') : t('Get a key at console.anthropic.com') })),
+    smsCard(cfg),
     card(t('Customer fraud check'),
       h('p', { class: 'muted small' }, t('When an order is entered, the phone number is checked: how many parcels this customer received or returned. Counts from all shops on this site are always available. For history from every courier (Pathao, Steadfast, RedX, Paperfly…), connect a courier-check service such as BD Courier.')),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'fraud_network', checked: cfg.fraud_network !== false }), h('span', {}, t('Share delivery counts between shops on this site (numbers only — no names or shop details)'))),
@@ -428,4 +429,20 @@ async function manageShop(id, onChange) {
       { label: t('Period'), render: (x) => (x.period_to ? `${date(x.period_from)} – ${date(x.period_to)}` : '—') },
       { label: t('Status'), render: (x) => badge({ pending: 'partial', approved: 'paid', rejected: 'void' }[x.status], t(x.status === 'pending' ? 'Waiting' : x.status === 'approved' ? 'Approved' : 'Rejected')) },
     ], shop.payments) : h('p', { class: 'muted' }, t('No payments yet.'))));
+}
+
+/** SMS gateway for every shop on this site (thank-you SMS after a sale, due reminders). */
+function smsCard(cfg) {
+  const presets = cfg.sms_presets || {};
+  const url = input('sms_url', cfg.sms_url || '', { placeholder: 'https://…{api_key}…{phone}…{message}' });
+  const pick = select('sms_preset', [['', t('Choose your SMS company…')], ['bulksmsbd', 'BulkSMSBD'], ['alpha', 'Alpha SMS (sms.net.bd)'], ['greenweb', 'GreenWeb'], ['custom', t('Other (paste the address)')]], Object.entries(presets).find(([, v]) => v === cfg.sms_url)?.[0] || (cfg.sms_url ? 'custom' : ''));
+  pick.removeAttribute('name');
+  pick.addEventListener('change', () => { if (presets[pick.value]) url.value = presets[pick.value]; });
+  return card(t('SMS gateway'),
+    h('p', { class: 'muted small' }, t('Shops can send customers an SMS after each sale and due reminders. Buy SMS from a Bangladeshi SMS company and put its API key here. You pay the SMS company per message.')),
+    h('div', { class: 'form-grid' },
+      field(t('SMS company'), pick),
+      field(t('API key'), input('sms_key', cfg.sms_key || '', { autocomplete: 'off' })),
+      field(t('Sender ID (optional)'), input('sms_sender', cfg.sms_sender || '', { placeholder: '8809XXXXXXXX' }), { hint: t('Masking name or number given by the SMS company') }),
+      field(t('Send address'), url, { wide: true, hint: t('Filled in when you choose the company. Words: {api_key} {sender} {phone} {phone_local} {message}') })));
 }

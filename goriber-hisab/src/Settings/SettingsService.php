@@ -69,6 +69,10 @@ final class SettingsService extends Service {
 			'pos.paper'                      => '80mm',
 			'pos.show_images'                => true,
 
+			// SMS (gateway set by the site owner).
+			'sms.after_sale'                 => false,
+			'sms.sale_template'              => '',
+
 			// Numbering.
 			'numbering.sale'                 => 'INV-{SEQ:6}',
 			'numbering.purchase'             => 'PUR-{SEQ:6}',

@@ -122,8 +122,21 @@ const RENDER = {
     ]);
   },
 
-  sales(S) {
+  async sales(S) {
+    const usage = await api.get('sms/usage').catch(() => null);
+    const testPhone = input('test_phone', '', { type: 'tel', placeholder: '01XXXXXXXXX' });
+    const smsCard = card(t('SMS to customers'),
+      usage?.available
+        ? h('p', { class: 'muted small' }, t('{n} SMS sent this month', { n: usage.month }), usage.failed ? h('span', { class: 'bad-text' }, ` · ${t('{n} failed', { n: usage.failed })}`) : null)
+        : h('p', { class: 'callout small' }, t('SMS is not set up yet. The site owner adds an SMS gateway (BulkSMSBD, Alpha SMS, GreenWeb…) in Shops (clients) → Settings.')),
+      h('p', { class: 'muted small' }, t('Message words you can use: {shop} {customer} {invoice} {total} {paid} {due} {total_due}. Leave empty for the standard message.')),
+      usage?.available ? h('div', { class: 'row wrap' }, testPhone, h('button', { class: 'btn btn-sm', type: 'button', onclick: async (e) => {
+        const b = e.currentTarget; b.disabled = true;
+        try { await api.post('sms/send', { phone: testPhone.value, message: `${state.business.name}: ${t('Test SMS from Goriber Hisab')}`, ref_type: 'test' }); toast(t('SMS sent')); } catch (err) { showError(err); } finally { b.disabled = false; }
+      } }, t('Send test SMS'))) : null);
     return settingsForm(S, [
+      ['sms.after_sale', t('Send an SMS to the customer after every sale (needs the customer\'s phone)'), 'bool'],
+      ['sms.sale_template', t('SMS message (optional)'), 'textarea'],
       ['sales.default_payment_account', t('Default payment method'), 'select', { options: [['0', t('Cash')], ...state.me.payment_accounts.map((a) => [a.id, a.name])] }],
       ['sales.allow_credit_walkin', t('Allow due sales without a customer'), 'bool'],
       ['sales.enforce_credit_limit', t('Enforce customer credit limits'), 'bool'],
@@ -131,7 +144,7 @@ const RENDER = {
       ['pos.auto_print', t('Print receipt automatically after each sale'), 'bool'],
       ['pos.paper', t('Receipt paper'), 'select', { options: [['80mm', '80mm'], ['58mm', '58mm'], ['a5', 'A5'], ['a4', 'A4']] }],
       ['pos.show_images', t('Show product images in POS'), 'bool'],
-    ]);
+    ], { after: smsCard });
   },
 
   async tax(S) {

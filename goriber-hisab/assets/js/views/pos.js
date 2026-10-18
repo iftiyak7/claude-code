@@ -560,6 +560,7 @@ export default async function pos(el) {
     reset();
     refreshSnapshot();
     loadCatalogue();
+    const small = (label, ic, attrs) => h(attrs.href ? 'a' : 'button', { class: `done-act ${attrs.cls || ''}`, type: attrs.href ? null : 'button', ...attrs }, icon(ic, 18), h('span', {}, label));
     const m = modal({
       title: t('Sale complete'),
       size: 'sm',
@@ -567,13 +568,13 @@ export default async function pos(el) {
         icon('check', 48, 'ok-text'),
         h('h3', {}, sale.number),
         h('p', {}, money(sale.total), Number(sale.due_amount) > 0 ? h('span', { class: 'warn-text' }, ` · ${t('Due')} ${money(sale.due_amount)}`) : null),
-        sale.meta?.tendered ? h('p', { class: 'ok-text big' }, t('Change'), ': ', money(String(Math.max(0, Number(sale.meta.tendered) - Number(sale.paid_amount))))) : null),
-      actions: [
-        h('button', { class: 'btn', type: 'button', onclick: () => printSale(sale) }, icon('printer', 16), t('Receipt')),
-        h('button', { class: 'btn', type: 'button', onclick: () => openPrint('sale', sale.id, { paper: 'a4' }) }, t('A4 invoice')),
-        sale.customer?.phone ? h('a', { class: 'btn wa-btn', href: whatsappUrl(sale.customer.phone, billText(sale)), target: '_blank', rel: 'noopener' }, t('Send bill on WhatsApp')) : null,
-        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, t('New sale')),
-      ],
+        sale.meta?.tendered ? h('p', { class: 'ok-text big' }, t('Change'), ': ', money(String(Math.max(0, Number(sale.meta.tendered) - Number(sale.paid_amount))))) : null,
+        sale.sms_sent ? h('p', { class: 'muted small' }, icon('check', 14), ' ', t('SMS sent to the customer')) : null,
+        h('div', { class: 'done-acts' },
+          small(t('Receipt'), 'printer', { onclick: () => printSale(sale) }),
+          small(t('A4'), 'sales', { onclick: () => openPrint('sale', sale.id, { paper: 'a4' }) }),
+          sale.customer?.phone ? small('WhatsApp', 'send', { href: whatsappUrl(sale.customer.phone, billText(sale)), target: '_blank', rel: 'noopener', cls: 'wa' }) : null)),
+      actions: [h('button', { class: 'btn btn-primary btn-lg done-new', type: 'button', onclick: () => m.close() }, icon('plus', 18), t('New sale'))],
     });
   }
 

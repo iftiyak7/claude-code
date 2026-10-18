@@ -284,4 +284,34 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertSame( 'Out for delivery', $board['on_the_road'][0]['courier_status'] );
 		$this->assertSame( array( 'checked' => 0, 'delivered' => 0, 'errors' => 0 ), $this->k->orders->refreshAll( $this->ctx ) );
 	}
+
+	public function testSmsAfterSale(): void {
+		$p    = $this->product( 'Honey', '300', '200', '20' );
+		$cust = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Karim', 'phone' => '01712345678' ) )['id'];
+		$sale = fn() => $this->k->sales->get( $this->ctx, $this->k->sales->create( $this->ctx, array( 'customer_id' => $cust, 'items' => array( array( 'product_id' => $p, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '250' ) ) ) )['id'] );
+
+		// Off by default / no gateway: nothing is sent.
+		$this->assertFalse( $this->k->sms->afterSale( $this->ctx, $sale() ) );
+		$urls = array();
+		$this->k->setHttp( function ( $m, $url ) use ( &$urls ) { $urls[] = $url; return array( 200, '{"response_code":202}' ); } );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->platform->saveConfig( array( 'sms_url' => 'https://x.test/send?to={phone}' ) ) );
+		$this->k->platform->saveConfig( array( 'sms_url' => \GoriberHisab\Notifications\SmsService::PRESETS['bulksmsbd'], 'sms_key' => 'KEY1', 'sms_sender' => '8809600' ) );
+		$this->assertFalse( $this->k->sms->afterSale( $this->ctx, $sale() ), 'shop has not turned it on' );
+
+		$this->k->settings->update( $this->ctx, array( 'sms.after_sale' => true, 'general.language' => 'bn' ) );
+		$this->assertTrue( $this->k->sms->afterSale( $this->ctx, $sale() ) );
+		$this->assertSame( 1, count( $urls ) );
+		$this->assertTrue( str_contains( $urls[0], 'number=8801712345678' ) && str_contains( $urls[0], 'api_key=KEY1' ) && str_contains( $urls[0], 'senderid=8809600' ) );
+		$msg = rawurldecode( explode( '&message=', $urls[0] )[1] );
+		$this->assertTrue( str_contains( $msg, 'ধন্যবাদ Karim' ) && str_contains( $msg, 'মোট Tk 300' ) && str_contains( $msg, 'মোট বাকি Tk 150' ), $msg );
+
+		// Gateway refuses: logged as failed, sale unaffected.
+		$this->k->setHttp( fn() => array( 200, '{"error":"invalid api key"}' ) );
+		$this->assertFalse( $this->k->sms->afterSale( $this->ctx, $sale() ) );
+		$u = $this->k->sms->usage( $this->ctx );
+		$this->assertSame( 1, $u['month'] );
+		$this->assertSame( 1, $u['failed'] );
+		$this->assertThrows( ValidationException::class, fn() => $this->k->sms->send( $this->ctx, '123', 'Hi' ) );
+		$this->assertSame( 'KEY1••••••••••', $this->k->platform->adminConfig()['sms_key'] );
+	}
 }

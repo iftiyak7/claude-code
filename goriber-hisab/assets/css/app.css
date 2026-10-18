@@ -718,3 +718,20 @@ button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .cash-action.k-owner_out .quick-icon, .cash-action.k-cash_out .quick-icon { background: var(--bad-bg); color: var(--bad); }
 .cash-action.k-count .quick-icon { background: var(--warn-bg); color: var(--warn); }
 .theme-btn { min-width: 34px; width: 34px; padding: 0; font-size: 1.05rem; line-height: 1; }
+
+/* POS fills the screen exactly: no page scroll, the Pay bar always visible. */
+.full-screen .sub-banner { display: none; }
+body.full-screen { overflow: hidden; height: 100dvh; overscroll-behavior: none; }
+.full-screen .shell, .full-screen main { min-height: 0; height: 100dvh; }
+@media (max-width: 899px) {
+  .cart-bar { position: sticky; bottom: 0; z-index: 5; }
+}
+
+/* Sale complete: small shortcuts, one big "New sale" */
+.done-acts { display: flex; justify-content: center; gap: 8px; margin-top: 14px; width: 100%; justify-self: stretch; align-self: stretch; }
+.done-acts > * { flex: 1 1 0; max-width: 120px; }
+.done-act { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: none; }
+.done-act:hover { border-color: var(--brand); text-decoration: none; }
+.done-act.wa { color: #128c4a; }
+.done-act.wa .icon { color: #25d366; }
+.done-new { width: 100%; justify-content: center; }
