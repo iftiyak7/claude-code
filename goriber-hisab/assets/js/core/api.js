@@ -111,6 +111,8 @@ export async function request(method, path, body, params, retried = false) {
   }
   const url = endpoint(path, params);
   const offlineRead = async () => {
+    // Working offline is a feature of the Android app; the website needs internet.
+    if (!window.GoriberHisabNative) return null;
     const saved = method === 'GET' ? await savedRead(url) : null;
     if (saved) {
       state.savedDataAt = saved.at;
@@ -150,7 +152,7 @@ export async function request(method, path, body, params, retried = false) {
       errors: data?.data?.errors || {},
     });
   }
-  if (method === 'GET') {
+  if (method === 'GET' && window.GoriberHisabNative) {
     saveRead(url, data);
     state.savedDataAt = 0;
   }

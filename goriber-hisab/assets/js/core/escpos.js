@@ -40,7 +40,7 @@ export class EscPos {
   pair(left, right) {
     left = String(left); right = String(right);
     const ascii = /^[\x20-\x7e]*$/.test(left + right);
-    if (!ascii) return this.line(`${left}  ${right}`);
+    if (!ascii) return this.image(textBitmap(left, this.dots, this.boldOn, right));
     const space = this.cols - right.length;
     if (left.length > space - 1) {
       this.line(left.slice(0, this.cols));
@@ -77,8 +77,8 @@ export class EscPos {
   encode() { return new Uint8Array(this.bytes); }
 }
 
-/** Render a line of any-script text into a 1-bit bitmap. */
-function textBitmap(str, width, bold) {
+/** Render a line of any-script text (optionally with right-aligned text) into a 1-bit bitmap. */
+function textBitmap(str, width, bold, right = '') {
   const canvas = document.createElement('canvas');
   const size = 24;
   canvas.width = width;
@@ -89,7 +89,15 @@ function textBitmap(str, width, bold) {
   c.fillStyle = '#000';
   c.font = `${bold ? 'bold ' : ''}${size}px "Noto Sans Bengali", system-ui, sans-serif`;
   c.textBaseline = 'top';
-  c.fillText(str, 0, 4, width);
+  if (right) {
+    const rw = Math.min(c.measureText(right).width, width * 0.6);
+    c.textAlign = 'right';
+    c.fillText(right, width, 4, rw);
+    c.textAlign = 'left';
+    c.fillText(str, 0, 4, Math.max(40, width - rw - 12));
+  } else {
+    c.fillText(str, 0, 4, width);
+  }
   const img = c.getImageData(0, 0, canvas.width, canvas.height).data;
   const data = new Uint8Array(canvas.width * canvas.height);
   for (let i = 0; i < data.length; i++) data[i] = img[i * 4] < 128 ? 1 : 0;

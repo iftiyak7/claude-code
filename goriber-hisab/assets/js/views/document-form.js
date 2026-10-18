@@ -177,9 +177,20 @@ export default async function documentForm(el, params) {
   const submitBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, icon('check'), editing ? t('Save changes') : isSale ? t('Save sale') : t('Save purchase'));
   const draftBtn = draftAllowed && !isSale ? h('button', { class: 'btn', type: 'button', onclick: () => save('draft') }, t('Save as draft')) : null;
 
+  // Sales: who sold it.
+  const sellerSel = isSale ? h('select', { class: 'input', name: 'salesperson_id' }, h('option', { value: '' }, state.me.user.name)) : null;
+  if (sellerSel) {
+    api.get('staff').then((staff) => {
+      if (!Array.isArray(staff) || !staff.length) return;
+      mount(sellerSel, staff.map((u) => h('option', { value: u.id }, u.name)));
+      sellerSel.value = String(existing?.salesperson_id || state.me.user.id);
+    }).catch(() => {});
+  }
+
   mount(form,
     card(null, h('div', { class: 'form-grid' },
       partyBox,
+      sellerSel ? field(t('Sold by'), sellerSel) : null,
       field(t('Date'), dateInput),
       field(t('Due date'), dueInput),
       supplierInv ? field(t('Supplier invoice no.'), supplierInv) : null,
@@ -205,6 +216,7 @@ export default async function documentForm(el, params) {
     const body = {
       [isSale ? 'customer_id' : 'supplier_id']: doc.party?.id || 0,
       [isSale ? 'sale_date' : 'purchase_date']: dateInput.value,
+      ...(sellerSel && sellerSel.value ? { salesperson_id: Number(sellerSel.value) } : {}),
       due_date: dueInput.value,
       notes: notes.value,
       discount_type: discType.value,

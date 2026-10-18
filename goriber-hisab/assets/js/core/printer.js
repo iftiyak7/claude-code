@@ -128,32 +128,53 @@ export function receiptBytes(sale) {
   const s = state.settings;
   const b = state.business;
   const p = new EscPos(Number(s['printer.width']) === 58 ? 58 : 80);
+  const num = (v) => Number(v || 0);
   p.align('center').bold().size(1, 2).line(b.name).size(1, 1).bold(false);
   if (b.address) p.line(b.address.split('\n')[0]);
   if (b.phone) p.line(b.phone);
   if (b.tax_number) p.line(`${s['tax.label']}: ${b.tax_number}`);
-  p.rule().align('left');
-  p.pair(sale.number, date(sale.sale_date));
-  if (sale.customer) p.line(`${sale.customer.name}${sale.customer.phone ? ' ' + sale.customer.phone : ''}`);
+  p.rule('=').bold().line(t('Invoice').toUpperCase()).bold(false).rule('=').align('left');
+  p.pair(t('No'), sale.number);
+  const when = sale.created_at ? new Date(`${sale.created_at.replace(' ', 'T')}Z`) : null;
+  p.pair(t('Date'), `${date(sale.sale_date)}${when && !Number.isNaN(when.getTime()) ? ' ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}`);
+  if (sale.salesperson_name) p.pair(t('Sold by'), sale.salesperson_name);
+  if (sale.cashier_name && sale.cashier_name !== sale.salesperson_name) p.pair(t('Cashier'), sale.cashier_name);
+  p.pair(t('Customer'), sale.customer ? sale.customer.name : t('Walk-in'));
+  if (sale.customer?.phone) p.pair(t('Phone'), sale.customer.phone);
   p.rule();
-  for (const it of sale.items) {
-    p.line(it.name);
-    p.pair(`  ${qty(it.qty)} x ${money(it.unit_price)}`, money(it.total));
-  }
+  sale.items.forEach((it, i) => {
+    p.bold().line(`${i + 1}. ${it.name}`).bold(false);
+    p.pair(`   ${qty(it.qty)} x ${money(it.unit_price)}`, money(it.total));
+    if (num(it.discount_amount)) p.pair(`   ${t('Discount')}`, '-' + money(it.discount_amount));
+  });
   p.rule();
+  const totalQty = sale.items.reduce((a, it) => a + num(it.qty), 0);
+  p.pair(t('{n} items', { n: sale.items.length }), `${t('Qty')} ${qty(totalQty)}`);
   p.pair(t('Subtotal'), money(sale.subtotal));
-  if (Number(sale.discount_amount)) p.pair(t('Discount'), '-' + money(sale.discount_amount));
-  if (Number(sale.tax_amount)) p.pair(s['tax.label'], money(sale.tax_amount));
-  if (Number(sale.shipping_amount)) p.pair(t('Shipping'), money(sale.shipping_amount));
-  p.bold().pair(t('TOTAL'), money(sale.total)).bold(false);
-  for (const pay of sale.payments || []) p.pair(pay.account_name, money(pay.amount));
-  if (sale.meta?.tendered && Number(sale.meta.tendered) > Number(sale.paid_amount)) {
+  if (num(sale.discount_amount)) p.pair(t('Discount'), '-' + money(sale.discount_amount));
+  if (num(sale.tax_amount)) p.pair(s['tax.label'], money(sale.tax_amount));
+  if (num(sale.shipping_amount)) p.pair(t('Delivery'), money(sale.shipping_amount));
+  p.rule('=').bold().size(1, 2).pair(t('TOTAL'), money(sale.total)).size(1, 1).bold(false).rule('=');
+  for (const pay of sale.payments || []) p.pair(`${t('Paid')} (${pay.account_name})`, money(pay.amount));
+  if (sale.meta?.tendered && num(sale.meta.tendered) > num(sale.paid_amount)) {
     p.pair(t('Cash given'), money(sale.meta.tendered));
-    p.pair(t('Change'), money(String(Number(sale.meta.tendered) - Number(sale.paid_amount))));
+    p.pair(t('Change'), money(String(num(sale.meta.tendered) - num(sale.paid_amount))));
   }
-  if (Number(sale.due_amount) > 0) p.bold().pair(t('DUE'), money(sale.due_amount)).bold(false);
+  if (num(sale.due_amount) > 0) p.bold().pair(t('Due on this bill'), money(sale.due_amount)).bold(false);
+  const balance = num(sale.customer?.balance);
+  const previous = Math.max(0, balance - num(sale.due_amount));
+  if (previous > 0) {
+    p.pair(t('Previous due'), money(String(previous)));
+    p.bold().pair(t('Total due'), money(String(balance))).bold(false);
+  }
+  const saved = sale.items.reduce((a, it) => a + num(it.discount_amount), 0) + num(sale.discount_amount);
+  if (saved > 0) p.align('center').bold().line(t('You saved {x}', { x: money(String(saved)) })).bold(false);
   p.rule().align('center').barcode(sale.number);
-  if (s['invoice.footer']) p.line(s['invoice.footer']);
+  const footer = s['invoice.footer'] === 'Thank you for your business!' ? t('Thank you for shopping with us!') : s['invoice.footer'];
+  if (footer) p.bold().line(footer).bold(false);
+  if (s['invoice.terms']) p.line(String(s['invoice.terms']).split('\n')[0]);
+  p.line(`${t('Printed')}: ${new Date().toLocaleString([], { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`);
+  p.line('Goriber Hisab');
   p.feed(3);
   if (s['printer.auto_cut']) p.cut();
   if (s['printer.open_drawer']) p.drawer();

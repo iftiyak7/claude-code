@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Goriber Hisab mark: green G with calculator, invoice and growth bars. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="20">
-        <path android:pathData="M17.5,53.5A27,27 0,1 1,46.5 53.5" android:strokeColor="#22C55E" android:strokeWidth="4.5" android:strokeLineCap="round" android:fillColor="#00000000" />
-        <path android:pathData="M17,34h6v10h-6z" android:fillColor="#84CC16" />
-        <path android:pathData="M25.5,27h6v17h-6z" android:fillColor="#22C55E" />
-        <path android:pathData="M34,21h6v23h-6z" android:fillColor="#06B6D4" />
-        <path android:pathData="M42.5,40V14" android:strokeColor="#22D3EE" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" />
-        <path android:pathData="M36.5,19.5l6,-7 6,7" android:strokeColor="#22D3EE" android:strokeWidth="4" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />
-        <path android:pathData="M32,58V46" android:strokeColor="#22C55E" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000" />
-        <path android:pathData="M32,50c-2,-6 -8,-8 -14,-7 1,6 6,10 14,7z" android:fillColor="#4ADE80" />
-        <path android:pathData="M32,50c2,-6 8,-8 14,-7 -1,6 -6,10 -14,7z" android:fillColor="#16A34A" />
+    <group android:translateX="22" android:translateY="22">
+        <path android:pathData="M6,33c0,15 13,27 33,26 -16,-2 -28,-11 -29,-25z" android:fillColor="#3CB54A" />
+        <path android:pathData="M50.5,13.5A23,23 0,1 0,49 51" android:strokeColor="#1F9D45" android:strokeWidth="7.5" android:fillColor="#00000000" />
+        <path android:pathData="M36,34.5l23,-2.5c-0.5,15 -11,25 -27,25.5 11,-3.5 17,-9.5 18.5,-17.5L34.5,41z" android:fillColor="#15508A" />
+        <path android:pathData="M22.5,14.5h10l4,4v14h-14z" android:fillColor="#FFFFFF" android:strokeColor="#0B2D5C" android:strokeWidth="1.8" android:strokeLineJoin="round" />
+        <path android:pathData="M32.5,14.5v4h4" android:strokeColor="#0B2D5C" android:strokeWidth="1.5" android:fillColor="#00000000" />
+        <path android:pathData="M25.5,19.5h5M25.5,23h8M25.5,26.5h8" android:strokeColor="#0B2D5C" android:strokeWidth="1.5" android:strokeLineCap="round" />
+        <path android:pathData="M18.7,24.5h7.6a2.2,2.2 0,0 1,2.2 2.2v13.1a2.2,2.2 0,0 1,-2.2 2.2h-7.6a2.2,2.2 0,0 1,-2.2 -2.2v-13.1a2.2,2.2 0,0 1,2.2 -2.2z" android:fillColor="#FFFFFF" android:strokeColor="#0B2D5C" android:strokeWidth="1.8" />
+        <path android:pathData="M18.8,27h7.4v3h-7.4z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M18.8,32h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M21.6,32h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M24.4,32h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M18.8,35h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M21.6,35h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M18.8,38h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M21.6,38h2v2h-2z" android:fillColor="#0B2D5C" />
+        <path android:pathData="M24.4,35h2v5h-2z" android:fillColor="#2BB34A" />
+        <path android:pathData="M40,26h3.6v6.5h-3.6z" android:fillColor="#1F9D45" />
+        <path android:pathData="M45,22h3.6v10h-3.6z" android:fillColor="#3FB83F" />
+        <path android:pathData="M50,17.5h3.6v14.5h-3.6z" android:fillColor="#5CC93A" />
     </group>
 </vector>

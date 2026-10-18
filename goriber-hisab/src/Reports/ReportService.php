@@ -320,7 +320,7 @@ final class ReportService extends Service {
 				foreach ( $this->accounts->list( $ctx, array( 'payment' => true, 'with_balance' => true ) ) as $acc ) {
 					$out['items'][] = array( 'id' => (int) $acc['id'], 'link' => '/accounting/ledger/' . $acc['id'], 'title' => $acc['name'], 'sub' => $acc['subtype'], 'amount' => $m( $acc['balance'] ) );
 				}
-				$out['link'] = '/accounting';
+				$out['link'] = '/cash';
 				break;
 
 			default:

@@ -33,11 +33,13 @@ export default async function orders(el, params, query) {
 /* ------------------------------------------------------------------ List */
 
 async function list(el, query) {
+  if (query.status === 'board') return board(el, query);
   const cfg = await courier();
   const tab = query.status || 'active';
   const p = page(t('Online orders'), {
     subtitle: t('Facebook, WhatsApp and phone orders — from order to courier to cash.'),
     actions: [
+      h('a', { class: 'btn btn-sm', href: '#/orders?status=board' }, icon('truck', 16), t('Courier dashboard')),
       can('settings.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => courierSettings(() => orders(el, {}, query)) }, icon('settings', 16), t('Courier settings')) : null,
       can('orders.manage') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/orders/new' }, icon('plus', 16), t('New order')) : null,
     ],
@@ -74,13 +76,91 @@ async function list(el, query) {
       { label: t('Order'), render: (o) => h('span', { class: 'cell-stack' }, h('strong', {}, o.number), h('small', { class: 'muted' }, `${date(o.order_date)} · ${t(SOURCES[o.source] || o.source)}`)) },
       { label: t('Customer'), render: (o) => h('span', { class: 'cell-stack' }, h('span', {}, o.customer_name), h('small', { class: 'muted' }, [o.phone, o.area].filter(Boolean).join(' · '))) },
       { label: t('COD'), align: 'right', render: (o) => h('span', { class: 'cell-stack' }, h('strong', {}, money(o.cod_amount)), Number(o.advance) ? h('small', { class: 'muted' }, `${t('Advance')} ${money(o.advance)}`) : null) },
-      { label: t('Courier'), hide: 'sm', render: (o) => (o.courier ? h('span', { class: 'cell-stack' }, t(o.courier_name), o.tracking_url ? h('a', { href: o.tracking_url, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation() }, o.tracking_code || o.consignment_id) : h('small', { class: 'muted' }, o.consignment_id || '')) : '—') },
+      { label: t('Courier'), hide: 'sm', render: (o) => (o.courier ? h('span', { class: 'cell-stack' }, t(o.courier_name), o.tracking_url ? h('a', { href: o.tracking_url, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation() }, o.tracking_code || o.consignment_id) : h('small', { class: 'muted' }, o.consignment_id || ''), o.rider_name ? h('small', { class: 'muted' }, `🛵 ${o.rider_name}`) : null) : '—') },
       { label: t('Status'), render: (o) => h('span', { class: 'cell-stack' }, statusBadge(o), o.cod_collected ? h('small', { class: 'ok-text' }, t('COD collected')) : null) },
       { label: '', render: (o) => nextButton(o, () => table.reload()) },
     ],
   });
   p.body.append(table.el);
   mount(el, p.el);
+}
+
+/* ------------------------------------------------------------------ Courier dashboard */
+
+async function board(el, query) {
+  const range = { from: query.from || '', to: query.to || '' };
+  const p = page(t('Courier dashboard'), {
+    back: '/orders',
+    subtitle: t('How your parcels are doing — with every courier, and who is delivering now.'),
+    actions: [h('button', { class: 'btn btn-sm', type: 'button', onclick: refreshAll }, icon('refresh', 16), t('Update from courier'))],
+  });
+  const body = h('div', {}, spinner());
+  const fromIn = input('from', range.from, { type: 'date', 'aria-label': t('From'), class: 'input input-sm', style: 'width:auto' });
+  const toIn = input('to', range.to, { type: 'date', 'aria-label': t('To'), class: 'input input-sm', style: 'width:auto' });
+  const apply = () => navigate(`/orders?status=board&from=${fromIn.value}&to=${toIn.value}`);
+  fromIn.addEventListener('change', apply); toIn.addEventListener('change', apply);
+  p.body.append(h('div', { class: 'row wrap', style: 'margin-bottom:12px' }, h('span', { class: 'muted small' }, t('Orders placed')), fromIn, toIn), body);
+  mount(el, p.el);
+
+  async function refreshAll(e) {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const r = await api.post('orders/refresh');
+      toast(r.checked ? t('{n} parcels checked, {d} delivered.', { n: r.checked, d: r.delivered }) : t('Nothing to update — only Steadfast parcels with a consignment ID update automatically.'), 'success', 5000);
+      load();
+    } catch (err) { showError(err); } finally { b.disabled = false; }
+  }
+
+  async function load() {
+    const b = await api.get('orders/board', range);
+    const S = b.status;
+    const pct = (n) => (n === null || n === undefined ? '—' : `${n}%`);
+    const go = (status) => () => navigate(`/orders?status=${status}`);
+    mount(body,
+      h('p', { class: 'muted small' }, `${date(b.from)} – ${date(b.to)}`),
+      h('div', { class: 'stats' },
+        stat(t('New'), String(S.pending), { tone: S.pending ? 'warn' : '', onclick: go('pending') }),
+        stat(t('Ready to ship'), String(S.confirmed + S.packed), { onclick: go('confirmed') }),
+        stat(t('With courier'), String(S.shipped), { hint: t('{n} sent today', { n: b.today.shipped }), onclick: go('shipped') }),
+        stat(t('Delivered'), String(S.delivered), { tone: 'ok', hint: t('{n} today', { n: b.today.delivered }), onclick: go('delivered') }),
+        stat(t('Returned'), String(S.returned), { tone: S.returned ? 'bad' : '', onclick: go('returned') }),
+        stat(t('Cancelled'), String(S.cancelled), { onclick: go('cancelled') }),
+        stat(t('Delivery success'), pct(b.success), { tone: b.success === null ? '' : b.success >= 80 ? 'ok' : b.success >= 60 ? 'warn' : 'bad', hint: t('Delivered ÷ (delivered + returned)') }),
+        stat(t('COD to collect'), money(b.cod_pending.amount), { tone: 'ok', hint: t('{n} orders', { n: b.cod_pending.orders }), onclick: can('orders.manage') && b.cod_pending.orders ? () => collectCod(load) : null })),
+      card(t('By courier'), b.couriers.length ? simpleTable([
+        { label: t('Courier'), render: (c) => h('strong', {}, t(c.name)) },
+        { label: t('Total'), align: 'right', render: (c) => String(c.total) },
+        { label: t('On the road'), align: 'right', render: (c) => String(c.in_transit) },
+        { label: t('Delivered'), align: 'right', render: (c) => h('span', { class: 'ok-text' }, String(c.delivered)) },
+        { label: t('Returned'), align: 'right', render: (c) => h('span', { class: c.returned ? 'bad-text' : '' }, String(c.returned)) },
+        { label: t('Cancelled'), align: 'right', render: (c) => String(c.cancelled) },
+        { label: t('Success'), align: 'right', render: (c) => h('span', { class: 'success-bar' }, h('span', { class: 'track' }, h('i', { style: `width:${c.success || 0}%` })), h('b', {}, pct(c.success))) },
+      ], b.couriers) : empty(t('No parcels sent in this period.'))),
+      card(t('On the road now'), b.on_the_road.length ? h('ul', { class: 'drill-list' }, b.on_the_road.map((o) => h('li', {},
+        h('a', { href: `#/orders/${o.id}` },
+          h('strong', {}, `${o.number} · ${o.customer_name}`),
+          h('small', {}, [t(o.courier_name), o.consignment_id, o.area].filter(Boolean).join(' · ')),
+          h('small', {}, o.rider_name ? `🛵 ${o.rider_name}${o.rider_phone ? ' · ' + o.rider_phone : ''}` : t('Rider not set')),
+          o.courier_status ? h('small', { class: 'ok-text' }, o.courier_status.replace(/_/g, ' ')) : null),
+        h('span', { class: 'amt' }, h('strong', {}, money(o.cod_amount)), h('small', { class: o.days >= 4 ? 'bad-text' : 'muted' }, t('{n} days', { n: o.days }))),
+        o.rider_phone ? h('a', { class: 'btn btn-sm', href: `tel:${o.rider_phone}` }, t('Call')) : null,
+        can('orders.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => riderForm(o, load) }, t('Rider')) : null))) : empty(t('No parcels on the road.'))));
+  }
+  load().catch((err) => mount(body, empty(err.message)));
+}
+
+/** Set who is delivering (courier rider or own delivery man) and the latest status. */
+function riderForm(o, done) {
+  const name = input('rider_name', o.rider_name || '', { placeholder: t('Rider name') });
+  const phone = input('rider_phone', o.rider_phone || '', { type: 'tel', placeholder: '01XXXXXXXXX' });
+  const st = input('courier_status', (o.courier_status || '').replace(/_/g, ' '), { placeholder: t('e.g. Out for delivery') });
+  const m = modal({
+    title: t('Rider & status'), size: 'sm',
+    body: h('div', { class: 'form' }, field(t('Rider name'), name), field(t('Rider phone'), phone), field(t('Courier status'), st)),
+    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+      try { await api.put(`orders/${o.id}`, { rider_name: name.value, rider_phone: phone.value, courier_status: st.value }); m.close(); toast(t('Saved')); done?.(); } catch (err) { showError(err); }
+    } }, t('Save'))],
+  });
 }
 
 /** The one obvious next step for an order, right in the list. */
@@ -308,6 +388,7 @@ async function detail(el, id) {
           h('dt', {}, t('Consignment')), h('dd', {}, o.consignment_id || '—'),
           h('dt', {}, t('Tracking')), h('dd', {}, o.tracking_url ? h('a', { href: o.tracking_url, target: '_blank', rel: 'noopener' }, o.tracking_code || o.consignment_id) : (o.tracking_code || '—')),
           o.courier_status ? [h('dt', {}, t('Courier status')), h('dd', {}, o.courier_status.replace(/_/g, ' '))] : null,
+          o.courier ? [h('dt', {}, t('Rider')), h('dd', {}, o.rider_name ? [o.rider_name, o.rider_phone ? [' · ', h('a', { href: `tel:${o.rider_phone}` }, o.rider_phone)] : null] : '—', can('orders.manage') && o.status === 'shipped' ? [' ', h('button', { class: 'btn btn-sm', type: 'button', onclick: () => riderForm(o, reload) }, t('Edit'))] : null)] : null,
           h('dt', {}, t('COD')), h('dd', {}, h('strong', {}, money(o.cod_amount)), o.cod_collected ? h('span', { class: 'ok-text' }, ` · ${t('COD collected')}`) : null),
           Number(o.courier_fee) ? [h('dt', {}, t('Courier charge')), h('dd', {}, money(o.courier_fee))] : null,
           o.shipped_at ? [h('dt', {}, t('Sent')), h('dd', {}, datetime(o.shipped_at))] : null,
@@ -342,6 +423,9 @@ function ship(o) {
       const track = input('tracking_code', o.tracking_code || '', { placeholder: t('Tracking code (optional)') });
       const auto = h('div', { class: 'ship-auto' });
       const manual = h('div', { class: 'form-grid' }, field(t('Consignment ID'), cons), field(t('Tracking code'), track));
+      const riderName = input('rider_name', o.rider_name || '', { placeholder: t('Optional') });
+      const riderPhone = input('rider_phone', o.rider_phone || '', { type: 'tel', placeholder: t('Optional') });
+      const rider = h('div', { class: 'form-grid' }, field(t('Rider name'), riderName), field(t('Rider phone'), riderPhone));
       const paint = () => {
         const sf = sel.value === 'steadfast' && cfg.steadfast_connected;
         manual.hidden = sf;
@@ -353,14 +437,15 @@ function ship(o) {
       let settled = false;
       const m = modal({
         title: t('Send to courier'), size: 'sm',
-        body: h('div', { class: 'form' }, field(t('Courier'), sel), auto, manual),
+        body: h('div', { class: 'form' }, field(t('Courier'), sel), auto, manual, rider),
         onClose: () => { if (!settled) resolve(null); },
         actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
           const b = e.currentTarget; b.disabled = true;
           try {
             const r = sel.value === 'steadfast' && cfg.steadfast_connected
               ? await api.post(`orders/${o.id}/steadfast`)
-              : await api.post(`orders/${o.id}/status`, { status: 'shipped', courier: sel.value, consignment_id: cons.value, tracking_code: track.value });
+              : await api.post(`orders/${o.id}/status`, { status: 'shipped', courier: sel.value, consignment_id: cons.value, tracking_code: track.value, rider_name: riderName.value, rider_phone: riderPhone.value });
+            if (r.booked && (riderName.value || riderPhone.value)) await api.put(`orders/${o.id}`, { rider_name: riderName.value, rider_phone: riderPhone.value }).catch(() => {});
             settled = true; m.close();
             toast(r.booked ? t('Booked with Steadfast · {c}', { c: r.consignment_id }) : t('Marked as sent to courier'));
             resolve(r);

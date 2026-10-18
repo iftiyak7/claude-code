@@ -699,3 +699,22 @@ button.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .mini-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .mini-list li:last-child { border-bottom: 0; }
 .mini-list a { color: inherit; }
+
+/* POS: who is selling */
+.seller-box { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; font-size: .85rem; color: var(--muted); }
+.seller-box[hidden] { display: none; }
+.seller-box .seller-select { flex: 1; min-height: 34px; padding: 4px 8px; }
+.success-bar { display: inline-flex; align-items: center; gap: 6px; }
+.success-bar .track { display: inline-block; height: 6px; width: 60px; background: var(--bad-bg); border-radius: 99px; overflow: hidden; }
+.success-bar .track i { display: block; height: 100%; background: var(--ok); border-radius: 99px; }
+
+/* ---------------------------------------------------------------- Cash & bank */
+.cash-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.cash-action { display: flex; gap: 10px; align-items: center; text-align: left; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; transition: box-shadow .15s, transform .08s; }
+.cash-action:hover { box-shadow: var(--shadow-lg); }
+.cash-action:active { transform: scale(.98); }
+.cash-action span:last-child { display: grid; gap: 2px; }
+.cash-action small { color: var(--muted); }
+.cash-action.k-owner_out .quick-icon, .cash-action.k-cash_out .quick-icon { background: var(--bad-bg); color: var(--bad); }
+.cash-action.k-count .quick-icon { background: var(--warn-bg); color: var(--warn); }
+.theme-btn { min-width: 34px; width: 34px; padding: 0; font-size: 1.05rem; line-height: 1; }

@@ -155,6 +155,21 @@ export default async function pos(el) {
   const totalsEl = h('div', { class: 'cart-totals' });
   const customerBox = h('div', { class: 'cart-customer' });
 
+  // Who is selling (staff picks themselves; remembered on this device).
+  const sellerKey = `gh.seller.${state.businessId}`;
+  const sellerSel = h('select', { class: 'input input-sm seller-select', 'aria-label': t('Sold by') });
+  const sellerBox = h('label', { class: 'seller-box', hidden: true }, icon('users', 16), h('span', {}, t('Sold by')), sellerSel);
+  sellerSel.addEventListener('change', () => { try { localStorage.setItem(sellerKey, sellerSel.value); } catch { /* private mode */ } });
+  api.get('staff').then((staff) => {
+    if (!Array.isArray(staff) || staff.length < 2) return;
+    let saved = '';
+    try { saved = localStorage.getItem(sellerKey) || ''; } catch { /* ignore */ }
+    const me = String(state.me.user.id);
+    mount(sellerSel, staff.map((u) => h('option', { value: u.id }, u.name + (String(u.id) === me ? ` (${t('me')})` : ''))));
+    sellerSel.value = staff.some((u) => String(u.id) === saved) ? saved : me;
+    sellerBox.hidden = false;
+  }).catch(() => {});
+
   const makeCustomerPicker = (onPick) => combobox({
     placeholder: t('Walk-in customer — search name/phone'),
     search: async (q) => {
@@ -309,6 +324,7 @@ export default async function pos(el) {
   function payload() {
     return {
       customer_id: cart.customer?.id || 0,
+      ...(sellerSel.value ? { salesperson_id: Number(sellerSel.value) } : {}),
       channel: 'pos',
       items: cart.lines.map((l) => ({
         product_id: l.product_id,
@@ -524,6 +540,10 @@ export default async function pos(el) {
       done(sale, print);
     } catch (err) {
       m.dialog.querySelector('.btn-primary').disabled = false;
+      if (err.offline && !cart.heldId && !window.GoriberHisabNative) {
+        showError(new Error(t('No internet. To keep selling without internet, use the Goriber Hisab Android app.')));
+        return;
+      }
       if (err.offline && !cart.heldId) {
         await queueSale(body);
         m.close();
@@ -626,6 +646,7 @@ export default async function pos(el) {
         h('strong', {}, t('Cart')),
         h('button', { class: 'btn btn-sm', type: 'button', onclick: () => openCart(false) }, icon('plus', 14), t('Add more'))),
       customerBox,
+      sellerBox,
       cartBody,
       totalsEl,
       h('div', { class: 'pos-actions' },

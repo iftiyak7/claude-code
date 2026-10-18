@@ -22,6 +22,7 @@ const NAV = [
   ['/customers', 'customers', 'Customers', ['customers.view']],
   ['/suppliers', 'suppliers', 'Suppliers', ['suppliers.view']],
   ['/payments', 'payments', 'Payments', ['payments.view']],
+  ['/cash', 'cash', 'Cash & bank', ['cash.manage']],
   ['/accounting', 'accounting', 'Accounting', ['accounting.view']],
   ['/expenses', 'expenses', 'Expenses', ['expenses.view']],
   ['/income', 'income', 'Income', ['income.view']],
@@ -75,6 +76,7 @@ route('/expenses/:id', v('finance'), { kind: 'expense' });
 route('/income', v('finance'), { kind: 'income' });
 route('/income/new', v('finance'), { kind: 'income' });
 route('/income/:id', v('finance'), { kind: 'income' });
+route('/cash', v('cash'));
 route('/accounting', v('accounting'));
 route('/accounting/journal', v('accounting'));
 route('/accounting/journal/new', v('accounting'));
@@ -139,6 +141,10 @@ async function boot() {
   }
   registerServiceWorker();
   start(render);
+  // Load every screen's code in the background so moving around is instant.
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+  idle(() => ['dashboard', 'pos', 'sales', 'products', 'contacts', 'orders', 'purchases', 'payments', 'finance', 'cash', 'reports', 'inventory', 'document-form', 'settings', 'labels']
+    .forEach((n, i) => setTimeout(() => import(`./views/${n}.js?v=${window.BZL.version}`).catch(() => {}), i * 120)));
   if (state.ctx) {
     sync();
     refreshSnapshot();
@@ -265,6 +271,7 @@ function buildShell() {
     globalSearch(),
     offline, queueBadge,
     can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm hide-sm', href: '#/pos' }, icon('plus', 16), t('New sale')) : null,
+    themeToggle(),
     langToggle(),
     bell,
     h('span', { class: 'avatar', title: state.me.user.name }, h('img', { src: state.me.user.avatar, alt: '', width: 32, height: 32, onerror: (e) => { e.target.replaceWith(icon('users')); } })));
@@ -295,6 +302,31 @@ function buildShell() {
 }
 
 /** বাংলা ⇄ English. Also remembered for the login and home pages. */
+/* Light / dark / follow the phone. Remembered on this device (and by the Android app via the cookie). */
+const THEMES = ['auto', 'light', 'dark'];
+export function applyThemeMode(mode) {
+  const root = document.documentElement;
+  if (mode === 'light' || mode === 'dark') root.dataset.theme = mode; else delete root.dataset.theme;
+  const dark = mode === 'dark' || (mode !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#0f1218' : '#0b1a2e');
+}
+function themeMode() { try { return localStorage.getItem('gh.theme') || 'auto'; } catch { return 'auto'; } }
+function themeToggle() {
+  const icons = { auto: '◐', light: '☀', dark: '☾' };
+  const labels = { auto: t('Theme: automatic'), light: t('Theme: light'), dark: t('Theme: dark') };
+  const btn = h('button', { class: 'lang-btn theme-btn', type: 'button' });
+  const paint = () => { const m = themeMode(); btn.textContent = icons[m]; btn.title = labels[m]; btn.setAttribute('aria-label', labels[m]); };
+  btn.addEventListener('click', () => {
+    const next = THEMES[(THEMES.indexOf(themeMode()) + 1) % THEMES.length];
+    try { localStorage.setItem('gh.theme', next); } catch { /* ignore */ }
+    document.cookie = `gh_theme=${next}; path=/; max-age=31536000; SameSite=Lax`;
+    applyThemeMode(next); paint();
+  });
+  paint();
+  return btn;
+}
+applyThemeMode(themeMode());
+
 function langToggle() {
   const next = currentLang() === 'bn' ? 'en' : 'bn';
   return h('button', { class: 'lang-btn', type: 'button', title: next === 'bn' ? 'বাংলায় দেখুন' : 'Switch to English', onclick: () => {
@@ -349,14 +381,9 @@ function globalSearch() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  if (window.GoriberHisabNative) {
-    // The Android app carries the whole app inside it; a service worker would only get in the way.
-    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
-    return;
-  }
-  // Service workers need a real path scope: only for the pretty /app/ URL.
-  if (window.BZL.mode === 'admin' || window.BZL.appUrl.includes('?')) return;
-  navigator.serviceWorker.register(`${window.BZL.appUrl}sw.js`, { scope: window.BZL.appUrl }).catch(() => { /* optional */ });
+  // The Android app carries the whole app inside it, and the website is online-only:
+  // no service worker anywhere (remove ones registered by older versions).
+  navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
 }
 
 // Screens ask for a fresh session (after setup, settings, business changes).

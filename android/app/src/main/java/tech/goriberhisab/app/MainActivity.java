@@ -62,7 +62,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().getDecorView().setBackgroundColor(Color.parseColor("#0B1A2E"));
+        getWindow().getDecorView().setBackgroundColor(Color.WHITE);
 
         FrameLayout root = new FrameLayout(this);
         web = new WebView(this);
@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
 
         // Native splash until the first screen is drawn: no white flash.
         FrameLayout cover = new FrameLayout(this);
-        cover.setBackgroundColor(Color.parseColor("#0B1A2E"));
+        cover.setBackgroundColor(Color.WHITE);
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_mark);
         int size = (int) (96 * getResources().getDisplayMetrics().density);

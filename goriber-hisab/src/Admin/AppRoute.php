@@ -307,7 +307,7 @@ final class AppRoute {
 <?php endif; ?>
 <link rel="icon" href="<?php echo $asset( 'img/icon.svg' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?php echo $asset( 'css/app.css' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>">
-<script>window.BZL = <?php echo wp_json_encode( $config ); ?>;</script>
+<script>window.BZL = <?php echo wp_json_encode( $config ); ?>;(function(){try{var m=localStorage.getItem('gh.theme');if(m==='dark'||m==='light')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
 <script type="module" src="<?php echo $asset( 'js/app.js' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>"></script>
 </head>
 <body>

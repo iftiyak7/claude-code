@@ -22,12 +22,19 @@ export default async function sales(el, params, query) {
       can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/pos' }, icon('pos', 16), t('POS')) : null,
     ],
   });
+  const sellerFilter = select('salesperson_id', [['', t('All staff')]], query.salesperson_id || '', { 'aria-label': t('Sold by') });
+  api.get('staff').then((staff) => {
+    if (!Array.isArray(staff) || staff.length < 2) { sellerFilter.hidden = true; return; }
+    staff.forEach((u) => sellerFilter.append(h('option', { value: u.id }, u.name)));
+    if (query.salesperson_id) sellerFilter.value = String(query.salesperson_id);
+  }).catch(() => { sellerFilter.hidden = true; });
   const table = dataTable({
     query,
     searchPlaceholder: t('Invoice no., customer or phone'),
     filters: [
       { control: select('status', [['completed', t('Completed')], ['held', t('Held')], ['void', t('Void')], ['any', t('All')]], 'completed') },
       { control: select('payment_status', [['', t('Any payment')], ['paid', t('Paid')], ['partial', t('Partial')], ['due', t('Due')]], '') },
+      { control: sellerFilter },
       { control: input('from', '', { type: 'date', 'aria-label': t('From') }) },
       { control: input('to', '', { type: 'date', 'aria-label': t('To') }) },
     ],
@@ -37,6 +44,7 @@ export default async function sales(el, params, query) {
       { label: t('Invoice'), render: (r) => h('strong', {}, r.number) },
       { label: t('Date'), render: (r) => date(r.sale_date) },
       { label: t('Customer'), render: (r) => r.customer_name || t('Walk-in') },
+      { label: t('Sold by'), hide: 'sm', render: (r) => r.salesperson_name || '—' },
       { label: t('Total'), align: 'right', render: (r) => money(r.total) },
       { label: t('Paid'), align: 'right', hide: 'sm', render: (r) => money(r.paid_amount) },
       { label: t('Due'), align: 'right', render: (r) => (Number(r.due_amount) ? h('span', { class: 'warn-text' }, money(r.due_amount)) : '—') },
@@ -70,7 +78,7 @@ async function detail(el, id) {
     } }, icon('trash', 16), t('Void')) : null,
   ];
 
-  const p = page(s.number, { back: '/sales', subtitle: `${date(s.sale_date)} · ${s.customer?.name || t('Walk-in customer')}`, actions });
+  const p = page(s.number, { back: '/sales', subtitle: [date(s.sale_date), timeOf(s.created_at), s.customer?.name || t('Walk-in customer'), s.salesperson_name ? `${t('Sold by')}: ${s.salesperson_name}` : ''].filter(Boolean).join(' · '), actions });
   const profit = s.gross_profit !== undefined && isDone;
   p.body.append(
     h('div', { class: 'stats' },
@@ -104,4 +112,11 @@ async function detail(el, id) {
     h('p', { class: 'muted small' }, t('Created {d}', { d: datetime(s.created_at) }), s.voided_at ? ` · ${t('Voided {d}', { d: datetime(s.voided_at) })}` : ''));
   mount(el, p.el);
   void navigate;
+}
+
+/** Local time ("05:38 PM") of a UTC "Y-m-d H:i:s". */
+function timeOf(utc) {
+  if (!utc) return '';
+  const d = new Date(`${utc.replace(' ', 'T')}Z`);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }

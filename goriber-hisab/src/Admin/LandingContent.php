@@ -103,7 +103,7 @@ final class LandingContent {
 					array( 'chart', 'লাভ-ক্ষতি ও রিপোর্ট', 'Profit & reports', 'আজ কত লাভ, কোন মাল বেশি চলে, খরচ কোথায় যায় — ২৫টির বেশি রিপোর্ট, এক ক্লিকে সব ডাউনলোড।', "Today's profit, best sellers, where the money goes — 25+ reports, download all in one click." ),
 					array( 'users', 'কর্মী ও অনুমতি', 'Staff & permissions', 'প্রত্যেক কর্মীর আলাদা লগইন। কে কী দেখবে, দাম বদলাতে পারবে কি না — আপনি ঠিক করবেন।', 'Separate logins for every staff member. You decide who sees what and who can change prices.' ),
 					array( 'print', 'রসিদ ও ইনভয়েস', 'Receipts & invoices', 'A4, A5 বা ৫৮/৮০ মিমি থার্মাল প্রিন্টার — ব্লুটুথ প্রিন্টারেও বাংলায় রসিদ।', 'A4, A5 or 58/80 mm thermal — Bangla receipts even on Bluetooth printers.' ),
-					array( 'wifi', 'নেট না থাকলেও চলে', 'Works offline', 'ইন্টারনেট চলে গেলেও বিক্রি থামবে না। নেট ফিরলে সব নিজে থেকেই সার্ভারে উঠে যাবে।', 'Keep selling when the internet drops. Everything syncs by itself when it is back.' ),
+					array( 'wifi', 'অ্যাপে নেট ছাড়াও চলে', 'Android app works offline', 'অ্যান্ড্রয়েড অ্যাপে ইন্টারনেট চলে গেলেও বিক্রি থামবে না। নেট ফিরলে সব নিজে থেকেই সার্ভারে উঠে যাবে।', 'In the Android app, keep selling when the internet drops. Everything syncs by itself when it is back.' ),
 				)
 			),
 			'how_kicker'    => $t( 'শুরু করা একদম সহজ', 'Getting started is easy' ),
@@ -135,7 +135,7 @@ final class LandingContent {
 					array( 'অনলাইন অর্ডার ও কুরিয়ার', 'Online orders & courier' ),
 					array( 'লাভ-ক্ষতি, ব্যালান্স শিট ও ২৫+ রিপোর্ট', 'P&L, balance sheet & 25+ reports' ),
 					array( 'কর্মীদের আলাদা লগইন', 'Separate staff logins' ),
-					array( 'রসিদ প্রিন্ট ও অফলাইন মোড', 'Receipt printing & offline mode' ),
+					array( 'রসিদ প্রিন্ট ও অ্যাপে অফলাইন মোড', 'Receipt printing & offline mode in the app' ),
 					array( 'ফোনে সাহায্য ও প্রশিক্ষণ', 'Phone support & training' ),
 				)
 			),
@@ -150,7 +150,7 @@ final class LandingContent {
 				array(
 					array( 'আমার হিসাবের তথ্য কি নিরাপদ?', 'Is my data safe?', 'হ্যাঁ। প্রতিটি দোকানের তথ্য আলাদা রাখা হয়, অন্য কেউ দেখতে পারে না। প্রতিটি হিসাবের রেকর্ড থাকে, আর আপনি নিজেও যেকোনো সময় সব ডেটা ও রিপোর্ট ডাউনলোড করে রাখতে পারবেন।', "Yes. Every shop's data is kept separate and nobody else can see it. Every change is logged, and you can download all your data and reports any time." ),
 					array( 'কম্পিউটার না থাকলে চলবে?', 'Do I need a computer?', 'না। যেকোনো স্মার্টফোনের ব্রাউজার থেকেই পুরোটা চালানো যায়। চাইলে হোম স্ক্রিনে অ্যাপের মতো বসিয়ে নিতে পারবেন।', 'No. Everything works from any smartphone browser, and you can add it to your home screen like an app.' ),
-					array( 'ইন্টারনেট চলে গেলে কী হবে?', 'What if the internet goes down?', 'বিক্রি চালিয়ে যেতে পারবেন। অফলাইনে করা বিক্রি নেট ফিরলে নিজে থেকেই জমা হয়ে যায়, একটাও হারায় না।', 'You can keep selling. Offline sales are saved and sent automatically when the connection returns.' ),
+					array( 'ইন্টারনেট চলে গেলে কী হবে?', 'What if the internet goes down?', 'অ্যান্ড্রয়েড অ্যাপে বিক্রি চালিয়ে যেতে পারবেন। অফলাইনে করা বিক্রি নেট ফিরলে নিজে থেকেই জমা হয়ে যায়, একটাও হারায় না। ওয়েবসাইটে কাজ করতে ইন্টারনেট লাগবে।', 'In the Android app you can keep selling. Offline sales are saved and sent automatically when the connection returns. The website needs internet.' ),
 					array( 'টাকা কীভাবে দেব?', 'How do I pay?', 'বিকাশ, নগদ, রকেট বা ব্যাংকে। টাকা পাঠিয়ে অ্যাপের ভেতরেই ট্রানজেকশন আইডি দিলেই মেয়াদ বেড়ে যাবে।', 'By bKash, Nagad, Rocket or bank. Send the money and enter the transaction ID inside the app to extend your plan.' ),
 					array( 'পরে বন্ধ করতে চাইলে?', 'Can I stop later?', 'যেকোনো সময়। কোনো চুক্তি নেই। বন্ধ করার আগে আপনার সব রিপোর্ট আর ডেটা ডাউনলোড করে নিতে পারবেন।', 'Any time — there is no contract. Download all your reports and data before you leave.' ),
 					array( 'চালানো শিখতে কি কষ্ট হবে?', 'Is it hard to learn?', 'না। পুরোটা বাংলায়, বড় বড় বাটন। দোকান খুলে দেওয়ার সময় আমরা ফোনে দেখিয়ে দিই।', 'No. It is fully in Bangla with large buttons, and we walk you through it on the phone.' ),
