@@ -33,6 +33,7 @@ final class ContactsController extends Controller {
 					return array( 'ok' => true );
 				}
 			),
+			$this->route( 'GET', '/customers/(?P<id>\d+)/history', fn( BusinessContext $x, array $a, $r ) => $this->k->reports->customerHistory( $x, self::id( $r ) ) ),
 			$this->route( 'GET', $base . '/(?P<id>\d+)/statement', fn( BusinessContext $x, array $a, $r ) => $c->statement( $x, $type( $r ), self::id( $r ), $a ) ),
 		);
 	}

@@ -4,7 +4,7 @@
 import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
-import { t } from '../core/i18n.js';
+import { t, cityName } from '../core/i18n.js';
 import { money, qty as fmtQty, date, datetime, dec, str, places } from '../core/format.js';
 import { page, card, stat, dataTable, badge, select, input, textarea, field, combobox, money_input, modal, toast, showError, showFieldErrors, values, confirmDialog, simpleTable, spinner, empty } from '../core/ui.js';
 import { icon } from '../core/icons.js';
@@ -188,7 +188,10 @@ async function form(el) {
   const phone = input('phone', '', { type: 'tel', inputmode: 'tel', required: true, placeholder: '01XXXXXXXXX' });
   const name = input('customer_name', '', { required: true });
   const address = textarea('address', '', { rows: 2, placeholder: t('House, road, area, thana') });
-  const area = select('zone', [['inside', t('Inside Dhaka')], ['outside', t('Outside Dhaka')]], 'inside');
+  const city = cityName(cfg.city);
+  const inside = city ? t('Inside {city}', { city }) : t('Inside the city');
+  const outside = city ? t('Outside {city}', { city }) : t('Outside the city');
+  const area = select('zone', [['inside', inside], ['outside', outside]], 'inside');
   const areaName = input('area', '', { placeholder: t('District / city') });
   const delivery = money_input('delivery_charge', cfg.charge_inside);
   const discount = money_input('discount', '');
@@ -325,7 +328,7 @@ async function form(el) {
     e.preventDefault();
     const confirmIt = e.submitter?.value === 'confirm';
     const v = values(f);
-    const body = { customer_id: customerId, customer_name: v.customer_name, phone: v.phone, address: v.address, area: [v.area, area.value === 'inside' ? t('Inside Dhaka') : ''].filter(Boolean).join(', '), source: v.source, note: v.note,
+    const body = { customer_id: customerId, customer_name: v.customer_name, phone: v.phone, address: v.address, area: v.area, zone: area.value, source: v.source, note: v.note,
       delivery_charge: v.delivery_charge, discount: v.discount, advance: v.advance, advance_account_id: v.advance_account_id, items: lines, confirm: confirmIt };
     f.querySelectorAll('[type=submit]').forEach((b) => { b.disabled = true; });
     try {
@@ -526,8 +529,9 @@ async function courierSettings(done) {
     cfg.steadfast_connected ? h('p', { class: 'ok-text' }, icon('check', 14), ' ', t('Connected')) : null,
     h('h4', {}, t('Delivery charges')),
     h('div', { class: 'form-grid' },
-      field(t('Inside Dhaka'), money_input('charge_inside', cfg.charge_inside)),
-      field(t('Outside Dhaka'), money_input('charge_outside', cfg.charge_outside)),
+      field(t('Your city / district'), input('city', cfg.city || '', { placeholder: t('e.g. Jashore') }), { hint: t('Used for "inside / outside the city" delivery charges and customer history') }),
+      field(t('Delivery charge inside the city'), money_input('charge_inside', cfg.charge_inside)),
+      field(t('Delivery charge outside the city'), money_input('charge_outside', cfg.charge_outside)),
       field(t('Default courier'), select('default_courier', Object.entries(cfg.couriers).map(([k, v]) => [k, t(v)]), cfg.default_courier))));
   const save = (test) => async () => {
     try {

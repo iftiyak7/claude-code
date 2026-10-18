@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.6.0';
+	public const VERSION = '1.7.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -838,6 +838,7 @@ final class Schema {
 						'phone_key'       => 'str:20',
 						'address'         => 'text',
 						'area'            => 'str:100',
+						'zone'            => 'str:10',
 						'items'           => 'json',
 						'subtotal'        => 'money',
 						'discount'        => 'money',

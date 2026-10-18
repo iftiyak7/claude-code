@@ -735,3 +735,27 @@ body.full-screen { overflow: hidden; height: 100dvh; overscroll-behavior: none; 
 .done-act.wa { color: #128c4a; }
 .done-act.wa .icon { color: #25d366; }
 .done-new { width: 100%; justify-content: center; }
+
+/* ---------------------------------------------------------------- Customer history */
+.phone-cell { display: inline-flex; align-items: center; gap: 6px; }
+.wa-mini { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #25d366; color: #fff; }
+.wa-mini:hover { background: #1fb457; text-decoration: none; }
+.wa-btn svg { vertical-align: -3px; }
+.contact-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.hist-tools { margin-bottom: 10px; }
+.hist-tools .input[type=search] { flex: 1 1 220px; }
+.hist-tools select { flex: 0 1 200px; }
+.hist-list { display: grid; gap: 10px; }
+.hist-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface); }
+.hist-card.void { opacity: .55; }
+.hist-card header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.hist-card p { margin: 6px 0 0; }
+.hist-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.hist-items { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .9rem; }
+.hist-items td { padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.hist-items .num { text-align: right; white-space: nowrap; padding-left: 8px; }
+.hist-card footer { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .9rem; }
+.fav-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fav-chip { display: grid; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); }
+.fav-chip:hover { text-decoration: none; outline: 1px solid var(--brand); }
+.fav-chip small { color: var(--muted); }

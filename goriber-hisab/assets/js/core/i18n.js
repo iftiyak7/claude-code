@@ -29,3 +29,12 @@ export function digits(str) {
   if (lang !== 'bn') return str;
   return String(str).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
 }
+
+/** "Jashore, যশোর" → the name that suits the current language. */
+export function cityName(raw) {
+  const names = String(raw || '').split(/[,/|]/).map((x) => x.trim()).filter(Boolean);
+  if (!names.length) return '';
+  const bangla = names.find((x) => /[\u0980-\u09FF]/.test(x));
+  const latin = names.find((x) => !/[\u0980-\u09FF]/.test(x));
+  return (lang === 'bn' ? bangla || latin : latin || bangla) || names[0];
+}

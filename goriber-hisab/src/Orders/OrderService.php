@@ -879,6 +879,19 @@ final class OrderService extends Service {
 				$out['address']       = '' !== $out['address'] ? $out['address'] : (string) $c['address'];
 			}
 		}
+		// Inside / outside the shop's own city (the readers assume Dhaka).
+		$city = trim( (string) $this->courierConfig( $ctx->business_id )['city'] );
+		if ( '' !== $city ) {
+			$where   = mb_strtolower( $out['area'] . ' ' . $out['address'] );
+			$aliases = array_filter( array_map( 'trim', preg_split( '/[,\/|]/u', mb_strtolower( $city ) ) ?: array() ) );
+			$inside  = false;
+			foreach ( $aliases as $a ) {
+				if ( '' !== $a && str_contains( $where, $a ) ) {
+					$inside = true;
+				}
+			}
+			$out['zone'] = $inside ? 'inside' : ( '' !== trim( $where ) ? 'outside' : '' );
+		}
 		return $out;
 	}
 
@@ -896,6 +909,7 @@ final class OrderService extends Service {
 			'charge_inside'       => $c['charge_inside'],
 			'charge_outside'      => $c['charge_outside'],
 			'default_courier'     => $c['default_courier'],
+			'city'                => (string) $c['city'],
 			'couriers'            => self::COURIERS,
 			'sources'             => self::SOURCES,
 			'ai'                  => $this->aiAvailable(),
@@ -923,6 +937,9 @@ final class OrderService extends Service {
 				}
 				$c[ $k ] = Decimal::toString( $v, 2 );
 			}
+		}
+		if ( isset( $data['city'] ) ) {
+			$c['city'] = Text::line( $data['city'], 60 );
 		}
 		if ( isset( $data['default_courier'] ) && isset( self::COURIERS[ $data['default_courier'] ] ) ) {
 			$c['default_courier'] = (string) $data['default_courier'];
@@ -959,6 +976,7 @@ final class OrderService extends Service {
 				'charge_inside'    => '70.00',
 				'charge_outside'   => '130.00',
 				'default_courier'  => 'steadfast',
+				'city'             => '',
 			),
 			is_array( $c ) ? $c : array()
 		);
@@ -1072,6 +1090,7 @@ final class OrderService extends Service {
 			'phone_key'       => self::phoneKey( $phone ),
 			'address'         => Text::multiline( $data['address'] ?? '', 1000 ),
 			'area'            => Text::line( $data['area'] ?? '', 100 ),
+			'zone'            => in_array( $data['zone'] ?? '', array( 'inside', 'outside' ), true ) ? $data['zone'] : '',
 			'items'           => Json::encode( $items ),
 			'subtotal'        => Decimal::toString( $subtotal ),
 			'discount'        => Decimal::toString( $discount ),

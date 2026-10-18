@@ -4,7 +4,7 @@
 import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can } from '../core/state.js';
-import { t } from '../core/i18n.js';
+import { t, cityName } from '../core/i18n.js';
 import { money, date } from '../core/format.js';
 import { page, dataTable, card, field, input, textarea, money_input, bindForm, toast, showError, badge, confirmDialog, tabs, simpleTable, checkbox, downloadText, empty, spinner } from '../core/ui.js';
 import { icon } from '../core/icons.js';
@@ -40,7 +40,8 @@ export default async function contacts(el, params, query) {
     columns: [
       { label: t('Name'), render: (r) => h('span', {}, h('strong', {}, r.name), r.company ? h('small', { class: 'muted' }, ` ${r.company}`) : null) },
       { label: t('ID'), hide: 'sm', key: 'code' },
-      { label: t('Phone'), key: 'phone' },
+      { label: t('Phone'), render: (r) => (r.phone ? h('span', { class: 'phone-cell' }, r.phone,
+        h('a', { class: 'wa-mini', href: whatsappUrl(r.phone, ''), target: '_blank', rel: 'noopener', title: 'WhatsApp', 'aria-label': 'WhatsApp', onclick: (e) => e.stopPropagation() }, waIcon())) : '—') },
       { label: isCustomer ? t('Due') : t('Payable'), align: 'right', render: (r) => (Number(r.balance) > 0 ? h('strong', { class: 'warn-text' }, money(r.balance)) : Number(r.balance) < 0 ? h('span', { class: 'ok-text' }, t('Advance {x}', { x: money(String(-Number(r.balance))) })) : '—') },
     ],
     footer: (res) => h('div', { class: 'sums' }, h('span', {}, isCustomer ? t('Total receivable') : t('Total payable'), ' ', h('strong', {}, money(res.total_balance)))),
@@ -54,7 +55,7 @@ async function profile(el, type, id, query) {
   const isCustomer = type === 'customer';
   const c = await api.get(`${plural}/${id}`);
   const reload = () => profile(el, type, id, query);
-  let tab = query.tab || 'history';
+  let tab = query.tab || (isCustomer && can('sales.view') ? 'all' : 'history');
   const tabBody = h('div');
 
   const p = page(c.name, {
@@ -73,6 +74,13 @@ async function profile(el, type, id, query) {
   });
 
   const sm = c.summary;
+  if (c.phone) {
+    p.body.append(h('div', { class: 'contact-strip' },
+      h('span', { class: 'muted' }, c.phone),
+      h('a', { class: 'btn btn-sm wa-btn', href: whatsappUrl(c.phone, ''), target: '_blank', rel: 'noopener' }, waIcon(), ' WhatsApp'),
+      h('a', { class: 'btn btn-sm', href: `tel:${c.phone}` }, t('Call')),
+      c.address ? h('span', { class: 'muted small' }, c.address) : null));
+  }
   p.body.append(
     h('div', { class: 'stats' },
       h('div', { class: `stat ${Number(c.balance) > 0 ? 'warn' : ''}` }, h('span', { class: 'stat-label' }, isCustomer ? t('Current due') : t('Current payable')), h('strong', { class: 'stat-value' }, money(c.balance))),
@@ -80,13 +88,16 @@ async function profile(el, type, id, query) {
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Total paid')), h('strong', { class: 'stat-value' }, money(sm.total_paid))),
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Returns')), h('strong', { class: 'stat-value' }, money(sm.total_returned))),
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Last activity')), h('strong', {}, sm.last_date ? date(sm.last_date) : '—'))),
-    tabs([['history', isCustomer ? t('Sales') : t('Purchases')], ['payments', t('Payments')], ['returns', t('Returns')], ['statement', t('Statement')], ['info', t('Details')]], tab, (k) => { tab = k; paint(); }),
+    tabs([...(isCustomer && can('sales.view') ? [['all', t('Full history')]] : []), ['history', isCustomer ? t('Sales') : t('Purchases')], ['payments', t('Payments')], ['returns', t('Returns')], ['statement', t('Statement')], ['info', t('Details')]], tab, (k) => { tab = k; paint(); }),
     tabBody);
   mount(el, p.el);
 
   function paint() {
-    p.body.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', ['history', 'payments', 'returns', 'statement', 'info'][i] === tab));
-    if (tab === 'history') {
+    const keys = [...(isCustomer && can('sales.view') ? ['all'] : []), 'history', 'payments', 'returns', 'statement', 'info'];
+    p.body.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', keys[i] === tab));
+    if (tab === 'all') {
+      fullHistory(tabBody, id);
+    } else if (tab === 'history') {
       const docs = isCustomer ? 'sales' : 'purchases';
       mount(tabBody, dataTable({
         fetch: (q) => api.get(docs, { ...q, [isCustomer ? 'customer_id' : 'supplier_id']: id, status: 'any' }),
@@ -185,4 +196,82 @@ async function form(el, type, id = 0) {
   const p = page(id ? t('Edit {n}', { n: c.name }) : isCustomer ? t('New customer') : t('New supplier'), { back: `/${plural}` });
   p.body.append(f);
   mount(el, p.el);
+}
+
+function waIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('fill', 'currentColor');
+  path.setAttribute('d', 'M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.6 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2s.2-1.1.2-1.2-.2-.2-.4-.3z');
+  svg.append(path);
+  return svg;
+}
+
+const SOURCE_LABEL = { facebook: 'Facebook', whatsapp: 'WhatsApp', instagram: 'Instagram', website: 'Website', phone: 'Phone call', daraz: 'Daraz', other: 'Other' };
+
+/** Everything this customer bought: when, where (shop / online, inside / outside the city), what, discounts. */
+async function fullHistory(root, id) {
+  mount(root, spinner());
+  let city = '';
+  try { city = cityName((await api.get('orders/courier')).city); } catch { /* no orders access */ }
+  const inside = city ? t('Inside {city}', { city }) : t('Inside the city');
+  const outside = city ? t('Outside {city}', { city }) : t('Outside the city');
+  const H = await api.get(`customers/${id}/history`);
+  const S = H.summary;
+  const search = h('input', { class: 'input', type: 'search', placeholder: t('Search a product or invoice…') });
+  const filter = h('select', { class: 'input', 'aria-label': t('Show') }, [['', t('All purchases')], ['shop', t('In the shop')], ['online', t('Online')], ['inside', inside], ['outside', outside], ['discount', t('With discount')], ['due', t('With due')]].map(([v, l]) => h('option', { value: v }, l)));
+  const list = h('div', { class: 'hist-list' });
+  const timeOf = (utc) => { if (!utc) return ''; const d = new Date(`${utc.replace(' ', 'T')}Z`); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+
+  const paintList = () => {
+    const q = search.value.trim().toLowerCase();
+    const f = filter.value;
+    const rows = H.sales.filter((x) => {
+      if (f === 'shop' && x.online) return false;
+      if (f === 'online' && !x.online) return false;
+      if ((f === 'inside' || f === 'outside') && x.zone !== f) return false;
+      if (f === 'discount' && !Number(x.discount)) return false;
+      if (f === 'due' && !Number(x.due)) return false;
+      return !q || x.number.toLowerCase().includes(q) || x.items.some((it) => it.name.toLowerCase().includes(q));
+    });
+    mount(list, rows.length ? rows.map((x) => h('article', { class: `hist-card ${x.status === 'void' ? 'void' : ''}` },
+      h('header', {},
+        h('div', {}, h('strong', {}, date(x.date)), ' ', h('span', { class: 'muted small' }, timeOf(x.created_at)), h('br'),
+          h('a', { href: `#/sales/${x.id}` }, x.number), x.order_number ? h('a', { class: 'muted small', href: `#/orders/${x.order_id}` }, ` · ${x.order_number}`) : null),
+        h('div', { class: 'hist-tags' },
+          h('span', { class: `badge ${x.online ? 'badge-info' : 'badge-ok'}` }, x.online ? `${t('Online')}${x.source ? ' · ' + t(SOURCE_LABEL[x.source] || x.source) : ''}` : t('In the shop')),
+          x.zone ? h('span', { class: `badge ${x.zone === 'inside' ? 'badge-ok' : 'badge-warn'}` }, x.zone === 'inside' ? inside : outside) : null,
+          x.status === 'void' ? badge('void') : null)),
+      x.area ? h('p', { class: 'muted small' }, `📍 ${x.area}`) : null,
+      h('table', { class: 'hist-items' }, h('tbody', {}, x.items.map((it) => h('tr', {},
+        h('td', {}, it.name, Number(it.returned) ? h('small', { class: 'bad-text' }, ` (${t('returned')} ${it.returned.replace(/\.?0+$/, '')})`) : null),
+        h('td', { class: 'num muted' }, `${it.qty.replace(/\.?0+$/, '')} × ${money(it.unit_price)}`),
+        h('td', { class: 'num' }, Number(it.discount) ? h('small', { class: 'ok-text' }, `-${money(it.discount)} `) : null, money(it.total)))))),
+      h('footer', {},
+        h('span', {}, t('Total'), ' ', h('strong', {}, money(x.total))),
+        Number(x.discount) ? h('span', { class: 'ok-text' }, t('Discount'), ' ', money(x.discount)) : null,
+        Number(x.delivery) ? h('span', { class: 'muted' }, t('Delivery'), ' ', money(x.delivery)) : null,
+        Number(x.due) ? h('span', { class: 'warn-text' }, t('Due'), ' ', money(x.due)) : h('span', { class: 'ok-text' }, t('Paid'))))) : empty(t('Nothing matches.')));
+  };
+  search.addEventListener('input', paintList);
+  filter.addEventListener('change', paintList);
+
+  mount(root,
+    h('div', { class: 'stats' },
+      h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Total bought')), h('strong', { class: 'stat-value' }, money(S.spent)), h('span', { class: 'stat-hint' }, t('{n} times', { n: S.visits }))),
+      h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Average bill')), h('strong', { class: 'stat-value' }, money(S.average))),
+      h('div', { class: 'stat ok' }, h('span', { class: 'stat-label' }, t('Total discount given')), h('strong', { class: 'stat-value' }, money(S.discount))),
+      h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('In the shop / online')), h('strong', { class: 'stat-value' }, `${S.shop} / ${S.online}`), S.online ? h('span', { class: 'stat-hint' }, `${inside}: ${S.inside} · ${outside}: ${S.outside}`) : null),
+      h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('First / last purchase')), h('strong', {}, S.first ? `${date(S.first)} – ${date(S.last)}` : '—'), h('span', { class: 'stat-hint' }, t('Customer since {d}', { d: date(H.customer.since) })))),
+    H.favourites.length ? card(t('Buys most often'), h('div', { class: 'fav-chips' }, H.favourites.map((f) => h('a', { class: 'fav-chip', href: `#/products/${f.product_id}` }, h('strong', {}, f.name), h('small', {}, `${f.qty.replace(/\.?0+$/, '')} · ${money(f.amount)} · ${t('{n} times', { n: f.times })}`))))) : null,
+    H.orders.length ? card(t('Online orders not yet sold'), simpleTable([
+      { label: t('Order'), render: (o) => h('a', { href: `#/orders/${o.id}` }, o.number) },
+      { label: t('Date'), render: (o) => date(o.date) },
+      { label: t('Status'), render: (o) => badge(o.status) },
+      { label: t('Area'), render: (o) => [o.zone === 'inside' ? inside : o.zone === 'outside' ? outside : '', o.area].filter(Boolean).join(' · ') || '—' },
+      { label: t('Total'), align: 'right', render: (o) => money(o.total) },
+    ], H.orders)) : null,
+    card(t('Every purchase'), h('div', { class: 'row wrap hist-tools' }, search, filter), list));
+  paintList();
 }

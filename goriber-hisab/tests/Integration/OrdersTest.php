@@ -314,4 +314,38 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertThrows( ValidationException::class, fn() => $this->k->sms->send( $this->ctx, '123', 'Hi' ) );
 		$this->assertSame( 'KEY1••••••••••', $this->k->platform->adminConfig()['sms_key'] );
 	}
+
+	public function testCustomerHistory(): void {
+		$p    = $this->product( 'Honey', '300', '200', '20' );
+		$cust = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Rahim', 'phone' => '01712345678' ) )['id'];
+		$this->k->sales->create( $this->ctx, array( 'customer_id' => $cust, 'channel' => 'pos', 'items' => array( array( 'product_id' => $p, 'qty' => '2', 'discount_type' => 'fixed', 'discount_value' => '20' ) ), 'payments' => array( array( 'amount' => '580' ) ) ) );
+		$o = $this->order( $p, array( 'customer_id' => $cust, 'zone' => 'outside', 'area' => 'Khulna' ) );
+		$this->k->orders->confirm( $this->ctx, $o['id'] );
+		$this->order( $p, array( 'customer_id' => $cust, 'zone' => 'inside' ) ); // still pending
+
+		$h = $this->k->reports->customerHistory( $this->ctx, $cust );
+		$this->assertSame( 2, $h['summary']['visits'] );
+		$this->assertSame( 1, $h['summary']['shop'] );
+		$this->assertSame( 1, $h['summary']['online'] );
+		$this->assertSame( 1, $h['summary']['outside'] );
+		$this->assertMoney( '40', $h['summary']['discount'] ); // 20 on the POS line + 20 order discount
+		$this->assertSame( 'Honey', $h['favourites'][0]['name'] );
+		$this->assertMoney( '4', $h['favourites'][0]['qty'] );
+		$online = array_values( array_filter( $h['sales'], fn( $s ) => $s['online'] ) )[0];
+		$this->assertSame( 'outside', $online['zone'] );
+		$this->assertSame( 'facebook', $online['source'] );
+		$this->assertSame( 1, count( $h['orders'] ) );
+		$this->assertSame( 'pending', $h['orders'][0]['status'] );
+	}
+
+	public function testZoneFollowsShopCity(): void {
+		$this->k->orders->saveCourierSettings( $this->ctx, array( 'city' => 'Jashore, যশোর' ) );
+		$this->assertSame( 'Jashore, যশোর', $this->k->orders->courierSettings( $this->ctx )['city'] );
+		$a = $this->k->orders->parse( $this->ctx, "Rahim\n01712345678\nHouse 4, Rail Road, Jashore", false );
+		$this->assertSame( 'inside', $a['zone'] );
+		$b = $this->k->orders->parse( $this->ctx, "Karim\n01812345678\nমিরপুর ১০, ঢাকা", false );
+		$this->assertSame( 'outside', $b['zone'] );
+		$c = $this->k->orders->parse( $this->ctx, "Jamal\n01912345678\nবকচর, যশোর", false );
+		$this->assertSame( 'inside', $c['zone'] );
+	}
 }

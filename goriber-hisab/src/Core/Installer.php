@@ -111,6 +111,15 @@ final class Installer {
 					}
 				}
 			},
+			// Delivery zone used to be written into the area text.
+			'1.7.0' => static function ( $db ): void {
+				$t = $db->table( 'orders' );
+				foreach ( $db->rows( "SELECT id, area FROM {$t} WHERE zone = ''" ) as $r ) {
+					if ( preg_match( '/inside|ভিতরে/i', (string) $r['area'] ) ) {
+						$db->update( $t, array( 'zone' => 'inside', 'area' => trim( (string) preg_replace( '/,?\\s*(Inside Dhaka|ঢাকার ভিতরে)\\s*,?/u', '', (string) $r['area'] ), ', ' ) ), array( 'id' => (int) $r['id'] ) );
+					}
+				}
+			},
 		);
 		return (array) apply_filters( 'goriber_hisab/migrations', $builtin );
 	}

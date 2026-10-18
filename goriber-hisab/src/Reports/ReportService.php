@@ -126,6 +126,140 @@ final class ReportService extends Service {
 	}
 
 	/**
+	 * Everything a customer ever bought: every item with date and time, in the
+	 * shop or online (and where it was delivered), discounts, returns and
+	 * payments — plus a summary (favourite products, average bill, …).
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function customerHistory( BusinessContext $ctx, int $customer_id ): array {
+		$ctx->authorize( 'customers.view' );
+		$ctx->authorize( 'sales.view' );
+		$s  = $this->db->table( 'sales' );
+		$i  = $this->db->table( 'sale_items' );
+		$o  = $this->db->table( 'orders' );
+		$c  = $this->db->table( 'contacts' );
+		$customer = $this->db->row( "SELECT id, name, phone, address, balance, created_at FROM {$c} WHERE id = %d AND business_id = %d AND type = 'customer'", array( $customer_id, $ctx->business_id ) );
+		if ( null === $customer ) {
+			throw new NotFoundException( 'Customer not found.' );
+		}
+		$sales = $this->db->rows(
+			"SELECT s.id, s.number, s.sale_date, s.created_at, s.channel, s.status, s.total, s.paid_amount, s.due_amount, s.return_amount, s.discount_amount, s.shipping_amount, s.salesperson_id, s.created_by,
+				o.id AS order_id, o.number AS order_number, o.source, o.zone, o.area, o.address, o.courier, o.status AS order_status
+			FROM {$s} s LEFT JOIN {$o} o ON o.sale_id = s.id AND o.business_id = s.business_id
+			WHERE s.business_id = %d AND s.customer_id = %d AND s.status IN ('completed','void')
+			ORDER BY s.sale_date DESC, s.id DESC LIMIT 500",
+			array( $ctx->business_id, $customer_id )
+		);
+		$ids   = array_map( static fn( $r ) => (int) $r['id'], $sales );
+		$items = $ids ? $this->db->rows( "SELECT sale_id, product_id, name, qty, unit_price, discount_amount, total, returned_qty FROM {$i} WHERE business_id = %d AND sale_id IN (" . implode( ',', $ids ) . ') ORDER BY sale_id, sort_order, id', array( $ctx->business_id ) ) : array();
+		$by    = array();
+		foreach ( $items as $it ) {
+			$by[ (int) $it['sale_id'] ][] = array(
+				'product_id' => (int) $it['product_id'],
+				'name'       => $it['name'],
+				'qty'        => Decimal::toString( Decimal::of( $it['qty'] ) ),
+				'unit_price' => Decimal::toString( Decimal::of( $it['unit_price'] ) ),
+				'discount'   => Decimal::toString( Decimal::of( $it['discount_amount'] ) ),
+				'total'      => Decimal::toString( Decimal::of( $it['total'] ) ),
+				'returned'   => Decimal::toString( Decimal::of( $it['returned_qty'] ) ),
+			);
+		}
+		$out      = array();
+		$spent    = 0;
+		$discount = 0;
+		$channels = array( 'shop' => 0, 'online' => 0 );
+		$zones    = array( 'inside' => 0, 'outside' => 0 );
+		$products = array();
+		$dates    = array();
+		foreach ( $sales as $r ) {
+			$sid       = (int) $r['id'];
+			$online    = 'online' === $r['channel'] || null !== $r['order_id'];
+			$line_disc = array_sum( array_map( static fn( $x ) => Decimal::of( $x['discount'] ), $by[ $sid ] ?? array() ) );
+			$disc      = $line_disc + Decimal::of( $r['discount_amount'] );
+			$void      = 'void' === $r['status'];
+			if ( ! $void ) {
+				$spent    += Decimal::of( $r['total'] ) - Decimal::of( $r['return_amount'] );
+				$discount += $disc;
+				++$channels[ $online ? 'online' : 'shop' ];
+				if ( $online && in_array( $r['zone'], array( 'inside', 'outside' ), true ) ) {
+					++$zones[ $r['zone'] ];
+				}
+				$dates[] = $r['sale_date'];
+				foreach ( $by[ $sid ] ?? array() as $x ) {
+					$k = $x['product_id'] . '|' . $x['name'];
+					if ( ! isset( $products[ $k ] ) ) {
+						$products[ $k ] = array( 'product_id' => $x['product_id'], 'name' => $x['name'], 'qty' => 0, 'amount' => 0, 'times' => 0 );
+					}
+					$products[ $k ]['qty']    += Decimal::of( $x['qty'] ) - Decimal::of( $x['returned'] );
+					$products[ $k ]['amount'] += Decimal::of( $x['total'] );
+					++$products[ $k ]['times'];
+				}
+			}
+			$out[] = array(
+				'id'           => $sid,
+				'number'       => $r['number'],
+				'date'         => $r['sale_date'],
+				'created_at'   => $r['created_at'],
+				'status'       => $r['status'],
+				'online'       => $online,
+				'source'       => (string) ( $r['source'] ?? '' ),
+				'order_id'     => (int) ( $r['order_id'] ?? 0 ),
+				'order_number' => (string) ( $r['order_number'] ?? '' ),
+				'zone'         => (string) ( $r['zone'] ?? '' ),
+				'area'         => trim( (string) ( $r['area'] ?? '' ) ),
+				'courier'      => (string) ( $r['courier'] ?? '' ),
+				'total'        => Decimal::toString( Decimal::of( $r['total'] ) ),
+				'paid'         => Decimal::toString( Decimal::of( $r['paid_amount'] ) ),
+				'due'          => Decimal::toString( Decimal::of( $r['due_amount'] ) ),
+				'returned'     => Decimal::toString( Decimal::of( $r['return_amount'] ) ),
+				'discount'     => Decimal::toString( $disc ),
+				'delivery'     => Decimal::toString( Decimal::of( $r['shipping_amount'] ) ),
+				'salesperson'  => (int) ( $r['salesperson_id'] ?: $r['created_by'] ),
+				'items'        => $by[ $sid ] ?? array(),
+			);
+		}
+		usort( $products, static fn( $a, $b ) => $b['qty'] <=> $a['qty'] );
+		$visits = count( $dates );
+		// Orders that never became a sale (cancelled before confirming, still pending).
+		$open = $this->db->rows(
+			"SELECT id, number, order_date, status, total, zone, area, source FROM {$o} WHERE business_id = %d AND customer_id = %d AND sale_id = 0 AND deleted_at IS NULL ORDER BY id DESC LIMIT 100",
+			array( $ctx->business_id, $customer_id )
+		);
+		return array(
+			'customer' => array(
+				'id'      => (int) $customer['id'],
+				'name'    => $customer['name'],
+				'phone'   => (string) $customer['phone'],
+				'address' => (string) $customer['address'],
+				'balance' => Decimal::toString( Decimal::of( $customer['balance'] ) ),
+				'since'   => substr( (string) $customer['created_at'], 0, 10 ),
+			),
+			'summary'  => array(
+				'visits'         => $visits,
+				'spent'          => Decimal::toString( $spent ),
+				'average'        => Decimal::toString( $visits ? intdiv( $spent, $visits ) : 0 ),
+				'discount'       => Decimal::toString( $discount ),
+				'first'          => $visits ? min( $dates ) : null,
+				'last'           => $visits ? max( $dates ) : null,
+				'shop'           => $channels['shop'],
+				'online'         => $channels['online'],
+				'inside'         => $zones['inside'],
+				'outside'        => $zones['outside'],
+			),
+			'favourites' => array_map(
+				static fn( $p ) => array( 'product_id' => $p['product_id'], 'name' => $p['name'], 'qty' => Decimal::toString( $p['qty'] ), 'amount' => Decimal::toString( $p['amount'] ), 'times' => $p['times'] ),
+				array_slice( $products, 0, 8 )
+			),
+			'sales'    => $out,
+			'orders'   => array_map(
+				static fn( $r ) => array( 'id' => (int) $r['id'], 'number' => $r['number'], 'date' => $r['order_date'], 'status' => $r['status'], 'total' => Decimal::toString( Decimal::of( $r['total'] ) ), 'zone' => (string) $r['zone'], 'area' => (string) $r['area'], 'source' => (string) $r['source'] ),
+				$open
+			),
+		);
+	}
+
+	/**
 	 * What lies behind one dashboard number: a short summary and the documents.
 	 *
 	 * @param array<string,mixed> $args metric, range|from|to, branch_id.
