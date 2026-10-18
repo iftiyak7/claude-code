@@ -163,6 +163,109 @@ final class OrderService extends Service {
 	}
 
 	/**
+	 * Courier dashboard: how parcels are doing, per courier, plus what is on the road now.
+	 *
+	 * @param array<string,mixed> $args from, to (order date; default last 30 days).
+	 * @return array<string,mixed>
+	 */
+	public function courierBoard( BusinessContext $ctx, array $args = array() ): array {
+		$ctx->authorize( 'orders.view' );
+		$t     = $this->db->table( 'orders' );
+		$today = $this->today( $ctx );
+		$to    = Text::date( $args['to'] ?? null ) ?? $today;
+		$from  = Text::date( $args['from'] ?? null ) ?? ( new \DateTimeImmutable( $to ) )->modify( '-29 days' )->format( 'Y-m-d' );
+
+		$status = array_fill_keys( self::STATUSES, 0 );
+		foreach ( $this->db->rows( "SELECT status, COUNT(*) AS n FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND order_date BETWEEN %s AND %s GROUP BY status", array( $ctx->business_id, $from, $to ) ) as $r ) {
+			$status[ (string) $r['status'] ] = (int) $r['n'];
+		}
+		$couriers = array();
+		$rows     = $this->db->rows(
+			"SELECT courier, status, COUNT(*) AS n, COALESCE(SUM(cod_amount),0) AS cod FROM {$t}
+			WHERE business_id = %d AND deleted_at IS NULL AND courier <> '' AND order_date BETWEEN %s AND %s GROUP BY courier, status",
+			array( $ctx->business_id, $from, $to )
+		);
+		foreach ( $rows as $r ) {
+			$k = (string) $r['courier'];
+			if ( ! isset( $couriers[ $k ] ) ) {
+				$couriers[ $k ] = array( 'courier' => $k, 'name' => self::COURIERS[ $k ] ?? $k, 'total' => 0, 'in_transit' => 0, 'delivered' => 0, 'returned' => 0, 'cancelled' => 0 );
+			}
+			$n                         = (int) $r['n'];
+			$couriers[ $k ]['total'] += $n;
+			$key                       = 'shipped' === $r['status'] ? 'in_transit' : (string) $r['status'];
+			if ( isset( $couriers[ $k ][ $key ] ) ) {
+				$couriers[ $k ][ $key ] += $n;
+			}
+		}
+		foreach ( $couriers as &$c ) {
+			$done          = $c['delivered'] + $c['returned'];
+			$c['success'] = $done ? (int) round( 100 * $c['delivered'] / $done ) : null;
+		}
+		unset( $c );
+		usort( $couriers, static fn( $a, $b ) => $b['total'] <=> $a['total'] );
+
+		$road = $this->db->rows(
+			"SELECT id, number, customer_name, phone, area, courier, consignment_id, tracking_code, courier_status, rider_name, rider_phone, cod_amount, shipped_at
+			FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND status = 'shipped' ORDER BY shipped_at ASC LIMIT 200",
+			array( $ctx->business_id )
+		);
+		$now  = $this->clock->now()->getTimestamp();
+		$road = array_map(
+			function ( array $r ) use ( $now ): array {
+				$r['id']           = (int) $r['id'];
+				$r['courier_name'] = self::COURIERS[ $r['courier'] ] ?? $r['courier'];
+				$r['days']         = $r['shipped_at'] ? max( 0, (int) floor( ( $now - (int) strtotime( $r['shipped_at'] . ' UTC' ) ) / 86400 ) ) : 0;
+				$r['cod_amount']   = Decimal::toString( Decimal::of( $r['cod_amount'] ) );
+				return $r;
+			},
+			$road
+		);
+		$cod   = $this->summary( $ctx )['cod_pending'];
+		$done  = $status['delivered'] + $status['returned'];
+		$today_row = $this->db->row(
+			"SELECT SUM(CASE WHEN status = 'delivered' AND SUBSTR(delivered_at,1,10) = %s THEN 1 ELSE 0 END) AS delivered,
+				SUM(CASE WHEN SUBSTR(shipped_at,1,10) = %s THEN 1 ELSE 0 END) AS shipped
+			FROM {$t} WHERE business_id = %d AND deleted_at IS NULL",
+			array( $today, $today, $ctx->business_id )
+		);
+		return array(
+			'from'        => $from,
+			'to'          => $to,
+			'status'      => $status,
+			'success'     => $done ? (int) round( 100 * $status['delivered'] / $done ) : null,
+			'couriers'    => array_values( $couriers ),
+			'on_the_road' => $road,
+			'cod_pending' => $cod,
+			'today'       => array( 'delivered' => (int) ( $today_row['delivered'] ?? 0 ), 'shipped' => (int) ( $today_row['shipped'] ?? 0 ) ),
+			'steadfast'   => '' !== (string) $this->courierConfig( $ctx->business_id )['steadfast_key'],
+		);
+	}
+
+	/**
+	 * Ask Steadfast about every parcel still on the road (up to 40 at a time).
+	 *
+	 * @return array{checked:int,delivered:int,errors:int}
+	 */
+	public function refreshAll( BusinessContext $ctx ): array {
+		$ctx->authorize( 'orders.view' );
+		$t    = $this->db->table( 'orders' );
+		$ids  = $this->db->column( "SELECT id FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND status = 'shipped' AND courier = 'steadfast' AND consignment_id <> '' ORDER BY updated_at ASC LIMIT 40", array( $ctx->business_id ) );
+		$out  = array( 'checked' => 0, 'delivered' => 0, 'errors' => 0 );
+		foreach ( $ids as $id ) {
+			try {
+				$o = $this->refreshCourier( $ctx, (int) $id );
+				++$out['checked'];
+				if ( 'delivered' === $o['status'] ) {
+					++$out['delivered'];
+				}
+			} catch ( \Throwable $e ) {
+				++$out['errors'];
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * @return array<string,mixed>
 	 */
 	public function get( BusinessContext $ctx, int $id ): array {
@@ -238,6 +341,15 @@ final class OrderService extends Service {
 				if ( isset( $data[ $k ] ) ) {
 					$set[ $k ] = 'area' === $k ? Text::line( $data[ $k ], 100 ) : Text::multiline( $data[ $k ], 1000 );
 				}
+			}
+			if ( isset( $data['rider_name'] ) ) {
+				$set['rider_name'] = Text::line( $data['rider_name'], 100 );
+			}
+			if ( isset( $data['rider_phone'] ) ) {
+				$set['rider_phone'] = Text::phone( $data['rider_phone'] );
+			}
+			if ( isset( $data['courier_status'] ) ) {
+				$set['courier_status'] = Text::line( $data['courier_status'], 60 );
 			}
 			if ( isset( $data['phone'] ) && Text::phone( $data['phone'] ) ) {
 				$set['phone']     = Text::phone( $data['phone'] );
@@ -367,6 +479,8 @@ final class OrderService extends Service {
 			$set['courier']        = $courier;
 			$set['consignment_id'] = Text::line( $data['consignment_id'] ?? $row['consignment_id'], 100 );
 			$set['tracking_code']  = Text::line( $data['tracking_code'] ?? $row['tracking_code'], 100 );
+			$set['rider_name']     = Text::line( $data['rider_name'] ?? $row['rider_name'] ?? '', 100 );
+			$set['rider_phone']    = Text::phone( $data['rider_phone'] ?? $row['rider_phone'] ?? '' );
 			$set['shipped_at']     = $this->now();
 		}
 		if ( 'delivered' === $status ) {

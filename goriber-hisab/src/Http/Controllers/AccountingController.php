@@ -36,6 +36,10 @@ final class AccountingController extends Controller {
 				}
 			),
 
+			$this->route( 'GET', '/cash', fn( BusinessContext $c ) => $this->k->cash->overview( $c ) ),
+			$this->route( 'GET', '/cash/moves', fn( BusinessContext $c, array $a ) => $this->k->cash->list( $c, $a ) ),
+			$this->route( 'POST', '/cash/moves', fn( BusinessContext $c, array $a ) => $this->k->cash->create( $c, $a ), array( 'created' => true ) ),
+			$this->route( 'POST', '/cash/moves/(?P<id>\d+)/void', fn( BusinessContext $c, array $a, $r ) => $this->k->cash->void( $c, self::id( $r ), (string) ( $a['reason'] ?? '' ) ) ),
 			$this->route( 'GET', '/journal', fn( BusinessContext $c, array $a ) => $j->search( $c, $a ) ),
 			$this->route( 'POST', '/journal', fn( BusinessContext $c, array $a ) => $j->entry( $c, $j->manual( $c, $a, (array) ( $a['lines'] ?? array() ) ) ), array( 'created' => true ) ),
 			$this->route( 'GET', '/journal/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $j->entry( $c, self::id( $r ) ) ),

@@ -18,6 +18,7 @@ use GoriberHisab\Catalog\TaxService;
 use GoriberHisab\Contacts\ContactService;
 use GoriberHisab\Data\DataService;
 use GoriberHisab\Database\Database;
+use GoriberHisab\Finance\CashService;
 use GoriberHisab\Finance\FinanceService;
 use GoriberHisab\Inventory\StockService;
 use GoriberHisab\Notifications\NotificationService;
@@ -53,6 +54,7 @@ use GoriberHisab\Tenancy\UserDirectory;
  * @property-read AccountService      $accounts
  * @property-read JournalService      $journal
  * @property-read StockService        $stock
+ * @property-read CashService         $cash
  * @property-read TaxService          $taxes
  * @property-read TaxonomyService     $taxonomy
  * @property-read ProductService      $products
@@ -186,13 +188,17 @@ final class Kernel {
 			case 'payments':
 				return new PaymentService( $d, $c, $e, $this->journal, $this->accounts, $this->contacts, $this->numbers, $this->audit );
 			case 'sales':
-				return new SaleService( $d, $c, $e, $this->settings, $this->products, $this->taxes, $this->contacts, $this->stock, $this->journal, $this->accounts, $this->payments, $this->numbers, $this->audit );
+				$sales = new SaleService( $d, $c, $e, $this->settings, $this->products, $this->taxes, $this->contacts, $this->stock, $this->journal, $this->accounts, $this->payments, $this->numbers, $this->audit );
+				$sales->setUserNames( fn( int $id ): string => (string) ( $this->users->get( $id )['name'] ?? '' ) );
+				return $sales;
 			case 'purchases':
 				return new PurchaseService( $d, $c, $e, $this->settings, $this->products, $this->taxes, $this->contacts, $this->stock, $this->journal, $this->accounts, $this->payments, $this->numbers, $this->audit );
 			case 'returns':
 				return new ReturnService( $d, $c, $e, $this->settings, $this->stock, $this->journal, $this->payments, $this->numbers, $this->audit );
 			case 'finance':
 				return new FinanceService( $d, $c, $e, $this->accounts, $this->journal, $this->numbers, $this->audit );
+			case 'cash':
+				return new CashService( $d, $c, $e, $this->accounts, $this->journal, $this->numbers, $this->audit );
 			case 'reports':
 				return new ReportService( $d, $c, $e, $this->accounts );
 			case 'notifications':

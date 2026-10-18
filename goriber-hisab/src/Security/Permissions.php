@@ -114,6 +114,7 @@ final class Permissions {
 			'accounting' => array(
 				'accounting.view'   => 'View accounts & ledgers',
 				'accounting.manage' => 'Manage chart of accounts & journals',
+				'cash.manage'       => 'Cash in/out, transfers, owner money & cash count',
 			),
 			'reports'    => array(
 				'reports.view'   => 'View reports',
@@ -191,7 +192,7 @@ final class Permissions {
 				'label'       => 'Accountant',
 				'permissions' => array_merge(
 					array( 'dashboard.view', 'sales.view', 'purchases.view', 'products.view', 'products.cost', 'inventory.view', 'customers.view', 'suppliers.view', 'invoices.print' ),
-					$prefix( 'payments.', 'expenses.', 'income.', 'accounting.', 'reports.' ),
+					$prefix( 'payments.', 'expenses.', 'income.', 'accounting.', 'cash.', 'reports.' ),
 					array( 'data.export' )
 				),
 			),

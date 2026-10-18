@@ -111,4 +111,33 @@ final class AccountingTest extends IntegrationTestCase {
 		$this->assertSame( 'month', $d['charts']['interval'] );
 		$this->assertSame( 1, count( $d['top_products'] ) );
 	}
+
+	public function testCashMoves(): void {
+		$cash   = $this->account( 'cash' );
+		$mobile = $this->account( 'mobile' );
+		$c      = $this->k->cash;
+		$c->create( $this->ctx, array( 'kind' => 'owner_in', 'amount' => '5000', 'to_account_id' => $cash ) );
+		$this->assertMoney( '5000', $this->balance( 'cash' ) );
+		$this->assertMoney( '5000', $this->balance( 'capital' ) );
+		$c->create( $this->ctx, array( 'kind' => 'transfer', 'amount' => '1200', 'from_account_id' => $cash, 'to_account_id' => $mobile ) );
+		$this->assertMoney( '3800', $this->balance( 'cash' ) );
+		$this->assertMoney( '1200', $this->balance( 'mobile' ) );
+		$out = $c->create( $this->ctx, array( 'kind' => 'owner_out', 'amount' => '800', 'from_account_id' => $cash, 'note' => 'Family' ) );
+		$this->assertMoney( '3000', $this->balance( 'cash' ) );
+		$this->assertMoney( '800', $this->balance( 'drawings' ) );
+		// Counted 2950 in the drawer: 50 short.
+		$cnt = $c->create( $this->ctx, array( 'kind' => 'count', 'account_id' => $cash, 'counted' => '2950' ) );
+		$this->assertMoney( '50', $cnt['amount'] );
+		$this->assertMoney( '2950', $this->balance( 'cash' ) );
+		$this->assertMoney( '50', $this->balance( 'other_expense' ) );
+		$this->assertThrows( ValidationException::class, fn() => $c->create( $this->ctx, array( 'kind' => 'count', 'account_id' => $cash, 'counted' => '2950' ) ) );
+		$this->assertThrows( ValidationException::class, fn() => $c->create( $this->ctx, array( 'kind' => 'transfer', 'amount' => '1', 'from_account_id' => $cash, 'to_account_id' => $cash ) ) );
+		$c->void( $this->ctx, $out['id'] );
+		$this->assertMoney( '3750', $this->balance( 'cash' ) );
+		$this->assertMoney( '0', $this->balance( 'drawings' ) );
+		$o = $c->overview( $this->ctx );
+		$this->assertMoney( '4950', $o['total'] );
+		$this->assertSame( 4, $c->list( $this->ctx )['total'] );
+		$this->assertBooksBalanced( 'cash moves' );
+	}
 }

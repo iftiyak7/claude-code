@@ -261,4 +261,27 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->k->platform->saveConfig( array( 'fraud_network' => false, 'fraud_key' => '' ) );
 		$this->assertSame( null, $this->k->orders->risk( $this->ctx, '01712345678' )['network'] );
 	}
+
+	public function testCourierBoardAndRider(): void {
+		$p = $this->product( 'Saree', '500', '300', '20' );
+		$a = $this->k->orders->advance( $this->ctx, $this->order( $p )['id'], 'shipped', array( 'courier' => 'redx', 'rider_name' => 'Kamal', 'rider_phone' => '01812345678' ) );
+		$this->assertSame( 'Kamal', $a['rider_name'] );
+		$b = $this->k->orders->advance( $this->ctx, $this->order( $p )['id'], 'shipped', array( 'courier' => 'redx' ) );
+		$this->k->orders->advance( $this->ctx, $b['id'], 'delivered' );
+		$c = $this->k->orders->advance( $this->ctx, $this->order( $p )['id'], 'shipped', array( 'courier' => 'pathao' ) );
+		$this->k->orders->close( $this->ctx, $c['id'], 'returned' );
+		$this->k->orders->update( $this->ctx, $a['id'], array( 'rider_name' => 'Jamal', 'courier_status' => 'Out for delivery' ) );
+
+		$board = $this->k->orders->courierBoard( $this->ctx );
+		$this->assertSame( 1, $board['status']['shipped'] );
+		$this->assertSame( 1, $board['status']['delivered'] );
+		$this->assertSame( 1, $board['status']['returned'] );
+		$this->assertSame( 50, $board['success'] );
+		$this->assertSame( 'redx', $board['couriers'][0]['courier'] );
+		$this->assertSame( 1, $board['couriers'][0]['in_transit'] );
+		$this->assertSame( 100, $board['couriers'][0]['success'] );
+		$this->assertSame( 'Jamal', $board['on_the_road'][0]['rider_name'] );
+		$this->assertSame( 'Out for delivery', $board['on_the_road'][0]['courier_status'] );
+		$this->assertSame( array( 'checked' => 0, 'delivered' => 0, 'errors' => 0 ), $this->k->orders->refreshAll( $this->ctx ) );
+	}
 }

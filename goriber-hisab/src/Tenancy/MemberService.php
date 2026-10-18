@@ -47,6 +47,26 @@ final class MemberService extends Service {
 	}
 
 	/**
+	 * Staff to pick as salesperson: active members, names only.
+	 *
+	 * @return array<int,array{id:int,name:string,role:string}>
+	 */
+	public function staff( BusinessContext $ctx ): array {
+		if ( ! $ctx->can( 'sales.create' ) && ! $ctx->can( 'pos.use' ) && ! $ctx->can( 'sales.view' ) ) {
+			throw new \GoriberHisab\Support\PermissionException( 'You do not have access to this.' );
+		}
+		$t   = $this->db->table( 'business_users' );
+		$out = array();
+		foreach ( $this->db->rows( "SELECT user_id, role FROM {$t} WHERE business_id = %d AND status = 'active' ORDER BY id", array( $ctx->business_id ) ) as $r ) {
+			$u = $this->users->get( (int) $r['user_id'] );
+			if ( $u ) {
+				$out[] = array( 'id' => (int) $r['user_id'], 'name' => (string) $u['name'], 'role' => (string) $r['role'] );
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * Add a member by existing user id, or by email (creating a login if needed).
 	 *
 	 * @param array<string,mixed> $data user_id | email (+ name, login), role, grants[], denies[], branch_ids[], default_branch_id.

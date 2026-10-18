@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.4.0';
+	public const VERSION = '1.5.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -407,6 +407,7 @@ final class Schema {
 						'sale_date'       => 'date',
 						'due_date'        => 'date_null',
 						'customer_id'     => 'fk',
+						'salesperson_id'  => 'fk',
 						'status'          => 'str:20',
 						'channel'         => 'str:20',
 						'price_type'      => 'str:20',
@@ -848,6 +849,8 @@ final class Schema {
 						'consignment_id'  => 'str:100',
 						'tracking_code'   => 'str:100',
 						'courier_status'  => 'str:60',
+						'rider_name'      => 'str:100',
+						'rider_phone'     => 'str:30',
 						'courier_fee'     => 'money',
 						'cod_collected'   => 'bool',
 						'sale_id'         => 'fk',
@@ -864,6 +867,33 @@ final class Schema {
 					'phone'         => array( 'business_id', 'phone' ),
 					'phone_key'     => array( 'phone_key' ),
 					'consignment'   => array( 'business_id', 'consignment_id' ),
+				),
+			),
+
+			/* Cash in / out, transfers between cash/bank/mobile, owner money, cash counts. */
+			'cash_moves'          => array(
+				'columns' => array_merge(
+					array(
+						'id'              => 'id',
+						'uuid'            => 'uuid',
+						'business_id'     => 'fk',
+						'branch_id'       => 'fk',
+						'number'          => 'str:40',
+						'kind'            => 'str:20',
+						'move_date'       => 'date',
+						'from_account_id' => 'fk',
+						'to_account_id'   => 'fk',
+						'amount'          => 'money',
+						'note'            => 'str:255',
+						'status'          => 'str:20',
+						'voided_at'       => 'datetime_null',
+						'voided_by'       => 'fk',
+					),
+					self::stamps()
+				),
+				'indexes' => array(
+					'unique:uuid' => array( 'uuid' ),
+					'date'        => array( 'business_id', 'move_date' ),
 				),
 			),
 
