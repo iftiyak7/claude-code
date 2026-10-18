@@ -146,6 +146,71 @@ final class StockService extends Service {
 	}
 
 	/**
+	 * Stock lights: red (about to run out), yellow (getting low), green (fine).
+	 * Red = at or below the shop's red mark or the product's own minimum;
+	 * yellow = at or below the yellow mark; everything above is green.
+	 *
+	 * @param array<string,mixed> $args level (red|yellow|green), search, branch_id, limit.
+	 * @return array{marks:array{red:string,yellow:string},counts:array<string,int>,items:array<int,array<string,mixed>>}
+	 */
+	public function lights( BusinessContext $ctx, array $args = array() ): array {
+		if ( ! $ctx->can( 'inventory.view' ) && ! $ctx->can( 'products.view' ) && ! $ctx->can( 'dashboard.view' ) ) {
+			throw new \GoriberHisab\Support\PermissionException( 'You do not have access to stock.' );
+		}
+		$s      = $this->settings->all( $ctx );
+		$red    = Decimal::of( max( 0, (int) $s['inventory.stock_red'] ) );
+		$yellow = Decimal::of( max( (int) $s['inventory.stock_red'], (int) $s['inventory.stock_yellow'] ) );
+		$branch = (int) ( $args['branch_id'] ?? 0 );
+		$pt     = $this->db->table( 'products' );
+		$st     = $this->db->table( 'stock_levels' );
+		$ut     = $this->db->table( 'units' );
+		$scope  = $branch > 0 && $ctx->canAccessBranch( $branch ) ? ' AND s.branch_id = ' . $branch : '';
+		$where  = "p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'";
+		$params = array( $ctx->business_id );
+		$search = Text::line( $args['search'] ?? '', 100 );
+		if ( '' !== $search ) {
+			$where   .= ' AND (p.name LIKE %s OR p.sku LIKE %s OR p.barcode LIKE %s)';
+			$like     = '%' . $this->db->escapeLike( $search ) . '%';
+			$params   = array_merge( $params, array( $like, $like, $like ) );
+		}
+		$rows = $this->db->rows(
+			"SELECT p.id, p.name, p.sku, p.min_stock, p.image_id, u.short_name AS unit,
+				COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$scope}),0) AS qty
+			FROM {$pt} p LEFT JOIN {$ut} u ON u.id = p.unit_id WHERE {$where} ORDER BY qty ASC, p.name",
+			$params
+		);
+		$counts = array( 'red' => 0, 'yellow' => 0, 'green' => 0 );
+		$want   = (string) ( $args['level'] ?? '' );
+		$limit  = max( 1, min( 2000, (int) ( $args['limit'] ?? 500 ) ) );
+		$items  = array();
+		foreach ( $rows as $r ) {
+			$qty   = Decimal::of( $r['qty'] );
+			$min   = Decimal::of( $r['min_stock'] );
+			$level = ( $qty <= $red || ( $min > 0 && $qty <= $min ) ) ? 'red' : ( $qty <= $yellow ? 'yellow' : 'green' );
+			++$counts[ $level ];
+			if ( ( '' === $want || $want === $level ) && count( $items ) < $limit ) {
+				$items[] = array(
+					'id'        => (int) $r['id'],
+					'name'      => (string) $r['name'],
+					'sku'       => (string) $r['sku'],
+					'unit'      => (string) ( $r['unit'] ?? '' ),
+					'qty'       => Decimal::toString( $qty ),
+					'min_stock' => Decimal::toString( $min ),
+					'level'     => $level,
+				);
+			}
+		}
+		return array(
+			'marks'  => array(
+				'red'    => Decimal::toString( $red ),
+				'yellow' => Decimal::toString( $yellow ),
+			),
+			'counts' => $counts,
+			'items'  => $items,
+		);
+	}
+
+	/**
 	 * Current average cost (for previews/sale line costing).
 	 */
 	public function averageCost( BusinessContext $ctx, int $product_id, int $variant_id = 0, ?int $branch_id = null ): int {

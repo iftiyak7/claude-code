@@ -145,6 +145,7 @@ const RENDER = {
       ['pos.auto_print', t('Print receipt automatically after each sale'), 'bool'],
       ['pos.paper', t('Receipt paper'), 'select', { options: [['80mm', '80mm'], ['58mm', '58mm'], ['a5', 'A5'], ['a4', 'A4']] }],
       ['pos.show_images', t('Show product images in POS'), 'bool'],
+      ['pos.ask_seller', t('Ask who is selling on every sale'), 'bool', { hint: t('For one device shared by several staff: the POS asks to pick the salesperson before each sale. Add salespeople in Users.') }],
     ], { after: smsCard });
   },
 
@@ -203,6 +204,8 @@ const RENDER = {
     return settingsForm(S, [
       ['inventory.allow_negative', t('Allow selling more than in stock'), 'bool', { hint: t('Off is safer: sales stop when stock runs out.') }],
       ['inventory.low_stock_alerts', t('Low stock alerts'), 'bool'],
+      ['inventory.stock_red', t('Red light at or below'), 'number', { hint: t('Stock at or below this (or the product\'s own minimum) shows red — order now.') }],
+      ['inventory.stock_yellow', t('Yellow light at or below'), 'number', { hint: t('Above red and up to this shows yellow; more than this is green.') }],
       ['features.variants', t('Use product variants (size, colour)'), 'bool'],
       ['features.wholesale', t('Use wholesale prices'), 'bool'],
       ['features.batches', t('Track batches (coming soon)'), 'bool'],

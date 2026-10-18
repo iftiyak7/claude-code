@@ -22,6 +22,7 @@ final class OrdersController extends Controller {
 			$this->route( 'GET', '/orders', fn( BusinessContext $c, array $p ) => $o()->list( $c, $p ) ),
 			$this->route( 'POST', '/orders', fn( BusinessContext $c, array $p ) => $o()->create( $c, $p ), array( 'created' => true ) ),
 			$this->route( 'GET', '/orders/board', fn( BusinessContext $c, array $p ) => $o()->courierBoard( $c, $p ) ),
+			$this->route( 'GET', '/orders/local', fn( BusinessContext $c, array $p ) => $o()->localBoard( $c, $p ) ),
 			$this->route( 'POST', '/orders/refresh', fn( BusinessContext $c ) => $o()->refreshAll( $c ) ),
 			$this->route( 'GET', '/orders/courier', fn( BusinessContext $c ) => $o()->courierSettings( $c ) ),
 			$this->route( 'PUT', '/orders/courier', fn( BusinessContext $c, array $p ) => $o()->saveCourierSettings( $c, $p ) ),

@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.8.0';
+	public const VERSION = '1.12.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -409,6 +409,7 @@ final class Schema {
 						'due_date'        => 'date_null',
 						'customer_id'     => 'fk',
 						'salesperson_id'  => 'fk',
+						'seller_id'       => 'fk',
 						'status'          => 'str:20',
 						'channel'         => 'str:20',
 						'price_type'      => 'str:20',
@@ -851,6 +852,7 @@ final class Schema {
 						'consignment_id'  => 'str:100',
 						'tracking_code'   => 'str:100',
 						'courier_status'  => 'str:60',
+						'rider_id'        => 'fk',
 						'rider_name'      => 'str:100',
 						'rider_phone'     => 'str:30',
 						'courier_fee'     => 'money',
@@ -896,6 +898,26 @@ final class Schema {
 				'indexes' => array(
 					'unique:uuid' => array( 'uuid' ),
 					'date'        => array( 'business_id', 'move_date' ),
+				),
+			),
+
+			/* Staff without a login: salespeople picked at the POS, own delivery men. */
+			'workers'             => array(
+				'columns' => array_merge(
+					array(
+						'id'          => 'id',
+						'business_id' => 'fk',
+						'role'        => 'str:20',
+						'name'        => 'str:100',
+						'phone'       => 'str:30',
+						'fee'         => 'money',
+						'status'      => 'str:20',
+					),
+					self::stamps(),
+					self::soft()
+				),
+				'indexes' => array(
+					'business' => array( 'business_id', 'role', 'status' ),
 				),
 			),
 

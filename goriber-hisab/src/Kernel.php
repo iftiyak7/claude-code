@@ -19,6 +19,7 @@ use GoriberHisab\Contacts\ContactService;
 use GoriberHisab\Data\DataService;
 use GoriberHisab\Database\Database;
 use GoriberHisab\Finance\CashService;
+use GoriberHisab\Team\WorkerService;
 use GoriberHisab\Notifications\SmsService;
 use GoriberHisab\Finance\FinanceService;
 use GoriberHisab\Inventory\StockService;
@@ -56,6 +57,7 @@ use GoriberHisab\Tenancy\UserDirectory;
  * @property-read JournalService      $journal
  * @property-read StockService        $stock
  * @property-read CashService         $cash
+ * @property-read WorkerService       $workers
  * @property-read SmsService          $sms
  * @property-read TaxService          $taxes
  * @property-read TaxonomyService     $taxonomy
@@ -211,6 +213,8 @@ final class Kernel {
 						return array( 'url' => (string) $p['sms_url'], 'key' => (string) $p['sms_key'], 'sender' => (string) $p['sms_sender'] );
 					}
 				);
+			case 'workers':
+				return new WorkerService( $d, $c, $e, $this->audit );
 			case 'cash':
 				return new CashService( $d, $c, $e, $this->accounts, $this->journal, $this->numbers, $this->audit );
 			case 'reports':

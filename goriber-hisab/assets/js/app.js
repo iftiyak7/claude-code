@@ -21,6 +21,7 @@ const NAV = [
   ['/purchases', 'purchases', 'Purchases', ['purchases.view']],
   ['/products', 'products', 'Products', ['products.view']],
   ['/inventory', 'inventory', 'Inventory', ['inventory.view']],
+  ['/stock-status', 'alert', 'Stock status', ['inventory.view', 'products.view']],
   ['/customers', 'customers', 'Customers', ['customers.view']],
   ['/suppliers', 'suppliers', 'Suppliers', ['suppliers.view']],
   ['/payments', 'payments', 'Payments', ['payments.view']],
@@ -44,6 +45,7 @@ route('/sales/new', v('document-form'), { doc: 'sale' });
 route('/sales/:id', v('sales'));
 route('/sales/:id/edit', v('document-form'), { doc: 'sale' });
 route('/sales/:id/return', v('returns'), { doc: 'sale' });
+route('/stock-status', v('stock-status'));
 route('/orders', v('orders'));
 route('/orders/new', v('orders'));
 route('/orders/:id', v('orders'));
@@ -146,7 +148,7 @@ async function boot() {
   start(render);
   // Load every screen's code in the background so moving around is instant.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
-  idle(() => ['dashboard', 'pos', 'sales', 'products', 'contacts', 'orders', 'purchases', 'payments', 'finance', 'cash', 'reports', 'inventory', 'document-form', 'settings', 'labels']
+  idle(() => ['dashboard', 'pos', 'sales', 'products', 'contacts', 'orders', 'purchases', 'payments', 'finance', 'cash', 'reports', 'inventory', 'document-form', 'settings', 'labels', 'stock-status']
     .forEach((n, i) => setTimeout(() => import(`./views/${n}.js?v=${window.BZL.version}`).catch(() => {}), i * 120)));
   if (state.ctx) {
     sync();

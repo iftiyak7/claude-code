@@ -155,20 +155,39 @@ export default async function pos(el) {
   const totalsEl = h('div', { class: 'cart-totals' });
   const customerBox = h('div', { class: 'cart-customer' });
 
-  // Who is selling (staff picks themselves; remembered on this device).
+  // Who is selling: logins and salespeople without one (ids "s12"). One tap on a
+  // name; remembered on this device unless the shop asks for it on every sale.
   const sellerKey = `gh.seller.${state.businessId}`;
+  const askSeller = !!state.settings['pos.ask_seller'];
+  let seller = '';
+  let sellers = [];
   const sellerSel = h('select', { class: 'input input-sm seller-select', 'aria-label': t('Sold by') });
-  const sellerBox = h('label', { class: 'seller-box', hidden: true }, icon('users', 16), h('span', {}, t('Sold by')), sellerSel);
-  sellerSel.addEventListener('change', () => { try { localStorage.setItem(sellerKey, sellerSel.value); } catch { /* private mode */ } });
+  const sellerChips = h('div', { class: 'seller-chips', role: 'radiogroup', 'aria-label': t('Sold by') });
+  const sellerBox = h('div', { class: 'seller-box', hidden: true }, h('span', { class: 'seller-label' }, icon('users', 16), t('Sold by')), sellerChips, sellerSel);
+  const setSeller = (v) => {
+    seller = v ? String(v) : '';
+    sellerSel.value = seller;
+    sellerChips.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.id === seller); b.setAttribute('aria-checked', String(b.dataset.id === seller)); });
+    sellerBox.classList.toggle('missing', askSeller && !seller);
+    if (!askSeller) { try { localStorage.setItem(sellerKey, seller); } catch { /* private mode */ } }
+  };
+  sellerSel.addEventListener('change', () => setSeller(sellerSel.value));
   api.get('staff').then((staff) => {
-    if (!Array.isArray(staff) || staff.length < 2) return;
+    if (!Array.isArray(staff) || (staff.length < 2 && !askSeller)) return;
+    sellers = staff;
+    const me = String(state.me.user.id);
+    const label = (u) => u.name + (String(u.id) === me ? ` (${t('me')})` : '');
+    const chipsMode = staff.length <= 6;
+    sellerSel.hidden = chipsMode;
+    sellerChips.hidden = !chipsMode;
+    mount(sellerSel, askSeller ? h('option', { value: '' }, t('— Who is selling? —')) : null, staff.map((u) => h('option', { value: u.id }, label(u))));
+    mount(sellerChips, staff.map((u) => h('button', { type: 'button', class: 'seller-chip', role: 'radio', dataset: { id: String(u.id) }, onclick: () => setSeller(u.id) }, label(u))));
     let saved = '';
     try { saved = localStorage.getItem(sellerKey) || ''; } catch { /* ignore */ }
-    const me = String(state.me.user.id);
-    mount(sellerSel, staff.map((u) => h('option', { value: u.id }, u.name + (String(u.id) === me ? ` (${t('me')})` : ''))));
-    sellerSel.value = staff.some((u) => String(u.id) === saved) ? saved : me;
+    setSeller(askSeller ? '' : staff.some((u) => String(u.id) === saved) ? saved : me);
     sellerBox.hidden = false;
   }).catch(() => {});
+  const sellerPayload = () => (!seller ? {} : seller.startsWith('s') ? { seller_id: Number(seller.slice(1)) } : { salesperson_id: Number(seller) });
 
   const makeCustomerPicker = (onPick) => combobox({
     placeholder: t('Walk-in customer — search name/phone'),
@@ -324,7 +343,7 @@ export default async function pos(el) {
   function payload() {
     return {
       customer_id: cart.customer?.id || 0,
-      ...(sellerSel.value ? { salesperson_id: Number(sellerSel.value) } : {}),
+      ...sellerPayload(),
       channel: 'pos',
       items: cart.lines.map((l) => ({
         product_id: l.product_id,
@@ -445,6 +464,13 @@ export default async function pos(el) {
 
   async function pay() {
     if (!cart.lines.length) return;
+    if (askSeller && sellers.length && !seller) {
+      openCart(true);
+      sellerBox.classList.add('shake');
+      setTimeout(() => sellerBox.classList.remove('shake'), 600);
+      toast(t('Pick who is selling first.'), 'info');
+      return;
+    }
     if (!quote && navigator.onLine) {
       try { quote = await api.post('sales/quote', payload()); } catch (err) { showError(err); return; }
     }
@@ -599,6 +625,7 @@ export default async function pos(el) {
     cart.shipping = 0;
     cart.note = '';
     if (clearHeld) cart.heldId = null;
+    if (askSeller) setSeller('');
     openCart(false);
     quote = null;
     paintCustomer();

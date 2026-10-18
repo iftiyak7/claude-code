@@ -9,6 +9,7 @@ import { money, qty as fmtQty, date, datetime, dec, str, places } from '../core/
 import { page, card, stat, dataTable, badge, select, input, textarea, field, combobox, money_input, modal, toast, showError, showFieldErrors, values, confirmDialog, simpleTable, spinner, empty } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
+import { workerForm, workersCard } from '../core/workers.js';
 
 const STATUS = {
   pending: ['info', 'New'], confirmed: ['held', 'Confirmed'], packed: ['held', 'Packed'], shipped: ['partial', 'With courier'],
@@ -34,12 +35,14 @@ export default async function orders(el, params, query) {
 
 async function list(el, query) {
   if (query.status === 'board') return board(el, query);
+  if (query.status === 'local') return localBoard(el, query);
   const cfg = await courier();
   const tab = query.status || 'active';
   const p = page(t('Online orders'), {
     subtitle: t('Facebook, WhatsApp and phone orders — from order to courier to cash.'),
     actions: [
       h('a', { class: 'btn btn-sm', href: '#/orders?status=board' }, icon('truck', 16), t('Courier dashboard')),
+      h('a', { class: 'btn btn-sm', href: '#/orders?status=local' }, icon('users', 16), t('Local delivery')),
       can('settings.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => courierSettings(() => orders(el, {}, query)) }, icon('settings', 16), t('Courier settings')) : null,
       can('orders.manage') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/orders/new' }, icon('plus', 16), t('New order')) : null,
     ],
@@ -145,6 +148,160 @@ async function board(el, query) {
         h('span', { class: 'amt' }, h('strong', {}, money(o.cod_amount)), h('small', { class: o.days >= 4 ? 'bad-text' : 'muted' }, t('{n} days', { n: o.days }))),
         o.rider_phone ? h('a', { class: 'btn btn-sm', href: `tel:${o.rider_phone}` }, t('Call')) : null,
         can('orders.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => riderForm(o, load) }, t('Rider')) : null))) : empty(t('No parcels on the road.'))));
+  }
+  load().catch((err) => mount(body, empty(err.message)));
+}
+
+/* ------------------------------------------------------- Local delivery */
+
+let riderCache = null;
+async function riders(fresh = false) {
+  if (!riderCache || fresh) riderCache = await api.get('workers', { role: 'rider' });
+  return riderCache;
+}
+
+/** Hand the parcel to one of the shop's own delivery men. Resolves true when sent. */
+async function shipLocal(o) {
+  let list = await riders(true);
+  let picked = o.rider_id || (list.length === 1 ? list[0].id : 0);
+  return new Promise((resolve) => {
+    const box = h('div', { class: 'rider-pick', role: 'radiogroup' });
+    const paint = () => mount(box,
+      list.length ? list.map((r) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(r.id === picked), class: `rider-opt ${r.id === picked ? 'on' : ''}`, onclick: () => { picked = r.id; paint(); } },
+        h('span', { class: 'avatar-ini' }, r.name.slice(0, 1).toUpperCase()),
+        h('span', { class: 'cell-stack' }, h('strong', {}, r.name), h('small', { class: 'muted' }, [r.phone, Number(r.fee) ? t('{x} per delivery', { x: money(r.fee) }) : ''].filter(Boolean).join(' · ')))))
+        : h('p', { class: 'muted' }, t('Add your delivery man once — next time just tap the name.')),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { const w = await workerForm('rider'); if (w) { list = await riders(true); picked = w.id; paint(); } } }, icon('plus', 14), t('Add delivery man')));
+    paint();
+    let done = false;
+    const m = modal({
+      title: t('Send with own delivery man'), size: 'sm',
+      body: h('div', { class: 'form' },
+        h('p', { class: 'muted small' }, `${o.customer_name} · ${[o.address, o.area].filter(Boolean).join(', ')}`),
+        box,
+        Number(o.cod_amount) ? h('p', {}, t('Cash to collect from the customer: {x}', { x: money(o.cod_amount) })) : null),
+      onClose: () => { if (!done) resolve(false); },
+      actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+        if (!picked) { toast(t('Choose who will deliver.'), 'info'); return; }
+        const b = e.currentTarget; b.disabled = true;
+        try {
+          await api.post(`orders/${o.id}/status`, { status: 'shipped', courier: 'self', rider_id: picked });
+          done = true; m.close(); toast(t('Sent with {n}', { n: list.find((r) => r.id === picked)?.name || '' })); resolve(true);
+        } catch (err) { b.disabled = false; showError(err); }
+      } }, icon('check', 16), t('Send'))],
+    });
+  });
+}
+
+/** Own delivery man delivered and handed over the cash (his charge booked as an expense). */
+async function deliveredLocal(o) {
+  const list = await riders();
+  const rider = list.find((r) => r.id === o.rider_id);
+  if (!Number(o.cod_amount)) {
+    try { await api.post(`orders/${o.id}/status`, { status: 'delivered' }); toast(t('Marked delivered')); return true; } catch (err) { showError(err); return false; }
+  }
+  const accounts = state.me.payment_accounts;
+  const acc = select('account_id', accounts.map((a) => [a.id, a.name]), accounts.find((a) => a.system_key === 'cash')?.id || accounts[0]?.id);
+  const fee = money_input('fee', rider && Number(rider.fee) ? rider.fee : '');
+  return new Promise((resolve) => {
+    let done = false;
+    const m = modal({
+      title: t('Delivered + cash received'), size: 'sm',
+      body: h('div', { class: 'form' },
+        h('p', {}, t('{n} brought {x} from {c}.', { n: o.rider_name || t('Delivery man'), x: money(o.cod_amount), c: o.customer_name })),
+        field(t('Received in'), acc),
+        field(t('Delivery man\'s charge'), fee, { hint: t('Recorded as a delivery expense. Leave empty if none.') })),
+      onClose: () => { if (!done) resolve(false); },
+      actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+        const b = e.currentTarget; b.disabled = true;
+        try {
+          await api.post('orders/cod', { ids: [o.id], fees: fee.value ? { [o.id]: fee.value } : {}, account_id: acc.value });
+          done = true; m.close(); toast(t('Delivered — {x} received', { x: money(o.cod_amount) })); resolve(true);
+        } catch (err) { b.disabled = false; showError(err); }
+      } }, icon('check', 16), t('Save'))],
+    });
+  });
+}
+
+/** Take the cash a delivery man is holding (several parcels at once). */
+async function settleRider(r, done) {
+  const items = r.with_him.filter((o) => o.status === 'delivered' && Number(o.cod_amount));
+  if (!items.length) { toast(t('Nothing to collect.'), 'info'); return; }
+  const accounts = state.me.payment_accounts;
+  const acc = select('account_id', accounts.map((a) => [a.id, a.name]), accounts.find((a) => a.system_key === 'cash')?.id || accounts[0]?.id);
+  const picked = new Map(items.map((o) => [o.id, { on: true, fee: Number(r.fee) ? r.fee : '' }]));
+  const sum = h('div', { class: 'doc-totals' });
+  const paint = () => {
+    let cod = 0; let fees = 0;
+    picked.forEach((v, k) => { if (v.on) { cod += dec(items.find((o) => o.id === k).cod_amount); fees += dec(v.fee); } });
+    mount(sum, h('div', { class: 'tl' }, h('span', {}, t('Cash from customers')), h('span', {}, money(str(cod)))),
+      h('div', { class: 'tl' }, h('span', {}, t('His charge')), h('span', {}, `− ${money(str(fees))}`)),
+      h('div', { class: 'tl grand' }, h('span', {}, t('He hands over')), h('strong', {}, money(str(cod - fees)))));
+  };
+  const rows = items.map((o) => {
+    const box = h('input', { type: 'checkbox', checked: true });
+    const fee = money_input(`fee${o.id}`, picked.get(o.id).fee, { placeholder: t('Charge'), 'aria-label': t('Delivery man\'s charge') });
+    box.addEventListener('change', () => { picked.get(o.id).on = box.checked; paint(); });
+    fee.addEventListener('input', () => { picked.get(o.id).fee = fee.value; paint(); });
+    return h('div', { class: 'cod-row' }, h('label', { class: 'check' }, box, h('span', { class: 'cell-stack' }, h('strong', {}, `${o.number} · ${money(o.cod_amount)}`), h('small', { class: 'muted' }, `${o.customer_name} · ${o.area || o.address || ''}`))), fee);
+  });
+  paint();
+  const m = modal({
+    title: t('Take cash from {n}', { n: r.name }), size: 'lg',
+    body: h('div', { class: 'form' }, h('div', { class: 'cod-list' }, rows), field(t('Received in'), acc), sum),
+    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+      const ids = []; const fees = {};
+      picked.forEach((v, k) => { if (v.on) { ids.push(k); if (v.fee) fees[k] = v.fee; } });
+      if (!ids.length) return;
+      e.currentTarget.disabled = true;
+      try {
+        const res = await api.post('orders/cod', { ids, fees, account_id: acc.value });
+        m.close(); toast(t('{n} orders paid · {x} received', { n: res.orders, x: money(res.amount) })); done();
+      } catch (err) { e.currentTarget.disabled = false; showError(err); }
+    } }, icon('check', 16), t('Save'))],
+  });
+}
+
+async function localBoard(el, query) {
+  const range = { from: query.from || '', to: query.to || '' };
+  const p = page(t('Local delivery'), {
+    back: '/orders',
+    subtitle: t('Your own delivery men: who has which parcel, what they delivered, and the cash they still have to hand over.'),
+    actions: can('orders.manage') ? [h('button', { class: 'btn btn-sm', type: 'button', onclick: () => modal({ title: t('Your delivery men'), size: 'md', body: workersCard('rider'), onClose: () => load() }) }, icon('users', 16), t('Delivery men'))] : [],
+  });
+  const body = h('div', {}, spinner());
+  p.body.append(body);
+  mount(el, p.el);
+  async function load() {
+    const b = await api.get('orders/local', range);
+    const T = b.totals;
+    const m = can('orders.manage');
+    mount(body,
+      h('div', { class: 'stats' },
+        stat(t('Ready to send'), String(b.ready), { tone: b.ready ? 'warn' : '', onclick: () => navigate('/orders?status=confirmed') }),
+        stat(t('Out for delivery'), String(T.out)),
+        stat(t('Delivered today'), String(T.today), { tone: 'ok' }),
+        stat(t('Cash with delivery men'), money(T.cash_due), { tone: Number(T.cash_due) ? 'warn' : '' })),
+      b.riders.length ? h('div', { class: 'rider-grid' }, b.riders.map((r) => card(null,
+        h('div', { class: 'rider-head' },
+          h('span', { class: 'avatar-ini lg' }, r.name.slice(0, 1).toUpperCase()),
+          h('div', { class: 'grow' }, h('strong', {}, r.name, r.active ? null : [' ', badge('void', t('Inactive'))]), h('small', { class: 'muted' }, [r.phone, Number(r.fee) ? t('{x} per delivery', { x: money(r.fee) }) : ''].filter(Boolean).join(' · '))),
+          r.phone ? h('a', { class: 'btn btn-sm', href: `tel:${r.phone}` }, t('Call')) : null),
+        h('div', { class: 'rider-stats' },
+          h('span', {}, h('b', {}, String(r.with_him.filter((o) => o.status === 'shipped').length)), t('With him now')),
+          h('span', { class: 'ok-text' }, h('b', {}, String(r.delivered)), t('Delivered')),
+          h('span', { class: r.returned ? 'bad-text' : '' }, h('b', {}, String(r.returned)), t('Returned')),
+          h('span', {}, h('b', {}, r.success === null ? '—' : `${r.success}%`), t('Success'))),
+        Number(r.cash_due) ? h('div', { class: 'rider-cash' }, h('span', {}, t('Cash with him')), h('strong', {}, money(r.cash_due)),
+          m && r.with_him.some((o) => o.status === 'delivered') ? h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: () => settleRider(r, load) }, icon('cash', 14), t('Take cash')) : null) : null,
+        r.with_him.length ? h('ul', { class: 'drill-list' }, r.with_him.map((o) => h('li', {},
+          h('a', { href: `#/orders/${o.id}` }, h('strong', {}, `${o.number} · ${o.customer_name}`), h('small', {}, [o.area, o.address].filter(Boolean).join(', ')),
+            h('small', { class: o.status === 'delivered' ? 'ok-text' : 'muted' }, o.status === 'delivered' ? t('Delivered — cash not handed over') : t('On the way'))),
+          h('span', { class: 'amt' }, h('strong', {}, money(o.cod_amount))),
+          m && o.status === 'shipped' ? h('span', { class: 'row' },
+            h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: async () => { if (await deliveredLocal({ ...o, rider_id: r.id, rider_name: r.name })) load(); } }, t('Delivered')),
+            h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: () => closeOrder(o, 'returned', load) }, t('Returned'))) : null))) : h('p', { class: 'muted small' }, t('No parcels with him now.'))))) :
+        card(null, empty(t('Add your delivery men to send orders with them.'), m ? h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => { if (await workerForm('rider')) load(); } }, icon('plus', 16), t('Add delivery man')) : null)));
   }
   load().catch((err) => mount(body, empty(err.message)));
 }
@@ -419,8 +576,10 @@ async function detail(el, id) {
   if (m && open) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: () => addProducts(o, reload) }, icon('plus', 16), t('Add products')));
   if (m && o.status === 'confirmed') actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: run(() => api.post(`orders/${id}/status`, { status: 'packed' }), t('Marked packed')) }, t('Mark packed')));
   if (m && open) actions.push(h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => { try { await ship(o); reload(); } catch (err) { showError(err); } } }, icon('purchases', 16), t('Send to courier')));
+  if (m && open) actions.push(h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => { if (await shipLocal(o)) reload(); } }, icon('users', 16), t('Own delivery man')));
+  if (m && o.status === 'shipped' && o.courier === 'self') actions.push(h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: async () => { if (await deliveredLocal(o)) reload(); } }, icon('check', 16), Number(o.cod_amount) ? t('Delivered + cash received') : t('Delivered')));
   if (o.status === 'shipped' && o.courier === 'steadfast' && o.consignment_id) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: run(() => api.post(`orders/${id}/track`), t('Tracking updated')) }, t('Check delivery status')));
-  if (m && o.status === 'shipped') actions.push(h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: run(() => api.post(`orders/${id}/status`, { status: 'delivered' }), t('Marked delivered')) }, t('Delivered')));
+  if (m && o.status === 'shipped') actions.push(h('button', { class: `btn btn-sm ${o.courier === 'self' ? '' : 'btn-primary'}`, type: 'button', onclick: run(() => api.post(`orders/${id}/status`, { status: 'delivered' }), t('Marked delivered')) }, o.courier === 'self' && Number(o.cod_amount) ? t('Delivered (cash later)') : t('Delivered')));
   if (m && ['shipped', 'delivered'].includes(o.status) && !o.cod_collected && Number(o.cod_amount)) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: () => collectCod(reload, [o.id]) }, icon('cash', 16), t('COD received')));
   if (m && (open || (o.status === 'shipped' && !o.cod_collected))) {
     const returning = o.status === 'shipped';
@@ -497,6 +656,7 @@ async function detail(el, id) {
 function ship(o) {
   return new Promise((resolve, reject) => {
     courier().then((cfg) => {
+      if ((o.courier || cfg.default_courier) === 'self') { shipLocal(o).then(resolve, reject); return; }
       const sel = select('courier', Object.entries(cfg.couriers).map(([k, v]) => [k, t(v)]), o.courier || cfg.default_courier);
       const cons = input('consignment_id', o.consignment_id || '', { placeholder: t('Consignment / parcel ID') });
       const track = input('tracking_code', o.tracking_code || '', { placeholder: t('Tracking code (optional)') });
@@ -531,6 +691,8 @@ function ship(o) {
           } catch (err) { b.disabled = false; showError(err); }
         } }, t('Send'))],
       });
+      // Own delivery has its own picker (saved delivery men, cash on return).
+      sel.addEventListener('change', () => { if (sel.value === 'self') { settled = true; m.close(); shipLocal(o).then(resolve, reject); } });
     }, reject);
   });
 }

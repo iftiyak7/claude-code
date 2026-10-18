@@ -59,6 +59,8 @@ final class SettingsService extends Service {
 			// Inventory.
 			'inventory.allow_negative'       => false,
 			'inventory.low_stock_alerts'     => true,
+			'inventory.stock_red'            => 5,
+			'inventory.stock_yellow'         => 10,
 
 			// Sales & POS.
 			'sales.default_payment_account'  => 0,
@@ -68,6 +70,7 @@ final class SettingsService extends Service {
 			'pos.auto_print'                 => false,
 			'pos.paper'                      => '80mm',
 			'pos.show_images'                => true,
+			'pos.ask_seller'                 => false,
 
 			// SMS (gateway set by the site owner).
 			'sms.after_sale'                 => false,
@@ -274,6 +277,9 @@ final class SettingsService extends Service {
 		}
 		if ( str_starts_with( $key, 'numbering.' ) && 'numbering.reset' !== $key && ! str_contains( (string) $value, '{SEQ' ) ) {
 			throw ValidationException::field( $key, 'Number format must contain {SEQ} or {SEQ:n}.' );
+		}
+		if ( in_array( $key, array( 'inventory.stock_red', 'inventory.stock_yellow' ), true ) && ( $value < 0 || $value > 100000 ) ) {
+			throw ValidationException::field( $key, 'Enter a number between 0 and 100000.' );
 		}
 		if ( 'accounting.lock_date' === $key && '' !== $value && null === Text::date( $value ) ) {
 			throw ValidationException::field( $key, 'Use a YYYY-MM-DD date.' );

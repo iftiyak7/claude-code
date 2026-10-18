@@ -205,7 +205,7 @@ final class OrderService extends Service {
 		usort( $couriers, static fn( $a, $b ) => $b['total'] <=> $a['total'] );
 
 		$road = $this->db->rows(
-			"SELECT id, number, customer_name, phone, area, courier, consignment_id, tracking_code, courier_status, rider_name, rider_phone, cod_amount, shipped_at
+			"SELECT id, number, customer_name, phone, area, courier, consignment_id, tracking_code, courier_status, rider_id, rider_name, rider_phone, cod_amount, shipped_at
 			FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND status = 'shipped' ORDER BY shipped_at ASC LIMIT 200",
 			array( $ctx->business_id )
 		);
@@ -342,10 +342,13 @@ final class OrderService extends Service {
 					$set[ $k ] = 'area' === $k ? Text::line( $data[ $k ], 100 ) : Text::multiline( $data[ $k ], 1000 );
 				}
 			}
-			if ( isset( $data['rider_name'] ) ) {
+			if ( isset( $data['rider_id'] ) ) {
+				$set = $this->riderFields( $ctx, (int) $data['rider_id'] ) + $set;
+			}
+			if ( isset( $data['rider_name'] ) && empty( $data['rider_id'] ) ) {
 				$set['rider_name'] = Text::line( $data['rider_name'], 100 );
 			}
-			if ( isset( $data['rider_phone'] ) ) {
+			if ( isset( $data['rider_phone'] ) && empty( $data['rider_id'] ) ) {
 				$set['rider_phone'] = Text::phone( $data['rider_phone'] );
 			}
 			if ( isset( $data['courier_status'] ) ) {
@@ -708,6 +711,11 @@ final class OrderService extends Service {
 			$set['rider_name']     = Text::line( $data['rider_name'] ?? $row['rider_name'] ?? '', 100 );
 			$set['rider_phone']    = Text::phone( $data['rider_phone'] ?? $row['rider_phone'] ?? '' );
 			$set['shipped_at']     = $this->now();
+			if ( ! empty( $data['rider_id'] ) ) {
+				$set = $this->riderFields( $ctx, (int) $data['rider_id'] ) + $set;
+			} elseif ( 'self' !== $courier ) {
+				$set['rider_id'] = 0;
+			}
 		}
 		if ( 'delivered' === $status ) {
 			$set['delivered_at'] = $this->now();
@@ -716,6 +724,119 @@ final class OrderService extends Service {
 		$this->audit->log( $ctx, $status, 'order', $id, 'Order ' . $row['number'] . ' marked ' . $status );
 		$this->events->dispatch( 'goriber_hisab/order/' . $status, $ctx, $id );
 		return $this->get( $ctx, $id );
+	}
+
+	/**
+	 * Own delivery man for an order: id, name and phone copied onto it.
+	 *
+	 * @return array{rider_id:int,rider_name:string,rider_phone:string}
+	 */
+	private function riderFields( BusinessContext $ctx, int $rider_id ): array {
+		if ( $rider_id <= 0 ) {
+			return array( 'rider_id' => 0 );
+		}
+		$w = $this->db->row( 'SELECT id, name, phone FROM ' . $this->db->table( 'workers' ) . " WHERE id = %d AND business_id = %d AND role = 'rider' AND deleted_at IS NULL", array( $rider_id, $ctx->business_id ) );
+		if ( null === $w ) {
+			throw ValidationException::field( 'rider_id', 'Choose a delivery man of this shop.' );
+		}
+		return array(
+			'rider_id'    => (int) $w['id'],
+			'rider_name'  => (string) $w['name'],
+			'rider_phone' => (string) $w['phone'],
+		);
+	}
+
+	/**
+	 * Local delivery with the shop's own delivery men: what each one has in
+	 * hand right now, what they delivered or brought back, and the cash they
+	 * still have to hand over.
+	 *
+	 * @param array<string,mixed> $args from, to.
+	 * @return array<string,mixed>
+	 */
+	public function localBoard( BusinessContext $ctx, array $args = array() ): array {
+		$ctx->authorize( 'orders.view' );
+		$t     = $this->db->table( 'orders' );
+		$wt    = $this->db->table( 'workers' );
+		$today = $this->today( $ctx );
+		$to    = Text::date( $args['to'] ?? null ) ?? $today;
+		$from  = Text::date( $args['from'] ?? null ) ?? ( new \DateTimeImmutable( $to ) )->modify( '-29 days' )->format( 'Y-m-d' );
+
+		$riders = array();
+		foreach ( $this->db->rows( "SELECT id, name, phone, fee, status FROM {$wt} WHERE business_id = %d AND role = 'rider' AND deleted_at IS NULL ORDER BY status, name", array( $ctx->business_id ) ) as $w ) {
+			$riders[ (int) $w['id'] ] = array(
+				'id'           => (int) $w['id'],
+				'name'         => (string) $w['name'],
+				'phone'        => (string) $w['phone'],
+				'fee'          => Decimal::toString( Decimal::of( $w['fee'] ) ),
+				'active'       => 'active' === $w['status'],
+				'with_him'     => array(),
+				'cash_due'     => 0,
+				'cash_orders'  => 0,
+				'delivered'    => 0,
+				'returned'     => 0,
+				'today'        => 0,
+				'success'      => null,
+			);
+		}
+		$stats = $this->db->rows(
+			"SELECT rider_id, status, COUNT(*) AS n, SUM(CASE WHEN status = 'delivered' AND SUBSTR(delivered_at,1,10) = %s THEN 1 ELSE 0 END) AS today
+			FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND courier = 'self' AND rider_id > 0 AND order_date BETWEEN %s AND %s GROUP BY rider_id, status",
+			array( $today, $ctx->business_id, $from, $to )
+		);
+		foreach ( $stats as $r ) {
+			$id = (int) $r['rider_id'];
+			if ( ! isset( $riders[ $id ] ) ) {
+				continue;
+			}
+			if ( 'delivered' === $r['status'] ) {
+				$riders[ $id ]['delivered'] += (int) $r['n'];
+				$riders[ $id ]['today']     += (int) $r['today'];
+			} elseif ( 'returned' === $r['status'] ) {
+				$riders[ $id ]['returned'] += (int) $r['n'];
+			}
+		}
+		// Parcels still out, and delivered ones whose cash is not handed over yet.
+		$open = $this->db->rows(
+			"SELECT id, number, customer_name, phone, address, area, status, rider_id, cod_amount, cod_collected, shipped_at, delivered_at
+			FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND courier = 'self' AND rider_id > 0
+			AND (status = 'shipped' OR (status = 'delivered' AND cod_collected = 0 AND cod_amount > 0)) ORDER BY shipped_at ASC LIMIT 500",
+			array( $ctx->business_id )
+		);
+		foreach ( $open as $o ) {
+			$id = (int) $o['rider_id'];
+			if ( ! isset( $riders[ $id ] ) ) {
+				continue;
+			}
+			$o['id']         = (int) $o['id'];
+			$o['cod_amount'] = Decimal::toString( Decimal::of( $o['cod_amount'] ) );
+			$riders[ $id ]['with_him'][] = $o;
+			$riders[ $id ]['cash_due']  += Decimal::of( $o['cod_amount'] );
+			if ( Decimal::of( $o['cod_amount'] ) > 0 ) {
+				++$riders[ $id ]['cash_orders'];
+			}
+		}
+		$totals = array( 'out' => 0, 'cash_due' => 0, 'delivered' => 0, 'returned' => 0, 'today' => 0 );
+		foreach ( $riders as &$r ) {
+			$done                 = $r['delivered'] + $r['returned'];
+			$r['success']         = $done ? (int) round( 100 * $r['delivered'] / $done ) : null;
+			$totals['out']       += count( array_filter( $r['with_him'], static fn( $o ) => 'shipped' === $o['status'] ) );
+			$totals['cash_due']  += $r['cash_due'];
+			$totals['delivered'] += $r['delivered'];
+			$totals['returned']  += $r['returned'];
+			$totals['today']     += $r['today'];
+			$r['cash_due']        = Decimal::toString( $r['cash_due'] );
+		}
+		unset( $r );
+		$totals['cash_due'] = Decimal::toString( $totals['cash_due'] );
+		$ready = (int) $this->db->value( "SELECT COUNT(*) FROM {$t} WHERE business_id = %d AND deleted_at IS NULL AND status IN ('confirmed','packed')", array( $ctx->business_id ) );
+		return array(
+			'from'   => $from,
+			'to'     => $to,
+			'riders' => array_values( $riders ),
+			'totals' => $totals,
+			'ready'  => $ready,
+		);
 	}
 
 	/**
@@ -831,7 +952,7 @@ final class OrderService extends Service {
 								'amount'             => Decimal::toString( $fee ),
 								'date'               => $date,
 								'reference'          => (string) $row['consignment_id'],
-								'description'        => 'Courier charge for order ' . $row['number'],
+								'description'        => ( 'self' === $row['courier'] ? 'Delivery man charge for order ' : 'Courier charge for order ' ) . $row['number'] . ( 'self' === $row['courier'] && $row['rider_name'] ? ' (' . $row['rider_name'] . ')' : '' ),
 							)
 						);
 						$fee_sum += $fee;

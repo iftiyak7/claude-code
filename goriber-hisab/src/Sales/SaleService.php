@@ -267,7 +267,8 @@ final class SaleService extends Service {
 		$sale['branch']   = $this->db->row( "SELECT id, name, address, phone FROM {$bt} WHERE id = %d", array( (int) $sale['branch_id'] ) );
 		$sale['meta']     = Json::decode( $sale['meta'] ?? null );
 		$sale['salesperson_id']   = (int) ( $sale['salesperson_id'] ?: $sale['created_by'] );
-		$sale['salesperson_name'] = $this->userName( $sale['salesperson_id'] );
+		$sale['seller_id']        = (int) ( $sale['seller_id'] ?? 0 );
+		$sale['salesperson_name'] = $sale['seller_id'] ? $this->sellerName( $ctx, $sale['seller_id'] ) : $this->userName( $sale['salesperson_id'] );
 		$sale['cashier_name']     = $this->userName( (int) $sale['created_by'] );
 		if ( $ctx->can( 'reports.profit' ) ) {
 			$net                  = Decimal::sum( array_map( static fn( $i ) => Decimal::of( $i['net_amount'] ), $sale['items'] ) );
@@ -314,8 +315,14 @@ final class SaleService extends Service {
 				$params[] = (int) $args[ $f ];
 			}
 		}
-		if ( ! empty( $args['salesperson_id'] ) ) {
-			$where[]  = '(CASE WHEN s.salesperson_id > 0 THEN s.salesperson_id ELSE s.created_by END) = %d';
+		if ( isset( $args['salesperson_id'] ) && 's' === substr( (string) $args['salesperson_id'], 0, 1 ) ) {
+			$args['seller_id'] = (int) substr( (string) $args['salesperson_id'], 1 );
+		}
+		if ( ! empty( $args['seller_id'] ) ) {
+			$where[]  = 's.seller_id = %d';
+			$params[] = (int) $args['seller_id'];
+		} elseif ( ! empty( $args['salesperson_id'] ) ) {
+			$where[]  = '(CASE WHEN s.salesperson_id > 0 THEN s.salesperson_id ELSE s.created_by END) = %d AND s.seller_id = 0';
 			$params[] = (int) $args['salesperson_id'];
 		}
 		if ( ! empty( $args['channel'] ) ) {
@@ -345,12 +352,13 @@ final class SaleService extends Service {
 		$base = "FROM {$st} s LEFT JOIN {$ct} c ON c.id = s.customer_id WHERE {$w}";
 		$agg  = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(s.total),0) AS total, COALESCE(SUM(s.paid_amount),0) AS paid, COALESCE(SUM(s.due_amount),0) AS due {$base}", $params );
 		$rows = $this->db->rows(
-			"SELECT s.id, s.number, s.sale_date, s.customer_id, c.name AS customer_name, c.phone AS customer_phone, s.status, s.channel, s.total, s.paid_amount, s.due_amount, s.return_amount, s.payment_status, s.created_by, s.salesperson_id, s.created_at {$base} ORDER BY s.sale_date DESC, s.id DESC LIMIT %d OFFSET %d",
+			"SELECT s.id, s.number, s.sale_date, s.customer_id, c.name AS customer_name, c.phone AS customer_phone, s.status, s.channel, s.total, s.paid_amount, s.due_amount, s.return_amount, s.payment_status, s.created_by, s.salesperson_id, s.seller_id, s.created_at {$base} ORDER BY s.sale_date DESC, s.id DESC LIMIT %d OFFSET %d",
 			array_merge( $params, array( $per_page, $offset ) )
 		);
 		foreach ( $rows as &$r ) {
 			$r['salesperson_id']   = (int) ( $r['salesperson_id'] ?: $r['created_by'] );
-			$r['salesperson_name'] = $this->userName( $r['salesperson_id'] );
+			$r['seller_id']        = (int) $r['seller_id'];
+			$r['salesperson_name'] = $r['seller_id'] ? $this->sellerName( $ctx, $r['seller_id'] ) : $this->userName( $r['salesperson_id'] );
 		}
 		unset( $r );
 		$out            = $this->paged( $rows, (int) $agg['n'], $page, $per_page );
@@ -387,6 +395,10 @@ final class SaleService extends Service {
 	 */
 	public function setUserNames( callable $names ): void {
 		$this->names = $names;
+	}
+
+	private function sellerName( BusinessContext $ctx, int $id ): string {
+		return $this->name_cache[ 's' . $id ] ??= (string) $this->db->value( 'SELECT name FROM ' . $this->db->table( 'workers' ) . ' WHERE id = %d AND business_id = %d', array( $id, $ctx->business_id ) );
 	}
 
 	private function userName( int $id ): string {
@@ -428,6 +440,11 @@ final class SaleService extends Service {
 			}
 		}
 		$salesperson = $salesperson ?: $ctx->user_id;
+		// Or a salesperson without a login, picked at the POS on a shared device.
+		$seller = (int) ( $data['seller_id'] ?? 0 );
+		if ( $seller > 0 && ! $this->db->value( 'SELECT id FROM ' . $this->db->table( 'workers' ) . " WHERE id = %d AND business_id = %d AND role = 'seller' AND status = 'active' AND deleted_at IS NULL", array( $seller, $ctx->business_id ) ) ) {
+			$errors['seller_id'] = 'Choose a salesperson of this shop.';
+		}
 
 		$date = Text::date( $data['sale_date'] ?? null ) ?? $this->today( $ctx );
 		$due  = Text::date( $data['due_date'] ?? null );
@@ -564,6 +581,7 @@ final class SaleService extends Service {
 		return array(
 			'customer_id'    => $customer_id,
 			'salesperson_id' => $salesperson,
+			'seller_id'      => max( 0, $seller ),
 			'customer'       => $customer,
 			'sale_date'      => $date,
 			'due_date'       => $due,
@@ -618,6 +636,7 @@ final class SaleService extends Service {
 			'due_date'        => $doc['due_date'],
 			'customer_id'     => $doc['customer_id'],
 			'salesperson_id'  => $doc['salesperson_id'],
+			'seller_id'       => $doc['seller_id'],
 			'channel'         => $doc['channel'],
 			'price_type'      => $doc['price_type'],
 			'subtotal'        => Decimal::toString( $t['subtotal'] ),

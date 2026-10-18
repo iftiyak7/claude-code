@@ -28,6 +28,9 @@ use GoriberHisab\Tenancy\BusinessContext;
  */
 final class ReportService extends Service {
 
+	/** "By staff" keys above this are salespeople without a login (workers table). */
+	private const SELLER_KEY = 2000000000;
+
 	private AccountService $accounts;
 
 	public function __construct( Database $db, Clock $clock, Events $events, AccountService $accounts ) {
@@ -955,7 +958,7 @@ final class ReportService extends Service {
 			'month'    => array( 'SUBSTR(s.sale_date,1,7)', 'MAX(SUBSTR(s.sale_date,1,7))', '' ),
 			'product'  => array( 'i.product_id', 'MAX(i.name)', '' ),
 			'customer' => array( 's.customer_id', "COALESCE(MAX(c.name), 'Walk-in')", "LEFT JOIN {$c} c ON c.id = s.customer_id" ),
-			'user'     => array( '(CASE WHEN s.salesperson_id > 0 THEN s.salesperson_id ELSE s.created_by END)', 'MAX(s.created_by)', '' ),
+			'user'     => array( '(CASE WHEN s.seller_id > 0 THEN ' . self::SELLER_KEY . ' + s.seller_id WHEN s.salesperson_id > 0 THEN s.salesperson_id ELSE s.created_by END)', 'MAX(s.created_by)', '' ),
 			'branch'   => array( 's.branch_id', 'MAX(b.name)', "LEFT JOIN {$b} b ON b.id = s.branch_id" ),
 			'category' => array( 'p.category_id', "COALESCE(MAX(cat.name), 'Uncategorised')", "LEFT JOIN {$p} p ON p.id = i.product_id LEFT JOIN {$cat} cat ON cat.id = p.category_id" ),
 		);
@@ -975,7 +978,12 @@ final class ReportService extends Service {
 
 		$profit_ok = $ctx->can( 'reports.profit' );
 		if ( 'user' === $group ) {
+			$wt = $this->db->table( 'workers' );
 			foreach ( $rows as &$r ) {
+				if ( (int) $r['group_key'] > self::SELLER_KEY ) { // salesperson without a login
+					$r['label'] = (string) $this->db->value( "SELECT name FROM {$wt} WHERE id = %d AND business_id = %d", array( (int) $r['group_key'] - self::SELLER_KEY, $ctx->business_id ) );
+					continue;
+				}
 				$u          = function_exists( 'get_userdata' ) ? get_userdata( (int) $r['group_key'] ) : null;
 				$r['label'] = $u ? $u->display_name : 'User #' . $r['group_key'];
 			}

@@ -35,7 +35,11 @@ final class CoreController extends Controller {
 			$this->route( 'PUT', '/branches/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->k->businesses->saveBranch( $c, $p, self::id( $r ) ) ),
 			$this->route( 'DELETE', '/branches/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->deleted( $this->k->businesses->deleteBranch( $c, self::id( $r ) ) ) ),
 
-			$this->route( 'GET', '/staff', fn( BusinessContext $c ) => $this->k->members->staff( $c ) ),
+			$this->route( 'GET', '/staff', array( $this, 'staff' ) ),
+			$this->route( 'GET', '/workers', fn( BusinessContext $c, array $p ) => $this->k->workers->list( $c, $p ) ),
+			$this->route( 'POST', '/workers', fn( BusinessContext $c, array $p ) => $this->k->workers->save( $c, $p ), array( 'created' => true ) ),
+			$this->route( 'PUT', '/workers/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->k->workers->save( $c, $p, self::id( $r ) ) ),
+			$this->route( 'DELETE', '/workers/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->deleted( $this->k->workers->delete( $c, self::id( $r ) ) ) ),
 			$this->route( 'GET', '/members', fn( BusinessContext $c ) => $this->k->members->list( $c ) ),
 			$this->route( 'POST', '/members', fn( BusinessContext $c, array $p ) => $this->k->members->add( $c, $p ), array( 'created' => true ) ),
 			$this->route( 'PUT', '/members/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->k->members->update( $c, self::id( $r ), $p ) ),
@@ -54,6 +58,25 @@ final class CoreController extends Controller {
 
 			$this->route( 'GET', '/search', array( $this, 'search' ) ),
 		);
+	}
+
+	/**
+	 * Everyone who can be credited with a sale: people with a login, then
+	 * salespeople without one (ids "s12").
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function staff( BusinessContext $ctx ): array {
+		$out = $this->k->members->staff( $ctx );
+		foreach ( $this->k->workers->list( $ctx, array( 'role' => 'seller' ) ) as $w ) {
+			$out[] = array(
+				'id'        => 's' . $w['id'],
+				'name'      => $w['name'],
+				'role'      => 'seller',
+				'seller_id' => $w['id'],
+			);
+		}
+		return $out;
 	}
 
 	/**

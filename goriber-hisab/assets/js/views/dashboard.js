@@ -12,6 +12,7 @@ import { lineChart } from '../core/chart.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { whatsappUrl, reminderText, sendReminderSms } from '../core/remind.js';
+import { lightCounts, lightRow } from '../core/lights.js';
 
 const WIDGETS = [['sales', 'Sales'], ['purchases', 'Purchases'], ['expenses', 'Expenses'], ['profit', 'Profit'], ['collection', 'Collection'], ['due', 'Due'], ['stock', 'Stock'], ['cash', 'Cash & bank']];
 
@@ -128,7 +129,19 @@ export default async function dashboard(el) {
       h('span', { class: 'bad-text' }, t('{q} left (min {m})', { q: qty(p.qty), m: qty(p.min_stock) }))))),
       can('purchases.create') ? h('a', { class: 'btn btn-sm', href: '#/purchases/new' }, t('Buy stock')) : null) : null;
 
+    // Stock lights: red = order now, yellow = getting low, green = fine.
+    const lightsBox = show('stock') && (can('inventory.view') || can('products.view')) ? card(null) : null;
+    if (lightsBox) {
+      api.get('stock/lights', { limit: 8 }).then((L) => {
+        const warn = L.items.filter((p) => p.level !== 'green').slice(0, 6);
+        mount(lightsBox, h('div', { class: 'card-head' }, h('h3', { class: 'card-title' }, t('Stock status')), h('a', { class: 'btn btn-sm', href: '#/stock-status' }, t('See all'))),
+          lightCounts(L),
+          warn.length ? h('ul', { class: 'list light-list' }, warn.map(lightRow)) : h('p', { class: 'ok-text small' }, t('All products have enough stock.')));
+      }).catch(() => lightsBox.remove());
+    }
+
     mount(content,
+      lightsBox,
       h('h2', { class: 'section-title' }, t('Today')), today,
       h('h2', { class: 'section-title' }, t('{from} – {to}', { from: date(d.from), to: date(d.to) })), overview,
       charts,

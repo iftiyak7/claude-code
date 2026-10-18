@@ -8,6 +8,7 @@ import { t } from '../core/i18n.js';
 import { datetime } from '../core/format.js';
 import { page, card, field, input, select, textarea, modal, toast, showError, showFieldErrors, values, badge, confirmDialog, simpleTable, empty, spinner } from '../core/ui.js';
 import { icon } from '../core/icons.js';
+import { workersCard } from '../core/workers.js';
 
 export default async function users(el) {
   if (location.hash.startsWith('#/branches')) return branches(el);
@@ -26,6 +27,7 @@ export default async function users(el) {
     { label: t('Last seen'), render: (m) => (m.last_seen_at ? datetime(m.last_seen_at) : '—') },
     { label: '', render: (m) => h('button', { class: 'btn btn-sm', type: 'button', onclick: () => memberForm(m, meta, reload) }, t('Manage')) },
   ], members)),
+  workersCard('seller'),
   card(t('Roles'), h('ul', { class: 'list' }, Object.entries(meta.roles).map(([key, r]) => h('li', {}, h('span', {}, h('strong', {}, t(r.label))), h('small', { class: 'muted' }, t('{n} permissions', { n: key === 'owner' ? t('all') : r.permissions.length })))))));
   mount(el, p.el);
 }
