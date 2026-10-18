@@ -17,7 +17,7 @@ use GoriberHisab\Support\HisabException;
  * Serves, under /{slug}/ (default "bizledger"):
  *   /                      the single-page app shell (login required)
  *   /manifest.webmanifest  PWA manifest
- *   /sw.js                 service worker (scoped to the app path)
+ *   /sw.js                 removes service workers left by older versions
  *   /print/{type}/{id}     printable documents (A4, A5, 80mm, 58mm)
  */
 final class AppRoute {
@@ -308,6 +308,8 @@ final class AppRoute {
 <link rel="icon" href="<?php echo $asset( 'img/icon.svg' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?php echo $asset( 'css/app.css' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>">
 <script>window.BZL = <?php echo wp_json_encode( $config ); ?>;(function(){try{var m=localStorage.getItem('gh.theme');if(m==='dark'||m==='light')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
+<script><?php echo self::bootGuard(); // phpcs:ignore WordPress.Security.EscapeOutput -- static script. ?></script>
+<script type="importmap"><?php echo wp_json_encode( array( 'imports' => self::importMap() ), JSON_UNESCAPED_SLASHES ); ?></script>
 <script type="module" src="<?php echo $asset( 'js/app.js' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>"></script>
 </head>
 <body>
@@ -487,13 +489,60 @@ final class AppRoute {
 		);
 	}
 
+	/**
+	 * Every app module, pinned to this version. Screens import each other by plain
+	 * relative paths; without this map a browser (or a host's cache) could hand back
+	 * last version's copy of a shared file and the app would never start.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function importMap(): array {
+		$dir  = GORIBER_HISAB_DIR . 'assets/js/';
+		$base = GORIBER_HISAB_URL . 'assets/js/';
+		$map  = array();
+		$it   = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) );
+		foreach ( $it as $file ) {
+			$rel = str_replace( '\\', '/', substr( (string) $file->getPathname(), strlen( $dir ) ) );
+			if ( '.js' !== substr( $rel, -3 ) || 'sw.js' === $rel ) {
+				continue;
+			}
+			$map[ $base . $rel ] = $base . $rel . '?v=' . GORIBER_HISAB_VERSION;
+		}
+		ksort( $map );
+		return $map;
+	}
+
+	/**
+	 * Runs before the app: removes service workers and caches left by older
+	 * versions, and if the app still has not started after a while (or a file
+	 * failed to load) offers a one-tap fix instead of an endless spinner.
+	 */
+	public static function bootGuard(): string {
+		return <<<'JS'
+(function(){
+if(/[?&]fresh=/.test(location.search)){try{var f=new URL(location.href);f.searchParams.delete('fresh');history.replaceState(null,'',f.toString());}catch(e){}}
+var clean=function(){try{if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});}catch(e){}
+try{if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){if(k.indexOf('goriber-hisab')===0)caches.delete(k);});}).catch(function(){});}catch(e){}};
+clean();
+var bn=(document.cookie.match(/(?:^|; )gh_lang=(bn|en)/)||[])[1]!=='en'&&(window.BZL||{}).lang!=='en';
+var err='';
+var show=function(){var a=document.getElementById('app');if(!a||!a.querySelector('.boot')||document.getElementById('gh-stuck'))return;
+var d=document.createElement('div');d.id='gh-stuck';d.className='boot-error';
+d.innerHTML='<h1>'+(bn?'অ্যাপ চালু হতে সমস্যা হচ্ছে':'The app is having trouble starting')+'</h1><p>'+(bn?'পুরনো ফাইল জমে থাকতে পারে। নিচের বাটনে চাপ দিন।':'Old files may be stored in this browser. Tap the button below.')+'</p>'+(err?'<p class="muted small"></p>':'')+'<button type="button" class="btn btn-primary">'+(bn?'আবার লোড করুন':'Reload')+'</button>';
+if(err)d.querySelector('.small').textContent=err;
+d.querySelector('button').onclick=function(){clean();var u=new URL(location.href);u.searchParams.set('fresh',Date.now());setTimeout(function(){location.replace(u.toString());},300);};
+a.innerHTML='';a.appendChild(d);};
+window.addEventListener('error',function(e){var t=e.target;if(t&&t.tagName==='SCRIPT'){err=(t.src||'')+' failed to load';}else if(e.message){err=e.message;}else return;setTimeout(show,1500);},true);
+window.addEventListener('unhandledrejection',function(e){var m=e.reason&&e.reason.message;if(m&&/import|module|export|fetch/i.test(m)){err=m;setTimeout(show,1500);}});
+setTimeout(show,15000);
+})();
+JS;
+	}
+
 	private function serviceWorker(): void {
 		header( 'Content-Type: application/javascript; charset=utf-8' );
 		header( 'Service-Worker-Allowed: ' . wp_parse_url( self::url(), PHP_URL_PATH ) );
-		header( 'Cache-Control: no-cache' );
-		$version = GORIBER_HISAB_VERSION;
-		$assets  = GORIBER_HISAB_URL . 'assets/';
-		echo 'const BZL_VERSION=' . wp_json_encode( $version ) . ';const BZL_ASSETS=' . wp_json_encode( $assets ) . ";\n";
+		header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
 		readfile( GORIBER_HISAB_DIR . 'assets/js/sw.js' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 	}
 

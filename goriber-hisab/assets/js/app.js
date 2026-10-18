@@ -10,6 +10,7 @@ import { route, start, navigate, current } from './core/router.js';
 import { loadLanguage, t, currentLang } from './core/i18n.js';
 import { spinner, empty, modal, toast } from './core/ui.js';
 import { sync, queued, refreshSnapshot } from './core/offline.js';
+import { pullToRefresh, reloadApp } from './core/pull.js';
 
 const NAV = [
   ['/', 'dashboard', 'Dashboard', ['dashboard.view']],
@@ -140,6 +141,7 @@ async function boot() {
     return;
   }
   registerServiceWorker();
+  pullToRefresh();
   start(render);
   // Load every screen's code in the background so moving around is instant.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
@@ -271,6 +273,7 @@ function buildShell() {
     globalSearch(),
     offline, queueBadge,
     can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm hide-sm', href: '#/pos' }, icon('plus', 16), t('New sale')) : null,
+    h('button', { class: 'icon-btn refresh-btn', type: 'button', title: t('Refresh'), 'aria-label': t('Refresh'), onclick: (e) => { e.currentTarget.classList.add('spin'); reloadApp(); } }, icon('refresh', 20)),
     themeToggle(),
     langToggle(),
     bell,

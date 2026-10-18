@@ -772,3 +772,13 @@ body.full-screen { overflow: hidden; height: 100dvh; overscroll-behavior: none; 
 .merge-callout { border-left: 4px solid var(--info); background: var(--info-bg); gap: 6px; margin-bottom: 12px; }
 .add-lines { display: grid; gap: 6px; }
 .add-line .grow { flex: 1; min-width: 0; }
+
+/* Pull to refresh */
+html.own-pull, html.own-pull body { overscroll-behavior-y: contain; }
+.pull-ring { position: fixed; left: 50%; top: 0; z-index: 200; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--muted); box-shadow: var(--shadow-lg); transform: translate(-50%, -50px); opacity: 0; pointer-events: none; }
+.pull-ring.ready { color: var(--brand); }
+.pull-ring.back { transition: transform .25s, opacity .25s; }
+.pull-ring.spin { transform: translate(-50%, 40px); opacity: 1; color: var(--brand); }
+.pull-ring.spin svg { animation: gh-spin .7s linear infinite; }
+@keyframes gh-spin { to { transform: rotate(360deg); } }
+.refresh-btn.spin svg { animation: gh-spin .7s linear infinite; }
