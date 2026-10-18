@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace GoriberHisab\Http\Controllers;
 
+use GoriberHisab\Admin\AppRoute;
 use GoriberHisab\Support\PermissionException;
 use GoriberHisab\Support\SubscriptionException;
 use GoriberHisab\Support\Text;
@@ -47,9 +48,42 @@ final class CoreController extends Controller {
 			$this->route( 'GET', '/audit', array( $this, 'audit' ) ),
 
 			$this->route( 'GET', '/notifications', fn( BusinessContext $c, array $p ) => $this->k->notifications->inbox( $c, $p ) ),
+			$this->route( 'GET', '/notifications/alerts', fn( BusinessContext $c, array $p ) => $this->k->notifications->alerts( $c, (int) ( $p['after'] ?? 0 ), (string) ( $p['lang'] ?? '' ) ) ),
+			$this->route( 'POST', '/notifications/device', array( $this, 'alertDevice' ) ),
 			$this->route( 'POST', '/notifications/read', fn( BusinessContext $c, array $p ) => $this->deleted( $this->k->notifications->markRead( $c, (array) ( $p['ids'] ?? array() ) ) ) ),
 
 			$this->route( 'GET', '/search', array( $this, 'search' ) ),
+		);
+	}
+
+	/**
+	 * A private link the Android app checks in the background (every ~15 minutes,
+	 * even when closed) for low-stock alerts. The secret is stored hashed; each
+	 * person keeps their 5 newest phones.
+	 *
+	 * @param array<string,mixed> $p lang.
+	 * @return array{url:string,last_id:int}
+	 */
+	public function alertDevice( BusinessContext $ctx, array $p ): array {
+		$secret = wp_generate_password( 40, false, false );
+		$tokens = get_user_meta( $ctx->user_id, AppRoute::ALERT_TOKENS, true );
+		$tokens = is_array( $tokens ) ? $tokens : array();
+		$tokens[ hash( 'sha256', $secret ) ] = array(
+			'b' => $ctx->business_id,
+			't' => time(),
+		);
+		uasort( $tokens, static fn( $a, $b ) => $b['t'] <=> $a['t'] );
+		update_user_meta( $ctx->user_id, AppRoute::ALERT_TOKENS, array_slice( $tokens, 0, 5, true ) );
+		$lang = 'en' === ( $p['lang'] ?? '' ) ? 'en' : 'bn';
+		return array(
+			'url'     => add_query_arg(
+				array(
+					'token' => $ctx->user_id . '-' . $secret,
+					'lang'  => $lang,
+				),
+				AppRoute::url( 'alerts' )
+			),
+			'last_id' => $this->k->notifications->alerts( $ctx )['last_id'],
 		);
 	}
 

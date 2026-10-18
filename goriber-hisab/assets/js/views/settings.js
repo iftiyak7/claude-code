@@ -11,6 +11,7 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { connectPrinter, printTest, transport } from '../core/printer.js';
 import { refreshSnapshot } from '../core/offline.js';
+import { alertSettingsCard } from '../core/alerts.js';
 
 const TABS = [
   ['business', 'Business', ['business.manage']],
@@ -245,7 +246,7 @@ const RENDER = {
       ['notifications.purchases', t('Purchases added'), 'bool'],
       ['notifications.payments', t('Payments received'), 'bool'],
       ['notifications.backup_reminder_days', t('Remind me to back up every (days, 0 = never)'), 'number'],
-    ]);
+    ], { after: alertSettingsCard() });
   },
 
   async data() {

@@ -1613,5 +1613,22 @@
 "Change photo": "ছবি বদলান",
 "Add photo": "ছবি দিন",
 "Remove photo": "ছবি সরান",
-"Refresh": "রিফ্রেশ"
+"Refresh": "রিফ্রেশ",
+"+{n} more alerts": "আরও {n}টি অ্যালার্ট",
+"View": "দেখুন",
+"OK": "ঠিক আছে",
+"Notifications are allowed on this device.": "এই ডিভাইসে নোটিফিকেশন চালু আছে।",
+"Notifications are blocked — allow them for this app/site in the phone or browser settings.": "নোটিফিকেশন বন্ধ করা আছে। ফোন বা ব্রাউজারের সেটিংস থেকে এই অ্যাপ/সাইটের নোটিফিকেশন চালু করুন।",
+"Low stock alerts on this device": "এই ডিভাইসে লো স্টক অ্যালার্ট",
+"Show a popup": "পপআপ দেখাবে",
+"A box appears on screen as soon as a product runs low.": "কোনো পণ্যের স্টক কমে গেলেই স্ক্রিনে একটা বক্স আসবে।",
+"Play a sound": "শব্দ হবে",
+"A short ring, and the phone vibrates.": "ছোট একটা রিং বাজবে, ফোন ভাইব্রেট করবে।",
+"Phone notification": "ফোনে নোটিফিকেশন",
+"Comes in the notification bar even when the app is closed (checked about every 15 minutes).": "অ্যাপ বন্ধ থাকলেও নোটিফিকেশন বারে আসবে (প্রায় প্রতি ১৫ মিনিটে চেক করে)।",
+"Shows a notification from this browser while the site is open in a tab.": "সাইট ব্রাউজারের কোনো ট্যাবে খোলা থাকলে নোটিফিকেশন দেখাবে।",
+"Low stock: {name}": "স্টক কম: {name}",
+"Test product": "টেস্ট পণ্য",
+"Only {n} left (minimum {m}).": "আর মাত্র {n}টি আছে (সর্বনিম্ন {m})।",
+"Test alert": "টেস্ট অ্যালার্ট"
 }

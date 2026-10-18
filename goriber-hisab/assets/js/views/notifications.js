@@ -4,7 +4,7 @@
 import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can, emit } from '../core/state.js';
-import { t } from '../core/i18n.js';
+import { t, currentLang } from '../core/i18n.js';
 import { datetime, money } from '../core/format.js';
 import { page, card, dataTable, input, select, empty, toast, showError, confirmDialog, tabs } from '../core/ui.js';
 import { icon } from '../core/icons.js';
@@ -22,9 +22,10 @@ export default async function notifications(el, params, query) {
       h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { await api.post('notifications/read', {}); emit('unread', 0); notifications(el, params, query); } }, icon('check', 16), t('Mark all read')),
     ],
   });
-  const res = await api.get('notifications', { per_page: 100 });
+  const res = await api.get('notifications', { per_page: 100, lang: currentLang() });
   const link = (n) => {
     const d = n.data || {};
+    if (n.type === 'low_stock_summary') return '/inventory?low=1';
     if (d.product_id) return `/products/${d.product_id}`;
     if (d.sale_id) return `/sales/${d.sale_id}`;
     if (d.purchase_id) return `/purchases/${d.purchase_id}`;

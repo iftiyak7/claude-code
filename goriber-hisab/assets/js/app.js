@@ -11,6 +11,7 @@ import { loadLanguage, t, currentLang } from './core/i18n.js';
 import { spinner, empty, modal, toast } from './core/ui.js';
 import { sync, queued, refreshSnapshot } from './core/offline.js';
 import { pullToRefresh, reloadApp } from './core/pull.js';
+import { startAlerts } from './core/alerts.js';
 
 const NAV = [
   ['/', 'dashboard', 'Dashboard', ['dashboard.view']],
@@ -150,6 +151,7 @@ async function boot() {
   if (state.ctx) {
     sync();
     refreshSnapshot();
+    startAlerts();
   }
 }
 

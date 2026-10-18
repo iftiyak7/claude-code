@@ -41,6 +41,7 @@ public class NativeBridge {
 
     private static final UUID SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private static final int REQ_BT = 21;
+    private static final int REQ_NOTIFY = 22;
 
     private final MainActivity activity;
     private final WebView web;
@@ -78,6 +79,47 @@ public class NativeBridge {
     @JavascriptInterface
     public void changeServer() {
         activity.askServer();
+    }
+
+    /* ------------------------------------------------------- Alerts */
+
+    /** Show a notification in the phone's notification bar. */
+    @JavascriptInterface
+    public void notify(String title, String body, String link) {
+        Alerts.show(activity, (int) (System.currentTimeMillis() & 0x7fffffff), title, body, link);
+    }
+
+    @JavascriptInterface
+    public boolean notificationsAllowed() {
+        return Alerts.allowed(activity)
+                && (Build.VERSION.SDK_INT < 33 || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    @JavascriptInterface
+    public void askNotificationPermission() {
+        Alerts.channel(activity);
+        if (Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            activity.runOnUiThread(() -> activity.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIFY));
+        }
+    }
+
+    /** The private link the background check uses; empty switches it off. */
+    @JavascriptInterface
+    public void setAlertFeed(String url) {
+        Alerts.setFeed(activity, url);
+        if (url != null && !url.isEmpty()) {
+            askNotificationPermission();
+        }
+    }
+
+    /** The web app already showed alerts up to this id. */
+    @JavascriptInterface
+    public void alertSeen(String id) {
+        try {
+            Alerts.seen(activity, Long.parseLong(id));
+        } catch (NumberFormatException ignored) {
+            // not a number
+        }
     }
 
     /** A4/A5 invoices and statements through Android's print service (or "Save as PDF"). */

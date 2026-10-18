@@ -213,6 +213,8 @@ final class AppRoute {
 			$this->manifest();
 		} elseif ( 'sw.js' === $path ) {
 			$this->serviceWorker();
+		} elseif ( 'alerts' === $path ) {
+			$this->alertsFeed();
 		} elseif ( 'download' === $path || 'download/goriber-hisab.apk' === $path ) {
 			$this->downloadApp();
 		} elseif ( 'login' === $path ) {
@@ -225,6 +227,36 @@ final class AppRoute {
 			$this->shell( $mode );
 		}
 		exit;
+	}
+
+	/** User meta: hashed secrets of the phones that check for alerts in the background. */
+	public const ALERT_TOKENS = 'goriber_hisab_alert_tokens';
+
+	/**
+	 * New alerts for the Android app's background check (no login cookie there,
+	 * just the private link from CoreController::alertDevice()).
+	 *
+	 * @return never
+	 */
+	private function alertsFeed(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- token-authenticated read.
+		$token = sanitize_text_field( wp_unslash( (string) ( $_GET['token'] ?? '' ) ) );
+		$after = (int) ( $_GET['after'] ?? 0 );
+		$lang  = 'en' === ( $_GET['lang'] ?? '' ) ? 'en' : 'bn';
+		// phpcs:enable
+		$parts  = explode( '-', $token, 2 );
+		$uid    = (int) $parts[0];
+		$tokens = $uid > 0 && isset( $parts[1] ) ? get_user_meta( $uid, self::ALERT_TOKENS, true ) : array();
+		$entry  = is_array( $tokens ) && isset( $parts[1] ) ? ( $tokens[ hash( 'sha256', $parts[1] ) ] ?? null ) : null;
+		if ( ! is_array( $entry ) ) {
+			wp_send_json( array( 'error' => 'invalid_token' ), 401 );
+		}
+		try {
+			$ctx = $this->k->contexts->forUser( $uid, (int) $entry['b'] );
+			wp_send_json( $this->k->notifications->alerts( $ctx, $after, $lang ) );
+		} catch ( \Throwable $e ) {
+			wp_send_json( array( 'error' => 'no_access' ), 403 );
+		}
 	}
 
 	/** Latest Android app built by GitHub Actions (the plugin zip usually carries its own copy). */

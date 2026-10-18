@@ -36,6 +36,7 @@ final class Cron {
 				$ctx = $this->k->businesses->systemContext( $id );
 				$this->dueReminder( $ctx );
 				$this->backupReminder( $ctx );
+				$this->k->notifications->lowStockSummary( $ctx );
 				do_action( 'goriber_hisab/daily', $ctx );
 			} catch ( \Throwable $e ) {
 				error_log( 'Goriber Hisab daily job failed for business ' . $id . ': ' . $e->getMessage() ); // phpcs:ignore
