@@ -348,4 +348,29 @@ final class OrdersTest extends IntegrationTestCase {
 		$c = $this->k->orders->parse( $this->ctx, "Jamal\n01912345678\nবকচর, যশোর", false );
 		$this->assertSame( 'inside', $c['zone'] );
 	}
+
+	public function testCustomerFilters(): void {
+		$p   = $this->product( 'Honey', '300', '200', '50' );
+		$big = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Big Buyer', 'phone' => '01711111111', 'address' => 'Rail Road, Jashore' ) )['id'];
+		$small = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Small Buyer', 'phone' => '01722222222' ) )['id'];
+		$this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Never Bought' ) );
+		$this->k->sales->create( $this->ctx, array( 'customer_id' => $big, 'items' => array( array( 'product_id' => $p, 'qty' => '10' ) ), 'payments' => array( array( 'amount' => '3000' ) ) ) );
+		$this->k->sales->create( $this->ctx, array( 'customer_id' => $small, 'items' => array( array( 'product_id' => $p, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '300' ) ) ) );
+		$o = $this->order( $p, array( 'customer_id' => $small, 'zone' => 'outside', 'area' => 'Khulna' ) );
+		$this->k->orders->confirm( $this->ctx, $o['id'] );
+
+		$c    = $this->k->contacts;
+		$name = static fn( $r ) => array_map( static fn( $x ) => $x['name'], $r['items'] );
+		$this->assertSame( array( 'Big Buyer' ), $name( $c->list( $this->ctx, 'customer', array( 'min_bought' => '2000' ) ) ) );
+		$this->assertSame( array( 'Never Bought' ), $name( $c->list( $this->ctx, 'customer', array( 'max_bought' => '0' ) ) ) );
+		$this->assertSame( array( 'Big Buyer' ), $name( $c->list( $this->ctx, 'customer', array( 'location' => 'jashore' ) ) ) );
+		$this->assertSame( array( 'Small Buyer' ), $name( $c->list( $this->ctx, 'customer', array( 'location' => 'Khulna' ) ) ) );
+		$this->assertSame( array( 'Small Buyer' ), $name( $c->list( $this->ctx, 'customer', array( 'zone' => 'outside' ) ) ) );
+		$this->assertSame( array( 'Small Buyer' ), $name( $c->list( $this->ctx, 'customer', array( 'channel' => 'online' ) ) ) );
+		$all = $c->list( $this->ctx, 'customer', array( 'orderby' => 'bought' ) );
+		$this->assertSame( 'Big Buyer', $all['items'][0]['name'] );
+		$this->assertMoney( '3000', $all['items'][0]['bought'] );
+		$this->assertSame( 2, $all['items'][1]['invoices'] );
+		$this->assertSame( array( 'Never Bought' ), $name( $c->list( $this->ctx, 'customer', array( 'inactive_days' => '30' ) ) ) );
+	}
 }

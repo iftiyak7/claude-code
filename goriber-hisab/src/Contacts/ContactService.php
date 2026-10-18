@@ -52,36 +52,94 @@ final class ContactService extends Service {
 	}
 
 	/**
-	 * @param array<string,mixed> $args search, due_only, page, per_page, orderby.
+	 * @param array<string,mixed> $args search, due_only, min_bought, max_bought, location, zone (inside|outside),
+	 *                                  channel (online|shop), last_from, last_to, inactive_days, page, per_page, orderby.
 	 * @return array<string,mixed>
 	 */
 	public function list( BusinessContext $ctx, string $type, array $args = array() ): array {
 		$ctx->authorize( self::perm( $type, 'view' ) );
 		list( $page, $per_page, $offset ) = $this->paging( $args, 500 );
 		$t      = $this->db->table( 'contacts' );
-		$where  = array( 'business_id = %d', 'type = %s', 'deleted_at IS NULL' );
+		$docs   = $this->db->table( 'customer' === $type ? 'sales' : 'purchases' );
+		$party  = 'customer' === $type ? 'customer_id' : 'supplier_id';
+		$dcol   = 'customer' === $type ? 'sale_date' : 'purchase_date';
+		$ot     = $this->db->table( 'orders' );
+		$where  = array( 'c.business_id = %d', 'c.type = %s', 'c.deleted_at IS NULL' );
 		$params = array( $ctx->business_id, $type );
 		if ( ! empty( $args['search'] ) ) {
 			$term     = Text::line( $args['search'] );
 			$like     = '%' . $this->db->escapeLike( $term ) . '%';
-			$where[]  = '(name LIKE %s OR phone LIKE %s OR code = %s OR company LIKE %s OR email LIKE %s)';
+			$where[]  = '(c.name LIKE %s OR c.phone LIKE %s OR c.code = %s OR c.company LIKE %s OR c.email LIKE %s)';
 			array_push( $params, $like, $like, $term, $like, $like );
 		}
 		if ( ! empty( $args['due_only'] ) ) {
-			$where[] = 'balance > 0';
+			$where[] = 'c.balance > 0';
+		}
+		if ( ! empty( $args['location'] ) ) {
+			// Address on the customer, or any delivery area/address used in their online orders.
+			$like     = '%' . $this->db->escapeLike( Text::line( $args['location'] ) ) . '%';
+			$where[]  = "(c.address LIKE %s OR EXISTS (SELECT 1 FROM {$ot} o WHERE o.business_id = c.business_id AND o.customer_id = c.id AND (o.area LIKE %s OR o.address LIKE %s)))";
+			array_push( $params, $like, $like, $like );
+		}
+		if ( 'customer' === $type && in_array( $args['zone'] ?? '', array( 'inside', 'outside' ), true ) ) {
+			$where[]  = "EXISTS (SELECT 1 FROM {$ot} o WHERE o.business_id = c.business_id AND o.customer_id = c.id AND o.zone = %s)";
+			$params[] = $args['zone'];
+		}
+		if ( 'customer' === $type && in_array( $args['channel'] ?? '', array( 'online', 'shop' ), true ) ) {
+			$where[] = "EXISTS (SELECT 1 FROM {$docs} d WHERE d.business_id = c.business_id AND d.customer_id = c.id AND d.status = 'completed' AND d.channel " . ( 'online' === $args['channel'] ? "= 'online'" : "<> 'online'" ) . ')';
+		}
+
+		// Trading figures per contact, then filters on them.
+		$inner = "SELECT c.*,
+				(SELECT COALESCE(SUM(d.total - d.return_amount),0) FROM {$docs} d WHERE d.business_id = c.business_id AND d.{$party} = c.id AND d.status = 'completed') AS bought,
+				(SELECT COUNT(*) FROM {$docs} d WHERE d.business_id = c.business_id AND d.{$party} = c.id AND d.status = 'completed') AS invoices,
+				(SELECT MAX(d.{$dcol}) FROM {$docs} d WHERE d.business_id = c.business_id AND d.{$party} = c.id AND d.status = 'completed') AS last_buy
+			FROM {$t} c WHERE " . implode( ' AND ', $where );
+		$outer  = array( '1 = 1' );
+		$oparam = array();
+		foreach ( array( 'min_bought' => '>=', 'max_bought' => '<=' ) as $k => $op ) {
+			if ( isset( $args[ $k ] ) && '' !== (string) $args[ $k ] && is_numeric( $args[ $k ] ) ) {
+				// Validated number written inline: SQLite compares a bound string as text.
+				$outer[] = "x.bought {$op} " . sprintf( '%.4F', Decimal::of( $args[ $k ] ) / 10000 );
+			}
+		}
+		foreach ( array( 'last_from' => '>=', 'last_to' => '<=' ) as $k => $op ) {
+			$d = Text::date( $args[ $k ] ?? null );
+			if ( $d ) {
+				$outer[]  = "x.last_buy {$op} %s";
+				$oparam[] = $d;
+			}
+		}
+		if ( ! empty( $args['inactive_days'] ) && (int) $args['inactive_days'] > 0 ) {
+			$outer[]  = '(x.last_buy IS NULL OR x.last_buy < %s)';
+			$oparam[] = ( new \DateTimeImmutable( $this->today( $ctx ) ) )->modify( '-' . (int) $args['inactive_days'] . ' days' )->format( 'Y-m-d' );
 		}
 		$order = array(
-			'name'    => 'name ASC',
-			'balance' => 'balance DESC',
-			'recent'  => 'last_activity_at DESC',
-			'newest'  => 'id DESC',
-		)[ $args['orderby'] ?? 'name' ] ?? 'name ASC';
-		$w     = implode( ' AND ', $where );
-		$total = (int) $this->db->value( "SELECT COUNT(*) FROM {$t} WHERE {$w}", $params );
-		$rows  = $this->db->rows( "SELECT * FROM {$t} WHERE {$w} ORDER BY {$order} LIMIT %d OFFSET %d", array_merge( $params, array( $per_page, $offset ) ) );
-		$sum   = $this->db->value( "SELECT COALESCE(SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END),0) FROM {$t} WHERE business_id = %d AND type = %s AND deleted_at IS NULL", array( $ctx->business_id, $type ) );
-		$out   = $this->paged( array_map( array( $this, 'present' ), $rows ), $total, $page, $per_page );
+			'name'    => 'x.name ASC',
+			'balance' => 'x.balance DESC',
+			'recent'  => 'x.last_activity_at DESC',
+			'newest'  => 'x.id DESC',
+			'bought'  => 'x.bought DESC',
+			'visits'  => 'x.invoices DESC',
+		)[ $args['orderby'] ?? 'name' ] ?? 'x.name ASC';
+		$w      = implode( ' AND ', $outer );
+		$all    = array_merge( $params, $oparam );
+		$agg    = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(x.bought),0) AS bought FROM ({$inner}) x WHERE {$w}", $all );
+		$rows   = $this->db->rows( "SELECT * FROM ({$inner}) x WHERE {$w} ORDER BY {$order} LIMIT %d OFFSET %d", array_merge( $all, array( $per_page, $offset ) ) );
+		$sum    = $this->db->value( "SELECT COALESCE(SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END),0) FROM {$t} WHERE business_id = %d AND type = %s AND deleted_at IS NULL", array( $ctx->business_id, $type ) );
+		$items  = array_map(
+			function ( array $r ): array {
+				$out             = $this->present( $r );
+				$out['bought']   = Decimal::toString( Decimal::of( $r['bought'] ?? 0 ) );
+				$out['invoices'] = (int) ( $r['invoices'] ?? 0 );
+				$out['last_buy'] = $r['last_buy'] ?? null;
+				return $out;
+			},
+			$rows
+		);
+		$out                  = $this->paged( $items, (int) $agg['n'], $page, $per_page );
 		$out['total_balance'] = Decimal::toString( Decimal::of( $sum ) );
+		$out['total_bought']  = Decimal::toString( Decimal::of( $agg['bought'] ?? 0 ) );
 		return $out;
 	}
 

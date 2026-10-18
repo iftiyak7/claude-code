@@ -759,3 +759,4 @@ body.full-screen { overflow: hidden; height: 100dvh; overscroll-behavior: none; 
 .fav-chip { display: grid; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); }
 .fav-chip:hover { text-decoration: none; outline: 1px solid var(--brand); }
 .fav-chip small { color: var(--muted); }
+.amt-filter { width: 130px; flex: 0 0 auto; }

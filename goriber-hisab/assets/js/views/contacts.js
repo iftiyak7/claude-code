@@ -28,12 +28,29 @@ export default async function contacts(el, params, query) {
       can(`${plural}.create`) ? h('a', { class: 'btn btn-primary btn-sm', href: `#/${plural}/new` }, icon('plus', 16), isCustomer ? t('New customer') : t('New supplier')) : null,
     ],
   });
+  const zoneSel = h('select', { class: 'input', name: 'zone', 'aria-label': t('Area') }, [['', t('Any area')], ['inside', t('Inside the city')], ['outside', t('Outside the city')]].map(([v, l]) => h('option', { value: v }, l)));
+  if (isCustomer && can('orders.view')) {
+    api.get('orders/courier').then((cfg) => {
+      const city = cityName(cfg.city);
+      if (!city) return;
+      zoneSel.options[1].textContent = t('Inside {city}', { city });
+      zoneSel.options[2].textContent = t('Outside {city}', { city });
+    }).catch(() => {});
+  }
   const table = dataTable({
     query,
     searchPlaceholder: t('Name, phone, ID or email'),
     filters: [
       { control: checkbox('due_only', query.due_only === '1', isCustomer ? t('Only with due') : t('Only with payable')).querySelector('input'), label: isCustomer ? t('With due') : t('With payable') },
-      { control: h('select', { class: 'input', name: 'orderby', 'aria-label': t('Sort') }, [['name', t('Name')], ['balance', t('Balance')], ['recent', t('Recent activity')], ['newest', t('Newest')]].map(([v, l]) => h('option', { value: v }, l))) },
+      { control: h('select', { class: 'input', name: 'orderby', 'aria-label': t('Sort') }, [['name', t('Name')], ['bought', isCustomer ? t('Most bought') : t('Most purchased')], ['visits', t('Most visits')], ['balance', t('Balance')], ['recent', t('Recent activity')], ['newest', t('Newest')]].map(([v, l]) => h('option', { value: v }, l))) },
+      { control: h('input', { class: 'input input-sm amt-filter', name: 'min_bought', type: 'number', min: 0, inputmode: 'decimal', placeholder: isCustomer ? t('Bought from ৳') : t('Purchased from ৳'), 'aria-label': t('Minimum amount') }) },
+      { control: h('input', { class: 'input input-sm amt-filter', name: 'max_bought', type: 'number', min: 0, inputmode: 'decimal', placeholder: t('up to ৳'), 'aria-label': t('Maximum amount') }) },
+      { control: h('input', { class: 'input input-sm', name: 'location', type: 'search', placeholder: t('Location (area, district)'), 'aria-label': t('Location') }) },
+      ...(isCustomer ? [
+        { control: zoneSel },
+        { control: h('select', { class: 'input', name: 'channel', 'aria-label': t('Where they buy') }, [['', t('Shop & online')], ['shop', t('Buys in the shop')], ['online', t('Buys online')]].map(([v, l]) => h('option', { value: v }, l))) },
+        { control: h('select', { class: 'input', name: 'inactive_days', 'aria-label': t('Not bought for') }, [['', t('Any time')], ['30', t('Not bought for 30 days')], ['60', t('Not bought for 60 days')], ['90', t('Not bought for 90 days')]].map(([v, l]) => h('option', { value: v }, l))) },
+      ] : []),
     ],
     fetch: (q) => api.get(plural, q),
     rowHref: (r) => `/${plural}/${r.id}`,
@@ -42,9 +59,14 @@ export default async function contacts(el, params, query) {
       { label: t('ID'), hide: 'sm', key: 'code' },
       { label: t('Phone'), render: (r) => (r.phone ? h('span', { class: 'phone-cell' }, r.phone,
         h('a', { class: 'wa-mini', href: whatsappUrl(r.phone, ''), target: '_blank', rel: 'noopener', title: 'WhatsApp', 'aria-label': 'WhatsApp', onclick: (e) => e.stopPropagation() }, waIcon())) : '—') },
+      { label: isCustomer ? t('Total bought') : t('Total purchased'), align: 'right', render: (r) => h('span', { class: 'cell-stack' }, h('strong', {}, money(r.bought)), h('small', { class: 'muted' }, t('{n} times', { n: r.invoices }))) },
+      { label: t('Last'), hide: 'sm', render: (r) => (r.last_buy ? date(r.last_buy) : '—') },
       { label: isCustomer ? t('Due') : t('Payable'), align: 'right', render: (r) => (Number(r.balance) > 0 ? h('strong', { class: 'warn-text' }, money(r.balance)) : Number(r.balance) < 0 ? h('span', { class: 'ok-text' }, t('Advance {x}', { x: money(String(-Number(r.balance))) })) : '—') },
     ],
-    footer: (res) => h('div', { class: 'sums' }, h('span', {}, isCustomer ? t('Total receivable') : t('Total payable'), ' ', h('strong', {}, money(res.total_balance)))),
+    footer: (res) => h('div', { class: 'sums' },
+      h('span', {}, t('{n} found', { n: res.total })),
+      h('span', {}, isCustomer ? t('Total bought') : t('Total purchased'), ' ', h('strong', {}, money(res.total_bought))),
+      h('span', {}, isCustomer ? t('Total receivable') : t('Total payable'), ' ', h('strong', {}, money(res.total_balance)))),
   });
   p.body.append(table.el);
   mount(el, p.el);
