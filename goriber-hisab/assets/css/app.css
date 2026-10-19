@@ -982,3 +982,18 @@ button.kpi:active { transform: scale(.98); }
 .label-pdf-stage > .gh-label { margin-bottom: 4px; }
 .gh-sheet-pdf { box-sizing: border-box; width: 210mm; height: 297mm; display: grid; align-content: start; background: #fff; overflow: hidden; margin-bottom: 4px; }
 @media (max-width: 480px) { .extra-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Product sizes (variants) */
+.size-toggle { align-items: flex-start; }
+.size-body { display: grid; gap: 10px; margin-top: 10px; }
+.size-rows { display: grid; gap: 8px; }
+.size-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.size-cell { display: grid; gap: 2px; min-width: 0; }
+.size-cell small { color: var(--muted); font-size: .72rem; }
+.size-cell .input { min-width: 0; }
+.size-stock { padding: 8px 2px; font-weight: 600; }
+@media (max-width: 560px) {
+  .size-row { grid-template-columns: 1fr 1fr; }
+  .size-row .size-cell.grow { grid-column: 1 / -1; }
+  .size-row > .icon-btn { grid-column: 2; justify-self: end; }
+}

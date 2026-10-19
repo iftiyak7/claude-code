@@ -134,6 +134,95 @@ function variantForm(pr, v, reload) {
   });
 }
 
+const SIZE_PICKS = ['1 kg', '500 g', '250 g', '100 g', '2 L', '1 L', '500 ml', 'S', 'M', 'L', 'XL'];
+
+/**
+ * "This product comes in sizes": a row per size with its own selling price,
+ * purchase price and stock. Saved as product variants (the POS asks which size).
+ */
+function sizesBlock(pr, editing) {
+  const rows = []; // { id?, name, sell, buy, qty, stock, el }
+  const removed = [];
+  const list = h('div', { class: 'size-rows' });
+  const toggle = h('input', { type: 'checkbox', checked: !!(pr.variants && pr.variants.length) });
+  const body = h('div', { class: 'size-body' });
+  const listeners = [];
+  const n = (v) => (Number(v) ? String(Number(v)) : '');
+
+  const addRow = (v = {}) => {
+    const name = h('input', { class: 'input', placeholder: t('e.g. 500 g'), value: v.name || '' });
+    const sell = h('input', { class: 'input', type: 'number', inputmode: 'decimal', step: 'any', min: 0, placeholder: t('Price'), value: n(v.selling_price) });
+    const buy = can('products.cost') ? h('input', { class: 'input', type: 'number', inputmode: 'decimal', step: 'any', min: 0, placeholder: t('Cost'), value: n(v.purchase_price) }) : null;
+    const qty = v.id ? null : h('input', { class: 'input', type: 'number', inputmode: 'decimal', step: 'any', min: 0, placeholder: t('Stock') });
+    const row = { id: v.id || 0, name, sell, buy, qty, orig: v };
+    row.el = h('div', { class: 'size-row' },
+      h('div', { class: 'size-cell grow' }, h('small', {}, t('Size')), name),
+      h('div', { class: 'size-cell' }, h('small', {}, t('Selling price')), sell),
+      buy ? h('div', { class: 'size-cell' }, h('small', {}, t('Purchase price')), buy) : null,
+      h('div', { class: 'size-cell' }, h('small', {}, t('Stock')), qty || h('span', { class: 'size-stock' }, qty === null ? String(Number(v.stock_qty) || 0) : '')),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => {
+        rows.splice(rows.indexOf(row), 1); row.el.remove(); if (row.id) removed.push(row);
+      } }, icon('trash', 16)));
+    rows.push(row);
+    list.append(row.el);
+    return row;
+  };
+  (pr.variants || []).forEach((v) => addRow(v));
+
+  const picks = h('div', { class: 'chip-pick' }, SIZE_PICKS.map((label) => h('button', { type: 'button', class: 'chip', onclick: () => {
+    const empty = rows.find((r) => !r.name.value);
+    const r = empty || addRow();
+    r.name.value = label;
+    r.sell.focus();
+  } }, label)));
+
+  mount(body,
+    h('p', { class: 'muted small' }, t('Tap a size to add it, then type its price. In the POS you pick the size when selling.')),
+    picks, list,
+    h('button', { class: 'btn btn-sm', type: 'button', onclick: () => addRow().name.focus() }, icon('plus', 14), t('Add another size')),
+    editing ? h('p', { class: 'muted small' }, t('Stock of an existing size changes through purchases, sales or Stock → adjust.')) : null);
+  const paint = () => { body.hidden = !toggle.checked; if (toggle.checked && !rows.length) { addRow(); addRow(); } listeners.forEach((fn) => fn()); };
+  toggle.addEventListener('change', paint);
+  const el = card(null,
+    h('label', { class: 'check size-toggle' }, toggle, h('span', {}, h('strong', {}, t('This product comes in sizes')), h('small', { class: 'muted' }, ` — ${t('e.g. honey 1 kg / 500 g / 250 g, each with its own price')}`))),
+    body);
+  body.hidden = !toggle.checked;
+
+  return {
+    el,
+    on: () => toggle.checked && rows.some((r) => r.name.value.trim()),
+    onToggle: (fn) => listeners.push(fn),
+    check() {
+      for (const r of rows) {
+        if (!r.name.value.trim() && !r.sell.value) continue;
+        if (!r.name.value.trim()) return t('Write the size for every row (e.g. 500 g).');
+        if (!(Number(r.sell.value) > 0)) return t('Give a selling price for {n}.', { n: r.name.value.trim() });
+      }
+      return '';
+    },
+    async save(productId, v) {
+      if (!toggle.checked) return;
+      let created = 0;
+      for (const r of rows) {
+        const name = r.name.value.trim();
+        if (!name) continue;
+        const body = { name, attributes: { size: name }, selling_price: r.sell.value || v.selling_price, ...(r.buy ? { purchase_price: r.buy.value || v.purchase_price || '' } : {}) };
+        if (r.id) {
+          const o = r.orig;
+          if (name !== o.name || Number(body.selling_price) !== Number(o.selling_price) || (r.buy && Number(body.purchase_price) !== Number(o.purchase_price))) await api.put(`products/${productId}/variants/${r.id}`, body);
+        } else {
+          const saved = await api.post(`products/${productId}/variants`, { ...body, opening_qty: r.qty?.value || '' });
+          r.id = saved.id; r.orig = saved; created++;
+        }
+      }
+      for (const r of removed) {
+        try { await api.del(`products/${productId}/variants/${r.id}`); } catch (err) { showError(err); }
+      }
+      if (created) await api.post('products/barcodes', { ids: String(productId) }).catch(() => {});
+    },
+  };
+}
+
 /** A select with a "+" button that creates a new category / brand / unit in place. */
 function withAdd(sel, kind, title) {
   if (!can('products.create')) return sel;
@@ -279,8 +368,11 @@ async function form(el, id = 0) {
       field(t('Description'), textarea('description', pr.description), { wide: true })),
     stockFields);
 
+  // Sizes / packs (e.g. honey 1 kg, 500 g, 250 g), each with its own price and stock.
+  const sizes = sizesBlock(pr, !!id);
+
   // Editing: the count can be corrected right here (a stock adjustment, so the history stays right).
-  const editStock = !!id && pr.type !== 'service' && !Number(pr.has_variants) && pr.track_stock !== false && Number(pr.track_stock) !== 0 && can('inventory.adjust');
+  const editStock = !!id && pr.type !== 'service' && !sizes.on() && pr.track_stock !== false && Number(pr.track_stock) !== 0 && can('inventory.adjust');
   let again = false;
   const saveBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit', onclick: () => { again = false; } }, icon('check', 18), t('Save product'));
   const againBtn = !id ? h('button', { class: 'btn btn-lg', type: 'submit', onclick: () => { again = true; } }, icon('plus', 18), t('Save & add another')) : null;
@@ -300,18 +392,24 @@ async function form(el, id = 0) {
         !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
         editStock ? field(t('Stock now'), money_input('stock_now', String(Number(pr.stock_qty) || 0)), { hint: t('Change it to correct the count — saved as a stock adjustment') }) : null,
         field(t('Alert when stock falls to'), money_input('min_stock', num(pr.min_stock), { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
+    sizes.el,
     more,
     imageId,
     h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: id ? `#/products/${id}` : '#/products' }, t('Cancel')), againBtn, saveBtn));
   // Opening stock and alert level now live up top; keep their old copies out of the form.
   stockFields.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => x.closest('.field')?.remove());
+  const wholeStock = () => f.querySelectorAll('[name=opening_qty], [name=stock_now]').forEach((x) => { x.closest('.field').hidden = sizes.on(); });
+  sizes.onToggle(wholeStock);
+  wholeStock();
   typeSel.addEventListener('change', () => { f.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => { x.closest('.field').hidden = typeSel.value === 'service'; }); });
 
   bindForm(f, async (v) => {
     try {
       const stockNow = v.stock_now;
       delete v.stock_now;
+      if (sizes.on()) { const bad = sizes.check(); if (bad) throw new Error(bad); }
       const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
+      await sizes.save(saved.id, v);
       if (editStock && stockNow !== '' && stockNow !== undefined && Number(stockNow) !== Number(pr.stock_qty || 0)) {
         await api.post('stock/adjust', { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
       }

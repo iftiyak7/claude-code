@@ -1830,5 +1830,13 @@
 "Could not prepare the PDF.": "PDF তৈরি করা যায়নি।",
 "PDF downloaded": "PDF ডাউনলোড হয়েছে",
 "Change it to correct the count — saved as a stock adjustment": "গুনে দেখে ঠিক সংখ্যা লিখুন, স্টক অ্যাডজাস্টমেন্ট হিসেবে সেভ হবে",
-"Count corrected on the product page": "পণ্যের পেজ থেকে স্টক ঠিক করা হয়েছে"
+"Count corrected on the product page": "পণ্যের পেজ থেকে স্টক ঠিক করা হয়েছে",
+"e.g. 500 g": "যেমন ৫০০ গ্রাম",
+"Tap a size to add it, then type its price. In the POS you pick the size when selling.": "সাইজে চাপ দিয়ে যোগ করুন, তারপর দাম লিখুন। বিক্রির সময় POS-এ কোন সাইজ সেটা বেছে নেবেন।",
+"Add another size": "আরেকটি সাইজ যোগ করুন",
+"Stock of an existing size changes through purchases, sales or Stock → adjust.": "আগের সাইজের স্টক বদলায় ক্রয়, বিক্রি বা স্টক → অ্যাডজাস্ট দিয়ে।",
+"This product comes in sizes": "এই পণ্যের কয়েকটা সাইজ আছে",
+"e.g. honey 1 kg / 500 g / 250 g, each with its own price": "যেমন মধু ১ কেজি / ৫০০ গ্রাম / ২৫০ গ্রাম, প্রতিটার আলাদা দাম",
+"Write the size for every row (e.g. 500 g).": "প্রতিটি লাইনে সাইজ লিখুন (যেমন ৫০০ গ্রাম)।",
+"Give a selling price for {n}.": "{n}-এর বিক্রির দাম দিন।"
 }

@@ -327,7 +327,12 @@ final class ProductService extends Service {
 		if ( 0 !== $qty ) {
 			throw new ConflictException( 'This variant still has stock.' );
 		}
-		$this->db->update( $this->db->table( 'product_variants' ), array( 'deleted_at' => $this->now(), 'deleted_by' => $ctx->user_id ), array( 'id' => $variant_id, 'business_id' => $ctx->business_id ) );
+		$vt = $this->db->table( 'product_variants' );
+		$this->db->update( $vt, array( 'deleted_at' => $this->now(), 'deleted_by' => $ctx->user_id ), array( 'id' => $variant_id, 'business_id' => $ctx->business_id ) );
+		// Last size gone: the product sells as one item again.
+		if ( ! (int) $this->db->value( "SELECT COUNT(*) FROM {$vt} WHERE business_id = %d AND product_id = %d AND deleted_at IS NULL", array( $ctx->business_id, $product_id ) ) ) {
+			$this->db->update( $this->db->table( 'products' ), array( 'has_variants' => 0 ), array( 'id' => $product_id, 'business_id' => $ctx->business_id ) );
+		}
 		$this->audit->log( $ctx, 'delete', 'variant', $variant_id, 'Variant deleted' );
 	}
 
