@@ -11,7 +11,14 @@
   "facebook": "",
   "about": "যশোরের হাসপাতাল, জরুরি সেবা, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থানের যাচাইকৃত তথ্য এক জায়গায়।",
   "disclaimer": "Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম, সরকারি অ্যাপ নয় এবং নিজে কোনো জরুরি সেবা দেয় না।",
-  "snakeTip": "সাপে কামড়ালে ওঝা নয়, দ্রুত নিকটস্থ সরকারি হাসপাতাল বা উপজেলা স্বাস্থ্য কমপ্লেক্সে যান। আক্রান্ত স্থান নাড়াচাড়া কম করুন।"
+  "snakeTip": "সাপে কামড়ালে ওঝা নয়, দ্রুত নিকটস্থ সরকারি হাসপাতাল বা উপজেলা স্বাস্থ্য কমপ্লেক্সে যান। আক্রান্ত স্থান নাড়াচাড়া কম করুন।",
+  "nameEn": "Jashore360",
+  "taglineEn": "Everything in Jashore, in one app",
+  "headlineEn": "Find everything in Jashore in one place",
+  "hotlineNoteEn": "Police · Fire service · Ambulance — 24 hours, free",
+  "aboutEn": "Verified information on hospitals, emergency services, restaurants, shops, services and places in Jashore.",
+  "disclaimerEn": "Jashore360 is an independent information platform. It is not a government app and does not provide emergency services itself.",
+  "snakeTipEn": "For a snake bite, go straight to the nearest government hospital or upazila health complex — not a traditional healer. Keep the bitten limb still."
  },
  "areas": [
   "যশোর সদর",
@@ -90,7 +97,21 @@
     "power": "zap",
     "water": "waves",
     "vet": "paw"
-   }
+   },
+   "subsEn": {
+    "hotline": "National hotline",
+    "ambulance": "Ambulance",
+    "police": "Police",
+    "fire": "Fire service",
+    "blood": "Blood",
+    "women": "Women & children",
+    "disaster": "Disaster",
+    "power": "Electricity",
+    "water": "Water",
+    "vet": "Veterinary"
+   },
+   "paid": false,
+   "freeSubs": []
   },
   {
    "id": "hospital",
@@ -146,7 +167,22 @@
     "পরিষেবা ব্যবস্থাপনা",
     "পরিবেশ ও পরিচ্ছন্নতা"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "govt": "Government hospital",
+    "private": "Private hospital",
+    "clinic": "Clinic",
+    "diagnostic": "Diagnostic centre",
+    "dental": "Dental",
+    "eye": "Eye care",
+    "pharmacy": "Pharmacy",
+    "bloodbank": "Blood bank"
+   },
+   "paid": true,
+   "freeSubs": [
+    "govt",
+    "bloodbank"
+   ]
   },
   {
    "id": "restaurant",
@@ -203,7 +239,17 @@
     "সার্ভিস",
     "দাম অনুযায়ী মান"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "restaurant": "Restaurant",
+    "fastfood": "Fast food",
+    "biryani": "Biryani & kacchi",
+    "cafe": "Coffee & tea",
+    "sweets": "Sweets & bakery",
+    "street": "Street food"
+   },
+   "paid": true,
+   "freeSubs": []
   },
   {
    "id": "shop",
@@ -262,7 +308,19 @@
     "ব্যবহার",
     "বিক্রয়-পরবর্তী সেবা"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "grocery": "Grocery & supershop",
+    "fashion": "Clothing & fashion",
+    "electronics": "Mobile & electronics",
+    "books": "Books & stationery",
+    "hardware": "Hardware & furniture",
+    "agri": "Agri supplies",
+    "gold": "Jewellery",
+    "gift": "Gifts"
+   },
+   "paid": true,
+   "freeSubs": []
   },
   {
    "id": "place",
@@ -307,7 +365,16 @@
     "যাতায়াত",
     "সুযোগ-সুবিধা"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "heritage": "Historical",
+    "nature": "Nature",
+    "park": "Parks & recreation",
+    "religious": "Religious sites",
+    "market": "Markets & haats"
+   },
+   "paid": false,
+   "freeSubs": []
   },
   {
    "id": "hotel",
@@ -340,7 +407,15 @@
     "সার্ভিস",
     "দাম অনুযায়ী মান"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "hotel": "Hotel",
+    "residential": "Residential hotel",
+    "guesthouse": "Guest house",
+    "resort": "Resort"
+   },
+   "paid": true,
+   "freeSubs": []
   },
   {
    "id": "service",
@@ -394,7 +469,20 @@
     "সময়ানুবর্তিতা",
     "দাম"
    ],
-   "active": true
+   "active": true,
+   "subsEn": {
+    "electrician": "Electrician",
+    "plumber": "Plumber",
+    "ac": "AC & fridge repair",
+    "mobile": "Mobile servicing",
+    "photo": "Photographer",
+    "parlour": "Beauty parlour",
+    "tailor": "Tailor",
+    "vehicle": "Car/bike repair",
+    "shifting": "House shifting"
+   },
+   "paid": true,
+   "freeSubs": []
   },
   {
    "id": "education",
@@ -436,39 +524,23 @@
     "তথ্যের স্বচ্ছতা",
     "সুযোগ-সুবিধা"
    ],
-   "active": true
-  }
- ],
- "banners": [
-  {
-   "id": "b1",
-   "title": "আপনার ব্যবসা যুক্ত করুন",
-   "subtitle": "বিনামূল্যে প্রোফাইল — যাচাইয়ের পর প্রকাশিত হবে",
-   "cta": "যুক্ত করুন",
-   "link": "#/add",
-   "theme": "dark",
-   "image": null,
-   "active": true
-  },
-  {
-   "id": "b2",
-   "title": "গদখালীর ফুলের রাজ্য",
-   "subtitle": "যশোরের দর্শনীয় স্থান ঘুরে দেখুন",
-   "cta": "দেখুন",
-   "link": "#/c/place",
-   "theme": "brand",
-   "image": null,
-   "active": true
-  },
-  {
-   "id": "b3",
-   "title": "জরুরি প্রয়োজনে ৯৯৯",
-   "subtitle": "পুলিশ · ফায়ার · অ্যাম্বুলেন্স — ফ্রি",
-   "cta": "কল করুন",
-   "link": "tel:999",
-   "theme": "danger",
-   "image": null,
-   "active": true
+   "active": true,
+   "subsEn": {
+    "school": "School",
+    "college": "College",
+    "university": "University",
+    "madrasa": "Madrasa",
+    "coaching": "Coaching & training",
+    "library": "Library"
+   },
+   "paid": true,
+   "freeSubs": [
+    "school",
+    "college",
+    "university",
+    "madrasa",
+    "library"
+   ]
   }
  ],
  "notices": [
@@ -478,7 +550,9 @@
    "body": "যশোরের নির্ভরযোগ্য তথ্য এক জায়গায়। কোনো তথ্য ভুল দেখলে প্রতিষ্ঠানের পেজ থেকে জানান।",
    "date": "2026-10-19",
    "type": "info",
-   "active": true
+   "active": true,
+   "titleEn": "Welcome to Jashore360",
+   "bodyEn": "Verified information about Jashore in one place. If something looks wrong, report it from that place's page."
   }
  ],
  "listings": [
@@ -1321,5 +1395,99 @@
    "area": "যশোর সদর",
    "status": "pending"
   }
- ]
+ ],
+ "plans": [
+  {
+   "id": "basic",
+   "bn": "বেসিক",
+   "en": "Basic",
+   "price": 500,
+   "days": 365,
+   "featured": false,
+   "perks": [
+    "প্রোফাইল, ছবি, ফোন ও ম্যাপ",
+    "রিভিউ ও রেটিং",
+    "ভিউ ও কলের পরিসংখ্যান"
+   ],
+   "perksEn": [
+    "Profile, photos, phone & map",
+    "Reviews & ratings",
+    "View and call stats"
+   ]
+  },
+  {
+   "id": "premium",
+   "bn": "প্রিমিয়াম",
+   "en": "Premium",
+   "price": 1500,
+   "days": 365,
+   "featured": true,
+   "perks": [
+    "বেসিকের সবকিছু",
+    "হোমপেজে \"জনপ্রিয়\" অংশে",
+    "যাচাইকৃত ব্যাজ অগ্রাধিকার"
+   ],
+   "perksEn": [
+    "Everything in Basic",
+    "Shown in \"Popular\" on the home page",
+    "Priority verification"
+   ]
+  }
+ ],
+ "payment": {
+  "bkash": "",
+  "nagad": "",
+  "rocket": "",
+  "type": "Personal",
+  "note": "উপরের নম্বরে \"Send Money\" করে Transaction ID দিন। যাচাইয়ের পর ২৪ ঘণ্টার মধ্যে প্রকাশিত হবে।",
+  "noteEn": "Send Money to the number above and enter the Transaction ID. Your listing is published within 24 hours of verification."
+ },
+ "ads": [
+  {
+   "id": "b1",
+   "title": "আপনার ব্যবসা যুক্ত করুন",
+   "subtitle": "অ্যাকাউন্ট খুলুন, প্যাকেজ বাছুন — হাজারো মানুষের কাছে পৌঁছান",
+   "cta": "যুক্ত করুন",
+   "link": "#/add",
+   "theme": "dark",
+   "image": null,
+   "active": true,
+   "placement": "home",
+   "advertiser": "Jashore360",
+   "titleEn": "List your business",
+   "subtitleEn": "Create an account, pick a plan and reach thousands of people",
+   "ctaEn": "Get listed"
+  },
+  {
+   "id": "b2",
+   "title": "গদখালীর ফুলের রাজ্য",
+   "subtitle": "যশোরের দর্শনীয় স্থান ঘুরে দেখুন",
+   "cta": "দেখুন",
+   "link": "#/c/place",
+   "theme": "brand",
+   "image": null,
+   "active": true,
+   "placement": "home",
+   "advertiser": "Jashore360",
+   "titleEn": "Godkhali flower fields",
+   "subtitleEn": "Explore places to visit in Jashore",
+   "ctaEn": "Explore"
+  },
+  {
+   "id": "b3",
+   "title": "জরুরি প্রয়োজনে ৯৯৯",
+   "subtitle": "পুলিশ · ফায়ার · অ্যাম্বুলেন্স — ফ্রি",
+   "cta": "কল করুন",
+   "link": "tel:999",
+   "theme": "danger",
+   "image": null,
+   "active": true,
+   "placement": "home",
+   "advertiser": "Jashore360",
+   "titleEn": "Emergency? Call 999",
+   "subtitleEn": "Police · Fire · Ambulance — free",
+   "ctaEn": "Call"
+  }
+ ],
+ "app": {}
 }

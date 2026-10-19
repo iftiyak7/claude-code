@@ -25,6 +25,7 @@ mkdir -p "$APP"
 rm -rf "$APP/public.new" "$APP/server.new"
 cp -r "$TMP/public" "$APP/public.new"; cp -r "$TMP/server" "$APP/server.new"
 rm -rf "$APP/public" "$APP/server"; mv "$APP/public.new" "$APP/public"; mv "$APP/server.new" "$APP/server"
+mkdir -p "$APP/android"; cp "$TMP/android/base.apk" "$TMP/android/version.json" "$APP/android/" 2>/dev/null || true
 rm -rf "$TMP"
 chmod -R a+rX "$APP"
 
@@ -100,7 +101,7 @@ else
 server {
     listen 80;
     server_name ${DOMAIN:-_};
-    client_max_body_size 16m;
+    client_max_body_size 100m;
     location / {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_set_header Host \$host;
@@ -117,6 +118,28 @@ NGINX
     certbot --nginx --non-interactive --agree-tos --redirect --register-unsafely-without-email -d "$DOMAIN" && URL="https://$DOMAIN" || warn "SSL হয়নি — DNS ঠিক আছে কি না দেখুন"
   fi
 fi
+# ---------------------------------------------------------------- Android app
+# base.apk is built from android/ in the repo; here it gets this site's URL and is signed with a
+# key that is created on this server (/root/jashore360-signing) and never leaves it.
+if [ -f "$APP/android/base.apk" ]; then
+  say "অ্যান্ড্রয়েড অ্যাপ (APK)"
+  if ! command -v apksigner >/dev/null || ! command -v zipalign >/dev/null || ! command -v keytool >/dev/null; then
+    (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apksigner zipalign default-jre-headless) >/dev/null 2>&1 || true
+  fi
+  VNAME=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["versionName"])' "$APP/android/version.json")
+  VCODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["versionCode"])' "$APP/android/version.json")
+  VNOTES=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("notes",""))' "$APP/android/version.json")
+  OUTAPK=$(mktemp --suffix=.apk)
+  if python3 "$APP/server/sign_apk.py" "$APP/android/base.apk" "$OUTAPK" "$URL/app/" /root/jashore360-signing 2>/tmp/jashore360-apk.log; then
+    chmod 644 "$OUTAPK"
+    sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" import-apk "$OUTAPK" "$VNAME" "$VCODE" "$VNOTES" \
+      && systemctl restart "$SVC" || warn "APK যোগ করা যায়নি"
+  else
+    warn "APK সাইন করা যায়নি (বিস্তারিত: /tmp/jashore360-apk.log)। বাকি সব ঠিকঠাক চলছে; অ্যাডমিন প্যানেল → অ্যাপ থেকে নিজে APK আপলোড করতে পারবেন।"
+  fi
+  rm -f "$OUTAPK"
+fi
+
 [ "${RELOAD:-}" = 1 ] && (nginx -t -q && (systemctl reload nginx 2>/dev/null || nginx -s reload)) || true
 
 echo
@@ -124,6 +147,7 @@ echo "════════════════════════�
 echo " ✅ Jashore360 চালু হয়েছে"
 echo "    অ্যাপ:          $URL"
 echo "    অ্যাডমিন প্যানেল: $URL/admin"
+echo "    APK ডাউনলোড:     $URL/download/jashore360.apk"
 if [ -n "$CREDS" ]; then
   echo
   echo " 🔑 অ্যাডমিন লগইন (এখনই কোথাও লিখে রাখুন):"

@@ -1,6 +1,6 @@
 /* Offline support: app shell stale-while-revalidate, data network-first, uploads cache-first. */
-const CACHE = 'j360-v2';
-const SHELL = ['/', '/app.css', '/app.js', '/icons.js', '/icon.svg', '/manifest.webmanifest'];
+const CACHE = 'j360-v3';
+const SHELL = ['/app/', '/app.css', '/app.js', '/icons.js', '/i18n.js', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys()
@@ -8,7 +8,7 @@ self.addEventListener('activate', e => e.waitUntil(caches.keys()
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/admin')) return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/admin') || url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/my') || url.pathname.startsWith('/download')) return;
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(fetch(e.request).then(r => { if (r.ok && url.pathname === '/api/bootstrap') { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); } return r; })
       .catch(() => caches.match(e.request)));
@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
   }
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(e.request, { ignoreSearch: true });
-    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit || c.match('/'));
+    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit || c.match('/app/'));
     return hit || net;
   }));
 });

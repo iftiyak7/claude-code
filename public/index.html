@@ -4,29 +4,138 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Jashore360 — যশোরের সবকিছু, এক অ্যাপে</title>
-  <meta name="description" content="যশোরের জরুরি সেবা, হাসপাতাল, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থানের যাচাইকৃত তথ্য এক জায়গায়।">
-  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
-  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="description" content="যশোরের হাসপাতাল, জরুরি নম্বর, রেস্টুরেন্ট, দোকান, বাসা ভাড়া, মেস ও চাকরির যাচাইকৃত তথ্য এক অ্যাপে। Android অ্যাপ ডাউনলোড করুন বা ওয়েবে ব্যবহার করুন।">
+  <meta property="og:title" content="Jashore360 — যশোরের সবকিছু, এক অ্যাপে">
+  <meta property="og:description" content="হাসপাতাল, জরুরি নম্বর, রেস্টুরেন্ট, দোকান, বাসা ভাড়া ও চাকরি — যাচাইকৃত তথ্য, এক জায়গায়।">
+  <meta property="og:image" content="/shots/home.webp">
+  <meta name="theme-color" content="#0f1b2d">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/landing.css">
+  <script>if (location.hash.startsWith('#/')) location.replace('/app/' + location.hash);</script>
+  <script defer src="/i18n.js"></script>
   <script defer src="/icons.js"></script>
-  <script defer src="/app.js"></script>
+  <script defer src="/landing.js"></script>
 </head>
 <body>
-  <main id="app"><div class="boot"><div class="spinner"></div></div></main>
-  <nav class="fnav" id="fnav" aria-label="মূল নেভিগেশন">
-    <a href="#/" data-nav="home" aria-label="হোম"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></a>
-    <a href="#/explore" data-nav="explore" aria-label="এক্সপ্লোর"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></a>
-    <a href="#/add" data-nav="add" class="add" aria-label="তথ্য যোগ করুন"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></a>
-    <a href="#/saved" data-nav="saved" aria-label="সেভ করা"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6 12 20l-7.5-7.4A4.8 4.8 0 0 1 12 6.3a4.8 4.8 0 0 1 7.5 6.3z"/></svg></a>
-    <a href="#/profile" data-nav="profile" aria-label="প্রোফাইল"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></a>
-  </nav>
-  <div id="toast" role="status" aria-live="polite"></div>
-  <noscript>Jashore360 চালাতে JavaScript চালু করুন।</noscript>
+  <header class="nav" id="top">
+    <a class="brand" href="/"><span class="mark"><svg viewBox="0 0 24 24"><path d="M12 21.5s-7.2-6.3-7.2-11.8a7.2 7.2 0 0 1 14.4 0c0 5.5-7.2 11.8-7.2 11.8z" fill="#fff"/><circle cx="12" cy="9.6" r="2.8" fill="#0e9f6e"/></svg></span>Jashore360</a>
+    <nav class="links"><a href="#features" data-t>ফিচার</a><a href="#business" data-t>ব্যবসার জন্য</a><a href="#download" data-t>ডাউনলোড</a><a href="#faq" data-t>প্রশ্নোত্তর</a></nav>
+    <div class="tools"><button class="chip" data-lang>EN</button><button class="chip icon" data-themebtn aria-label="Theme"></button>
+      <a class="btn sm" href="/app/" data-t>অ্যাপ খুলুন</a></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="copy">
+        <span class="eyebrow" data-t>যশোর জেলার নিজস্ব অ্যাপ</span>
+        <h1 data-t>যশোরের সবকিছু, এক অ্যাপে</h1>
+        <p class="lead" data-t>হাসপাতাল, জরুরি নম্বর, রেস্টুরেন্ট, দোকান, বাসা ভাড়া, মেস আর চাকরি — যাচাইকৃত তথ্য, দ্রুত খোঁজা যায়, বাংলা ও ইংরেজিতে।</p>
+        <div class="cta">
+          <a class="btn big" href="/download/jashore360.apk" data-apk><span class="ic-slot" data-icon="download"></span><span><b data-t>Android অ্যাপ ডাউনলোড</b><small data-apkmeta></small></span></a>
+          <a class="btn big ghost" href="/app/"><span class="ic-slot" data-icon="globe"></span><span><b data-t>ওয়েবে ব্যবহার করুন</b><small data-t>যেকোনো ফোন বা কম্পিউটারে</small></span></a>
+        </div>
+        <ul class="ticks"><li data-t>সম্পূর্ণ ফ্রি</li><li data-t>অ্যাকাউন্ট ছাড়াই খোঁজা যায়</li><li data-t>অফলাইনেও কাজ করে</li></ul>
+      </div>
+      <div class="phones">
+        <figure class="phone back"><img src="/shots/emergency.webp" alt="জরুরি সেবা পেজ" width="270" height="585" loading="lazy"></figure>
+        <figure class="phone front"><img src="/shots/home.webp" alt="Jashore360 হোম পেজ" width="270" height="585" data-shot-home></figure>
+      </div>
+    </section>
+
+    <section class="stats" data-stats>
+      <div><b data-stat="listings">—</b><span data-t>তালিকাভুক্ত প্রতিষ্ঠান ও স্থান</span></div>
+      <div><b data-stat="categories">—</b><span data-t>ক্যাটাগরি</span></div>
+      <div><b data-stat="classifieds">—</b><span data-t>চলমান ভাড়া ও চাকরির বিজ্ঞাপন</span></div>
+      <div><b data-stat="areas">—</b><span data-t>এলাকা ও উপজেলা</span></div>
+    </section>
+
+    <section class="block" id="features">
+      <span class="eyebrow" data-t>অ্যাপে যা আছে</span>
+      <h2 data-t>প্রতিদিনের প্রয়োজনে, এক জায়গায়</h2>
+      <div class="features">
+        <article style="--c:#e5484d"><span class="ic-slot" data-icon="siren"></span><h3 data-t>জরুরি সেবা</h3><p data-t>৯৯৯, অ্যাম্বুলেন্স, থানা, ফায়ার সার্ভিস ও হেল্পলাইন — এক চাপে কল।</p></article>
+        <article style="--c:#0b8fd6"><span class="ic-slot" data-icon="hospital"></span><h3 data-t>হাসপাতাল ও স্বাস্থ্য</h3><p data-t>সরকারি-বেসরকারি হাসপাতাল, ক্লিনিক, ডায়াগনস্টিক ও ২৪ ঘণ্টার ফার্মেসি।</p></article>
+        <article style="--c:#f2711c"><span class="ic-slot" data-icon="utensils"></span><h3 data-t>রেস্টুরেন্ট ও দোকান</h3><p data-t>মেনু, দাম, খোলার সময় ও বাজেট অনুযায়ী ফিল্টার।</p></article>
+        <article style="--c:#4f6bed"><span class="ic-slot" data-icon="home"></span><h3 data-t>বাসা ভাড়া ও মেস</h3><p data-t>টু-লেট, ফ্ল্যাট, দোকান ও মেসের সিট — ভাড়া ও এলাকা দেখে খুঁজুন।</p></article>
+        <article style="--c:#7c5cff"><span class="ic-slot" data-icon="briefcase"></span><h3 data-t>স্থানীয় চাকরি</h3><p data-t>যশোরের দোকান, অফিস ও প্রতিষ্ঠানের চাকরির বিজ্ঞাপন।</p></article>
+        <article style="--c:#f5a524"><span class="ic-slot" data-icon="star"></span><h3 data-t>রিভিউ ও রেটিং</h3><p data-t>সত্যিকারের ব্যবহারকারীর রিভিউ — প্রতি অ্যাকাউন্টে একটি, ভুয়া রিভিউ রিপোর্টের সুযোগ।</p></article>
+        <article style="--c:#0f9fa8"><span class="ic-slot" data-icon="search"></span><h3 data-t>স্মার্ট সার্চ</h3><p data-t>"কাছাকাছি হাসপাতাল", "২০০ টাকার মধ্যে রেস্টুরেন্ট", এমনকি "resturent" লিখলেও খুঁজে পাবেন।</p></article>
+        <article style="--c:#12a37a"><span class="ic-slot" data-icon="landmark"></span><h3 data-t>দর্শনীয় স্থান</h3><p data-t>সাগরদাঁড়ি, গদখালী, ঝাঁপা বাঁওড় — কাছাকাছি খাবার ও থাকার জায়গাসহ।</p></article>
+      </div>
+    </section>
+
+    <section class="block showcase">
+      <div class="shots">
+        <figure class="phone"><img src="/shots/place.webp" alt="" width="270" height="585" loading="lazy"></figure>
+        <figure class="phone"><img src="/shots/add.webp" alt="" width="270" height="585" loading="lazy"></figure>
+        <figure class="phone"><img src="/shots/home-dark.webp" alt="" width="270" height="585" loading="lazy"></figure>
+      </div>
+      <div class="copy">
+        <span class="eyebrow" data-t>সহজ ও দ্রুত</span>
+        <h2 data-t>দুর্বল ইন্টারনেটেও চলে, ফোনে জায়গা নেয় না</h2>
+        <ul class="list">
+          <li><span class="ic-slot" data-icon="zap"></span><span data-t>এক সেকেন্ডের মধ্যে খোলে — ভারী লাইব্রেরি নেই।</span></li>
+          <li><span class="ic-slot" data-icon="globe"></span><span data-t>বাংলা ও ইংরেজি, এক চাপে বদলান।</span></li>
+          <li><span class="ic-slot" data-icon="moon"></span><span data-t>লাইট ও ডার্ক থিম।</span></li>
+          <li><span class="ic-slot" data-icon="shield"></span><span data-t>প্রতিটি তথ্যের পাশে যাচাইয়ের অবস্থা ও তারিখ।</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="block" id="business">
+      <span class="eyebrow" data-t>ব্যবসার জন্য</span>
+      <h2 data-t>আপনার ব্যবসাকে যশোরের মানুষের কাছে পৌঁছে দিন</h2>
+      <ol class="steps">
+        <li><b data-n>১</b><h3 data-t>অ্যাকাউন্ট খুলুন</h3><p data-t>মোবাইল নম্বর দিয়ে এক মিনিটে।</p></li>
+        <li><b data-n>২</b><h3 data-t>তথ্য ও ছবি দিন</h3><p data-t>ঠিকানা, ফোন, সময়সূচি, মেনু বা সেবা।</p></li>
+        <li><b data-n>৩</b><h3 data-t>প্যাকেজ বেছে পেমেন্ট করুন</h3><p data-t>বিকাশ বা নগদে, Transaction ID দিয়ে।</p></li>
+        <li><b data-n>৪</b><h3 data-t>যাচাইয়ের পর প্রকাশ</h3><p data-t>ভিউ ও কলের হিসাব অ্যাকাউন্টে দেখুন।</p></li>
+      </ol>
+      <div class="plans" data-plans></div>
+      <p class="fine" data-t>সরকারি হাসপাতাল, দর্শনীয় স্থান, জরুরি নম্বর ও স্বেচ্ছাসেবী সংগঠন ফ্রিতে যোগ করা যায়। চাকরি, বাসা ভাড়া ও মেসের বিজ্ঞাপনও ফ্রি।</p>
+      <a class="btn" href="/app/#/add" data-t>এখনই শুরু করুন</a>
+    </section>
+
+    <section class="block download" id="download">
+      <div>
+        <span class="eyebrow light" data-t>ডাউনলোড</span>
+        <h2 data-t>অ্যাপটি এখনই নিন</h2>
+        <p data-t>Android ফোনে APK ডাউনলোড করে ইনস্টল করুন। নতুন ভার্সন এলে এখান থেকেই আপডেট করতে পারবেন — অ্যাপের ভেতরেও জানিয়ে দেওয়া হবে।</p>
+        <div class="cta">
+          <a class="btn big light" href="/download/jashore360.apk" data-apk><span class="ic-slot" data-icon="download"></span><span><b data-t>Android অ্যাপ ডাউনলোড</b><small data-apkmeta></small></span></a>
+          <a class="btn big outline" href="/app/"><span class="ic-slot" data-icon="globe"></span><span><b data-t>ওয়েবে ব্যবহার করুন</b><small data-t>iPhone ও কম্পিউটারে</small></span></a>
+        </div>
+        <p class="note" data-apknotes hidden></p>
+      </div>
+      <ol class="install">
+        <li data-t>উপরের বাটনে চাপ দিয়ে APK ফাইলটি ডাউনলোড করুন।</li>
+        <li data-t>ফাইলটি খুলুন। "অজানা উৎস থেকে ইনস্টল" জিজ্ঞেস করলে অনুমতি দিন।</li>
+        <li data-t>"ইনস্টল" চাপুন — হয়ে গেলো!</li>
+        <li data-t>iPhone-এ: Safari-তে ওয়েব অ্যাপ খুলে Share → "Add to Home Screen" চাপুন।</li>
+      </ol>
+    </section>
+
+    <section class="block" id="faq">
+      <span class="eyebrow" data-t>প্রশ্নোত্তর</span>
+      <h2 data-t>সাধারণ জিজ্ঞাসা</h2>
+      <div class="faq">
+        <details><summary data-t>অ্যাপটি কি ফ্রি?</summary><p data-t>হ্যাঁ। তথ্য খোঁজা, রিভিউ দেওয়া এবং চাকরি বা ভাড়ার বিজ্ঞাপন দেওয়া সম্পূর্ণ ফ্রি। শুধু প্রাইভেট হাসপাতাল, রেস্টুরেন্ট, দোকানের মতো ব্যবসা যুক্ত করতে প্যাকেজ লাগে।</p></details>
+        <details><summary data-t>তথ্য কতটা নির্ভরযোগ্য?</summary><p data-t>প্রতিটি তথ্য অ্যাডমিন যাচাই করে প্রকাশ করেন এবং পাশে যাচাইয়ের অবস্থা দেখানো হয়। ভুল দেখলে প্রতিষ্ঠানের পেজ থেকে জানাতে পারবেন।</p></details>
+        <details><summary data-t>এটি কি সরকারি অ্যাপ?</summary><p data-t>না। Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম এবং নিজে কোনো জরুরি সেবা দেয় না। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।</p></details>
+        <details><summary data-t>বিজ্ঞাপন দিলে কি রেটিং বাড়ে?</summary><p data-t>না। পেইড প্রচার সবসময় "Sponsored" চিহ্নিত থাকে এবং রেটিং বা রিভিউকে প্রভাবিত করে না।</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="brand"><span class="mark"><svg viewBox="0 0 24 24"><path d="M12 21.5s-7.2-6.3-7.2-11.8a7.2 7.2 0 0 1 14.4 0c0 5.5-7.2 11.8-7.2 11.8z" fill="#fff"/><circle cx="12" cy="9.6" r="2.8" fill="#0e9f6e"/></svg></span>Jashore360</div>
+    <p data-disclaimer data-t>Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম, সরকারি অ্যাপ নয় এবং নিজে কোনো জরুরি সেবা দেয় না।</p>
+    <p class="contact" data-contact></p>
+    <p class="copy">© <span data-year></span> Jashore360</p>
+  </footer>
 </body>
 </html>

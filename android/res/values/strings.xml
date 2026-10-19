@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jashore360</string>
+    <!-- Overridden at install time by assets/config.json -->
+    <string name="app_url">https://jashore360.cloud/app/</string>
+    <string name="offline_title">ইন্টারনেট সংযোগ নেই</string>
+    <string name="offline_body">সংযোগ পরীক্ষা করে আবার চেষ্টা করুন। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।</string>
+    <string name="retry">আবার চেষ্টা করুন</string>
+    <string name="call_999">৯৯৯ এ কল করুন</string>
+</resources>

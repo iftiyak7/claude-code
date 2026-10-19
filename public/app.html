@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jashore360 — যশোরের সবকিছু, এক অ্যাপে</title>
+  <meta name="description" content="যশোরের জরুরি সেবা, হাসপাতাল, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থানের যাচাইকৃত তথ্য এক জায়গায়।">
+  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="/i18n.js"></script>
+  <script defer src="/icons.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <main id="app"><div class="boot"><div class="spinner"></div></div></main>
+  <nav class="fnav" id="fnav" aria-label="মূল নেভিগেশন">
+    <a href="/app/#/" data-nav="home" data-label="হোম" aria-label="হোম"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></a>
+    <a href="/app/#/explore" data-nav="explore" data-label="এক্সপ্লোর" aria-label="এক্সপ্লোর"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></a>
+    <a href="/app/#/add" data-nav="add" data-label="যোগ করুন" class="add" aria-label="তথ্য যোগ করুন"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></a>
+    <a href="/app/#/saved" data-nav="saved" data-label="সেভ করা" aria-label="সেভ করা"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6 12 20l-7.5-7.4A4.8 4.8 0 0 1 12 6.3a4.8 4.8 0 0 1 7.5 6.3z"/></svg></a>
+    <a href="/app/#/profile" data-nav="profile" data-label="প্রোফাইল" aria-label="প্রোফাইল"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></a>
+  </nav>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript>Jashore360 চালাতে JavaScript চালু করুন।</noscript>
+</body>
+</html>

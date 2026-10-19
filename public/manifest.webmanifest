@@ -3,7 +3,7 @@
   "short_name": "Jashore360",
   "description": "যশোরের জরুরি সেবা, হাসপাতাল, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থান এক অ্যাপে।",
   "lang": "bn",
-  "start_url": "/#/",
+  "start_url": "/app/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f4f5f7",
