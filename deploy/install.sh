@@ -73,43 +73,26 @@ if command -v clpctl >/dev/null; then
     DOMAIN=$(basename "${D:-}")
   fi
   [ -n "$DOMAIN" ] || { warn "CloudPanel-এ jashore360 নামের সাইট পাওয়া যায়নি। DOMAIN=yourdomain.com দিয়ে আবার চালান।"; exit 1; }
-  CONF=$(ls /etc/nginx/sites-enabled/"$DOMAIN".conf 2>/dev/null || true)
-  if [ -f "$DATA/.cloudpanel-$DOMAIN" ] || grep -qs "127.0.0.1:$PORT" /etc/nginx/sites-enabled/*"$DOMAIN"*; then
-    say "CloudPanel সাইট $DOMAIN আগে থেকেই সংযুক্ত"
+  CONF=$(grep -ls "server_name[^;]*[[:space:]]$DOMAIN[[:space:];]" /etc/nginx/sites-enabled/* 2>/dev/null | head -1 || true)
+  [ -n "$CONF" ] || { warn "$DOMAIN এর nginx কনফিগ পাওয়া যায়নি।"; exit 1; }
+  say "CloudPanel সাইট $DOMAIN অ্যাপের সাথে যুক্ত করা হচ্ছে"
+  BK="/root/jashore360-vhost-backup-$(date +%Y%m%d%H%M%S).conf"
+  cp "$CONF" "$BK"
+  python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT"
+  if nginx -t -q 2>/dev/null; then
+    systemctl reload nginx 2>/dev/null || nginx -s reload
   else
-    say "CloudPanel সাইট $DOMAIN কে অ্যাপের সাথে সংযুক্ত করা হচ্ছে"
-    if ! { clpctl help site:add:reverse-proxy >/dev/null 2>&1 || clpctl list 2>&1 | grep -q 'site:add:reverse-proxy'; }; then
-      warn "CloudPanel-এ reverse-proxy কমান্ড পাওয়া যায়নি। কিছুই বদলানো হয়নি। নিচের তালিকার স্ক্রিনশট পাঠান:"
-      clpctl list 2>&1 | grep -i 'site\|lets' || clpctl 2>&1 | head -40
-      exit 1
-    fi
-    HT=$(ls -d /home/*/htdocs/"$DOMAIN" 2>/dev/null | head -1 || true)
-    SITEUSER=$( [ -n "$HT" ] && stat -c %U "$HT" || echo jashore360 )
-    case "$SITEUSER" in root|clp|nginx|www-data|"$SVC_USER"|'') SITEUSER=jashore360 ;; esac
-    tar czf "/root/jashore360-static-backup-$(date +%Y%m%d%H%M).tgz" ${HT:+"$HT"} ${CONF:+"$CONF"} 2>/dev/null || true
-    PASS=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
-    if [ -n "$HT" ] || [ -n "$CONF" ]; then clpctl site:delete --domainName="$DOMAIN" --force; fi
-    if ! clpctl site:add:reverse-proxy --domainName="$DOMAIN" --reverseProxyUrl="http://127.0.0.1:$PORT" --siteUser="$SITEUSER" --siteUserPassword="$PASS"; then
-      warn "reverse proxy সাইট বানানো যায়নি — আগের মতো স্ট্যাটিক সাইট ফিরিয়ে দেওয়া হচ্ছে"
-      clpctl site:add:static --domainName="$DOMAIN" --siteUser="$SITEUSER" --siteUserPassword="$PASS" || true
-      exit 1
-    fi
-    touch "$DATA/.cloudpanel-$DOMAIN"
+    cp "$BK" "$CONF"
+    warn "nginx নতুন কনফিগ গ্রহণ করেনি — আগের অবস্থায় ফেরানো হয়েছে। নিচের লেখার স্ক্রিনশট পাঠান:"
+    nginx -t || true; exit 1
+  fi
+  if ! openssl x509 -in "/etc/nginx/ssl-certificates/$DOMAIN.crt" -noout -issuer 2>/dev/null | grep -qi "let's encrypt"; then
     say "SSL সার্টিফিকেট (Let's Encrypt)"
-    if [[ "$DOMAIN" != www.* ]]; then
-      clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" --subjectAlternativeName="www.$DOMAIN" \
-        || clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" \
-        || warn "SSL হয়নি — CloudPanel → Sites → $DOMAIN → SSL/TLS থেকে Let's Encrypt চালান"
-    else
-      clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" || warn "SSL হয়নি — CloudPanel থেকে Let's Encrypt চালান"
-    fi
+    clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" --subjectAlternativeName="www.$DOMAIN" \
+      || clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" \
+      || warn "SSL হয়নি — Hostinger DNS-এ $DOMAIN এর A রেকর্ড 72.62.198.94 আছে কি না দেখুন, তারপর CloudPanel → Sites → $DOMAIN → SSL/TLS থেকে Let's Encrypt চালান"
+    nginx -t -q 2>/dev/null && (systemctl reload nginx 2>/dev/null || nginx -s reload) || true
   fi
-  # Room for photo uploads (nginx defaults to 1 MB) if nothing sets a limit already
-  if ! grep -rqs client_max_body_size /etc/nginx/nginx.conf /etc/nginx/conf.d/ && grep -qs 'conf.d/\*' /etc/nginx/nginx.conf; then
-    echo 'client_max_body_size 16m;' > /etc/nginx/conf.d/jashore360-upload.conf
-    nginx -t -q 2>/dev/null || rm -f /etc/nginx/conf.d/jashore360-upload.conf
-  fi
-  nginx -t -q && (systemctl reload nginx 2>/dev/null || nginx -s reload)
   URL="https://$DOMAIN"
 else
   command -v nginx >/dev/null || { apt-get update -qq && apt-get install -y -qq nginx; }
