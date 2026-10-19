@@ -33,6 +33,7 @@ final class CoreController extends Controller {
 			$this->route( 'GET', '/branches', fn( BusinessContext $c ) => $this->k->businesses->branches( $c ) ),
 			$this->route( 'POST', '/branches', fn( BusinessContext $c, array $p ) => $this->k->businesses->saveBranch( $c, $p ), array( 'created' => true ) ),
 			$this->route( 'PUT', '/branches/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->k->businesses->saveBranch( $c, $p, self::id( $r ) ) ),
+			$this->route( 'POST', '/branches/(?P<id>\d+)/main', fn( BusinessContext $c, array $p, $r ) => $this->k->businesses->makeMainBranch( $c, self::id( $r ) ) ),
 			$this->route( 'DELETE', '/branches/(?P<id>\d+)', fn( BusinessContext $c, array $p, $r ) => $this->deleted( $this->k->businesses->deleteBranch( $c, self::id( $r ) ) ) ),
 
 			$this->route( 'GET', '/staff', array( $this, 'staff' ) ),

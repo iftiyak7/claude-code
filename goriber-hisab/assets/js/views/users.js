@@ -116,6 +116,24 @@ async function branches(el) {
   mount(el, p.el);
 }
 
+/** Last step before deleting: type the exact name. Resolves true when it matches. */
+function typeToConfirm(name) {
+  return new Promise((resolve) => {
+    const inp = input('confirm_name', '', { autocomplete: 'off', placeholder: name });
+    const go = h('button', { class: 'btn btn-danger', type: 'button', disabled: true }, icon('trash', 16), t('Delete'));
+    inp.addEventListener('input', () => { go.disabled = inp.value.trim() !== String(name).trim(); });
+    let ok = false;
+    const m = modal({
+      title: t('Type the name to delete'), size: 'sm',
+      body: h('div', { class: 'form' }, h('p', {}, t('To confirm, type: {n}', { n: '' }), h('strong', {}, name)), inp),
+      onClose: () => resolve(ok),
+      actions: [go],
+    });
+    go.addEventListener('click', () => { ok = true; m.close(); });
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
 function branchForm(b, onDone) {
   const f = h('form', { class: 'form' }, h('div', { class: 'form-grid' },
     field(t('Name'), input('name', b?.name, { required: true }), { required: true }),
@@ -127,10 +145,20 @@ function branchForm(b, onDone) {
   const m = modal({
     title: b ? t('Edit branch') : t('Add branch'), body: f,
     actions: [
-      b && !Number(b.is_default) ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
-        if (!(await confirmDialog(t('Delete {n}?', { n: b.name }), { danger: true }))) return;
-        try { await api.del(`branches/${b.id}`); m.close(); onDone(); } catch (err) { showError(err); }
-      } }, t('Delete')) : null,
+      b ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
+        // Three separate checks so a stray tap never deletes a branch.
+        if (!(await confirmDialog(t('Delete the branch {n}?', { n: b.name }), { danger: true, confirmText: t('Yes, continue') }))) return;
+        if (!(await confirmDialog(Number(b.is_default)
+          ? t('{n} is the main branch. Another active branch will become the main branch. A branch with sales, purchases or stock movements cannot be deleted — deactivate it instead. Continue?', { n: b.name })
+          : t('The branch, its address and settings will be removed. A branch with sales, purchases or stock movements cannot be deleted — deactivate it instead. Continue?'), { danger: true, title: t('Last warning'), confirmText: t('Continue') }))) return;
+        if (!(await typeToConfirm(b.name))) return;
+        try { await api.del(`branches/${b.id}`); m.close(); toast(t('Branch deleted')); onDone(); } catch (err) { showError(err); }
+      } }, icon('trash', 16), t('Delete')) : null,
+      b && !Number(b.is_default) ? h('button', { class: 'btn', type: 'button', onclick: async () => {
+        if (!(await confirmDialog(t('Make {n} the main branch?', { n: b.name }), { confirmText: t('Yes, continue') }))) return;
+        if (!(await confirmDialog(t('New staff, reports and the POS will start in {n} by default. Your records do not change. Make it the main branch?', { n: b.name }), { title: t('Please confirm'), confirmText: t('Make main branch') }))) return;
+        try { await api.post(`branches/${b.id}/main`); m.close(); toast(t('{n} is now the main branch', { n: b.name })); onDone(); } catch (err) { showError(err); }
+      } }, t('Make main branch')) : null,
       h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
         try { if (b) await api.put(`branches/${b.id}`, values(f)); else await api.post('branches', values(f)); m.close(); toast(t('Saved')); onDone(); }
         catch (err) { showFieldErrors(f, err.errors || {}); showError(err); }

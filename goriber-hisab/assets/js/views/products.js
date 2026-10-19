@@ -222,34 +222,98 @@ async function form(el, id = 0) {
     catch (err) { showError(err); }
   });
 
-  const f = h('form', { class: 'form' },
-    card(t('Basics'), h('div', { class: 'form-grid' },
-      field(t('Product name'), input('name', pr.name, { required: true, autofocus: true }), { required: true }),
+  // Units as one-tap chips (the select stays as the value holder, hidden).
+  const unitChips = h('div', { class: 'chip-pick', role: 'radiogroup', 'aria-label': t('Unit') });
+  const paintUnits = () => mount(unitChips,
+    [['', t('Piece / none')], ...(state.me.units || []).map((u) => [String(u.id), u.short_name || u.name])].map(([v, label]) =>
+      h('button', { type: 'button', role: 'radio', 'aria-checked': String(String(unitSel.value) === v), class: `chip ${String(unitSel.value) === v ? 'on' : ''}`, onclick: () => { unitSel.value = v; unitSel.dispatchEvent(new Event('change')); paintUnits(); } }, label)),
+    can('products.create') ? h('button', { type: 'button', class: 'chip chip-add', onclick: () => termForm('units', null, (saved) => {
+      state.me.units = [...(state.me.units || []), saved];
+      unitSel.append(h('option', { value: saved.id }, saved.name));
+      unitSel.value = saved.id; unitSel.dispatchEvent(new Event('change')); paintUnits();
+    }, t('New unit')) }, '+ ', t('New')) : null);
+  unitSel.addEventListener('change', paintUnits);
+  looseBox.addEventListener('change', () => setTimeout(paintUnits, 50));
+  unitSel.hidden = true;
+  paintUnits();
+
+  // Live profit: selling − purchase.
+  const sell = money_input('selling_price', pr.selling_price && Number(pr.selling_price) ? pr.selling_price : '', { required: true, placeholder: '0' });
+  const buy = can('products.cost') ? money_input('purchase_price', pr.purchase_price && Number(pr.purchase_price) ? pr.purchase_price : '', { placeholder: '0' }) : null;
+  const profit = h('div', { class: 'profit-line' });
+  const paintProfit = () => {
+    const sp = Number(sell.value); const bp = Number(buy?.value);
+    if (!buy || !sp || !bp) { profit.textContent = ''; return; }
+    const pf = sp - bp;
+    profit.className = `profit-line ${pf < 0 ? 'bad' : 'ok'}`;
+    profit.textContent = pf < 0 ? t('Loss of {x} on each one', { x: money(String(-pf)) }) : t('Profit {x} on each one ({p}%)', { x: money(String(pf)), p: Math.round((pf / bp) * 100) });
+  };
+  sell.addEventListener('input', paintProfit); buy?.addEventListener('input', paintProfit);
+  paintProfit();
+
+  // Photo: a big tap area.
+  const photo = h('label', { class: 'photo-drop' }, imgPreview, h('span', { class: 'photo-hint' }, icon('camera', 22), h('small', {}, t('Add photo'))), upload);
+  upload.classList.remove('input');
+
+  const barcodeIn = input('barcode', pr.barcode, { placeholder: t('Scan it in, or leave empty') });
+  const scanBtn = h('button', { class: 'btn', type: 'button', title: t('Scan with camera'), 'aria-label': t('Scan with camera'), onclick: async () => {
+    const { scanWithCamera } = await import('../core/scanner.js');
+    const code = await scanWithCamera();
+    if (code) barcodeIn.value = code;
+  } }, icon('camera', 18));
+
+  const more = h('details', { class: 'more-options' },
+    h('summary', {}, t('More options'), h('small', { class: 'muted' }, ` — ${t('brand, barcode, wholesale price, stock alert…')}`)),
+    h('div', { class: 'form-grid' },
       field(t('Type'), typeSel),
-      field(t('Category'), withAdd(catSel, 'categories', t('New category'))),
       field(t('Brand'), withAdd(brandSel, 'brands', t('New brand'))),
-      field(t('Unit'), withAdd(unitSel, 'units', t('New unit')), { hint: t('For loose items (nuts, rice, oil) choose kg or litre — the POS will ask for the weight.') }),
       h('div', { class: 'field wide loose-toggle' }, h('label', { class: 'check' }, looseBox, h('span', {}, h('strong', {}, t('Sold loose by weight (gram / kg)')), h('small', { class: 'muted' }, ` — ${t('e.g. badam, rice, sugar. In POS you type the grams or the taka amount.')}`)))),
-      field(t('SKU'), input('sku', pr.sku)),
-      field(t('Barcode'), input('barcode', pr.barcode), { hint: t('Scan it in, or leave empty') }),
+      field(t('Barcode'), h('div', { class: 'row' }, barcodeIn, scanBtn)),
       !id ? h('div', { class: 'field' }, checkbox('auto_barcode', true, t('Generate a barcode if empty'))) : null,
-      field(t('Status'), select('status', [['active', t('Active')], ['inactive', t('Inactive')]], pr.status)))),
-    card(t('Prices'), h('div', { class: 'form-grid' },
-      field(t('Selling price'), money_input('selling_price', pr.selling_price && Number(pr.selling_price) ? pr.selling_price : '', { required: true }), { required: true }),
-      can('products.cost') ? field(t('Purchase price'), money_input('purchase_price', pr.purchase_price && Number(pr.purchase_price) ? pr.purchase_price : '')) : null,
+      field(t('SKU'), input('sku', pr.sku)),
       field(t('Wholesale price'), money_input('wholesale_price', Number(pr.wholesale_price) ? pr.wholesale_price : '')),
       field(t('Minimum selling price'), money_input('min_selling_price', Number(pr.min_selling_price) ? pr.min_selling_price : ''), { hint: t('Staff cannot sell below this') }),
-      state.settings['tax.enabled'] ? field(state.settings['tax.label'], select('tax_rate_id', [['', t('Business default')], ...taxes.map((r) => [r.id, `${r.name} (${Number(r.rate)}%)`])], pr.tax_rate_id || '')) : null)),
-    card(t('Stock'), stockFields),
-    card(t('Image & description'), h('div', { class: 'form-grid' },
-      h('div', { class: 'field' }, h('label', {}, t('Image')), imgPreview, upload, imageId),
-      field(t('Description'), textarea('description', pr.description), { wide: true }))),
-    h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: id ? `#/products/${id}` : '#/products' }, t('Cancel')), h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, t('Save product'))));
+      state.settings['tax.enabled'] ? field(state.settings['tax.label'], select('tax_rate_id', [['', t('Business default')], ...taxes.map((r) => [r.id, `${r.name} (${Number(r.rate)}%)`])], pr.tax_rate_id || '')) : null,
+      field(t('Status'), select('status', [['active', t('Active')], ['inactive', t('Inactive')]], pr.status)),
+      field(t('Description'), textarea('description', pr.description), { wide: true })),
+    stockFields);
+
+  let again = false;
+  const saveBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit', onclick: () => { again = false; } }, icon('check', 18), t('Save product'));
+  const againBtn = !id ? h('button', { class: 'btn btn-lg', type: 'submit', onclick: () => { again = true; } }, icon('plus', 18), t('Save & add another')) : null;
+  const f = h('form', { class: 'form product-form' },
+    card(null,
+      h('div', { class: 'quick-product' },
+        photo,
+        h('div', { class: 'quick-main' },
+          field(t('Product name'), input('name', pr.name, { required: true, autofocus: true, placeholder: t('e.g. Lux soap 100g') }), { required: true }),
+          h('div', { class: 'price-row' },
+            field(t('Selling price'), sell, { required: true }),
+            buy ? field(t('Purchase price'), buy) : null),
+          profit)),
+      h('div', { class: 'form-grid' },
+        h('div', { class: 'field wide' }, h('label', {}, t('Unit')), unitChips, unitSel),
+        field(t('Category'), withAdd(catSel, 'categories', t('New category'))),
+        !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
+        field(t('Alert when stock falls to'), money_input('min_stock', Number(pr.min_stock) ? pr.min_stock : '', { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
+    more,
+    imageId,
+    h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: id ? `#/products/${id}` : '#/products' }, t('Cancel')), againBtn, saveBtn));
+  // Opening stock and alert level now live up top; keep their old copies out of the form.
+  stockFields.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => x.closest('.field')?.remove());
+  typeSel.addEventListener('change', () => { f.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => { x.closest('.field').hidden = typeSel.value === 'service'; }); });
 
   bindForm(f, async (v) => {
-    const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
-    navigate(`/products/${saved.id}`);
-  });
+    try {
+      const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
+      if (again) { toast(t('{n} added — add the next one', { n: saved.name })); form(el); return; }
+      toast(t('Saved'));
+      navigate(`/products/${saved.id}`);
+    } catch (err) {
+      if (err.errors && Object.keys(err.errors).some((k) => more.querySelector(`[name="${k}"]`))) more.open = true;
+      throw err;
+    }
+  }, { success: '' });
   const p = page(id ? t('Edit {n}', { n: pr.name }) : t('New product'), { back: id ? `/products/${id}` : '/products' });
   p.body.append(f);
   mount(el, p.el);

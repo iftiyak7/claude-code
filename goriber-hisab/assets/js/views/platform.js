@@ -46,7 +46,10 @@ export default async function platform(el, params, query) {
 
   const p = page(t('Shops & subscriptions'), {
     subtitle: t('Open shops for clients and collect monthly / yearly payments.'),
-    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => openShop(o.types, () => platform(el, params, { tab: 'shops' })) }, icon('plus', 16), t('Open new shop'))],
+    actions: [
+      state.me.can_setup ? h('a', { class: 'btn', href: '#/setup' }, icon('plus', 16), t('New shop for myself')) : null,
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => openShop(o.types, () => platform(el, params, { tab: 'shops' })) }, icon('plus', 16), t('Open new shop')),
+    ],
   });
   p.body.append(
     h('div', { class: 'stats' },
@@ -74,7 +77,7 @@ export default async function platform(el, params, query) {
       fetch: (prm) => api.get('platform/shops', prm),
       emptyText: t('No shops yet. Click "Open new shop" to create the first one.'),
       columns: [
-        { label: t('Shop'), render: (x) => h('span', { class: 'cell-stack' }, h('strong', {}, x.name), h('small', { class: 'muted' }, x.owner ? `${x.owner.name} · ${x.owner.email}` : '')) },
+        { label: t('Shop'), render: (x) => h('span', { class: 'cell-stack' }, h('strong', {}, x.name, x.owner_id === state.me.user.id ? [' ', badge('active', t('Your shop'))] : null), h('small', { class: 'muted' }, x.owner ? `${x.owner.name} · ${x.owner.email}` : '')) },
         { label: t('Phone'), key: 'phone', hide: 'sm' },
         { label: t('Status'), render: (x) => subBadge(x.subscription) },
         { label: t('Paid until'), render: (x) => (x.subscription.paid_until ? h('span', { class: 'cell-stack' }, date(x.subscription.paid_until), h('small', { class: x.subscription.days_left < 0 ? 'bad-text' : 'muted' }, daysText(x.subscription))) : '—') },
@@ -429,7 +432,7 @@ async function manageShop(id, onChange) {
       { label: t('Period'), render: (x) => (x.period_to ? `${date(x.period_from)} – ${date(x.period_to)}` : '—') },
       { label: t('Status'), render: (x) => badge({ pending: 'partial', approved: 'paid', rejected: 'void' }[x.status], t(x.status === 'pending' ? 'Waiting' : x.status === 'approved' ? 'Approved' : 'Rejected')) },
     ], shop.payments) : h('p', { class: 'muted' }, t('No payments yet.'))),
-    dangerZone(shop, () => { m.close(); onChange(); }, refresh));
+    dangerZone(shop, () => { m.close(); if (shop.id === state.business?.id) location.reload(); else onChange(); }, refresh));
 }
 
 /**

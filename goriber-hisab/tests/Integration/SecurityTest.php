@@ -141,4 +141,19 @@ final class SecurityTest extends IntegrationTestCase {
 		$this->assertSame( array(), $p->removeTeamMember( $id ) );
 		$this->assertFalse( $p->isTeam( $id ) );
 	}
+
+	public function testMainBranchCanMoveAndBeDeleted(): void {
+		$main  = (int) $this->ctx->branch_id;
+		$other = $this->k->businesses->saveBranch( $this->ctx, array( 'name' => 'Khulna' ) );
+		$this->k->businesses->makeMainBranch( $this->ctx, (int) $other['id'] );
+		$rows = $this->db->rows( 'SELECT id, is_default FROM ' . $this->db->table( 'branches' ) . ' WHERE business_id = %d AND deleted_at IS NULL', array( $this->ctx->business_id ) );
+		foreach ( $rows as $r ) {
+			$this->assertSame( (int) $r['id'] === (int) $other['id'] ? 1 : 0, (int) $r['is_default'] );
+		}
+		// The new main branch (no transactions) can be deleted; the other one takes over.
+		$this->k->businesses->deleteBranch( $this->ctx, (int) $other['id'] );
+		$this->assertSame( 1, (int) $this->db->value( 'SELECT is_default FROM ' . $this->db->table( 'branches' ) . ' WHERE id = %d', array( $main ) ) );
+		// The only branch left cannot be deleted.
+		$this->assertThrows( \GoriberHisab\Support\ConflictException::class, fn() => $this->k->businesses->deleteBranch( $this->ctx, $main ) );
+	}
 }

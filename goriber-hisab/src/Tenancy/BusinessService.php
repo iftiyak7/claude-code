@@ -256,8 +256,13 @@ final class BusinessService extends Service {
 	public function deleteBranch( BusinessContext $ctx, int $id ): void {
 		$ctx->authorize( 'branches.manage' );
 		$branch = $this->findScoped( $ctx, 'branches', $id, 'Branch' );
+		$next   = 0;
 		if ( (int) $branch['is_default'] ) {
-			throw new ConflictException( 'The main branch cannot be deleted.' );
+			// The main branch can go only if another active branch takes over.
+			$next = (int) $this->db->value( 'SELECT id FROM ' . $this->db->table( 'branches' ) . " WHERE business_id = %d AND id <> %d AND status = 'active' AND deleted_at IS NULL ORDER BY id LIMIT 1", array( $ctx->business_id, $id ) );
+			if ( ! $next ) {
+				throw new ConflictException( 'This is the only branch. Add another branch first.' );
+			}
 		}
 		foreach ( array( 'sales', 'purchases', 'stock_movements', 'journal_lines' ) as $table ) {
 			$t = $this->db->table( $table );
@@ -265,8 +270,33 @@ final class BusinessService extends Service {
 				throw new ConflictException( 'This branch has transactions. Deactivate it instead.' );
 			}
 		}
-		$this->db->update( $this->db->table( 'branches' ), array( 'deleted_at' => $this->now(), 'deleted_by' => $ctx->user_id ), array( 'id' => $id ) );
+		$this->db->update( $this->db->table( 'branches' ), array( 'deleted_at' => $this->now(), 'deleted_by' => $ctx->user_id, 'is_default' => 0 ), array( 'id' => $id ) );
+		if ( $next ) {
+			$this->makeMainBranch( $ctx, $next );
+		}
 		$this->audit->log( $ctx, 'delete', 'branch', $id, 'Branch deleted: ' . $branch['name'] );
+	}
+
+	/**
+	 * Make another branch the main one (new users and reports start there).
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function makeMainBranch( BusinessContext $ctx, int $id ): array {
+		$ctx->authorize( 'branches.manage' );
+		$branch = $this->findScoped( $ctx, 'branches', $id, 'Branch' );
+		if ( 'active' !== $branch['status'] ) {
+			throw new ConflictException( 'Activate this branch before making it the main branch.' );
+		}
+		$t = $this->db->table( 'branches' );
+		$this->db->transaction(
+			function () use ( $ctx, $t, $id ) {
+				$this->db->execute( "UPDATE {$t} SET is_default = 0 WHERE business_id = %d", array( $ctx->business_id ) );
+				$this->db->execute( "UPDATE {$t} SET is_default = 1 WHERE id = %d AND business_id = %d", array( $id, $ctx->business_id ) );
+			}
+		);
+		$this->audit->log( $ctx, 'update', 'branch', $id, 'Main branch is now ' . $branch['name'] );
+		return (array) $this->db->row( "SELECT * FROM {$t} WHERE id = %d", array( $id ) );
 	}
 
 	/**
