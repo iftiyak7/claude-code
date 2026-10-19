@@ -116,7 +116,7 @@ h1 { font-size: 1.35rem; }
 .sidebar-foot { border-top: 1px solid var(--border); padding: 8px 12px; display: grid; gap: 2px; }
 .sidebar-foot a { color: var(--muted); display: flex; gap: 8px; align-items: center; padding: 6px; font-size: .9rem; }
 
-.shell { min-height: 100vh; padding-bottom: calc(var(--bottom) + env(safe-area-inset-bottom)); }
+.shell { min-height: 100vh; padding-bottom: calc(var(--bottom) + 8px); }
 .topbar {
   position: sticky; top: 0; z-index: 20; height: var(--topbar); display: flex; align-items: center; gap: 8px; padding: 0 12px;
   background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
@@ -140,9 +140,12 @@ main.bare { max-width: none; padding: 0; }
 
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; display: grid; grid-template-columns: repeat(5, 1fr);
-  background: var(--surface); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); height: calc(var(--bottom) + env(safe-area-inset-bottom));
+  background: var(--surface); border-top: 1px solid var(--border);
+  /* Grows with large phone font sizes, and sits clear of the gesture bar. */
+  min-height: 64px; padding: 4px 0 max(10px, env(safe-area-inset-bottom)); align-items: center;
 }
-.bottom-nav a, .bottom-nav button { display: grid; justify-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: .72rem; background: none; border: 0; font-family: inherit; cursor: pointer; }
+.bottom-nav a, .bottom-nav button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 52px; padding: 4px 2px; color: var(--muted); font-size: 12px; line-height: 1.2; background: none; border: 0; font-family: inherit; cursor: pointer; text-align: center; }
+.bottom-nav a > span:last-child, .bottom-nav button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bottom-nav a.active { color: var(--brand); font-weight: 600; }
 .bottom-nav a:hover { text-decoration: none; }
 

@@ -294,6 +294,10 @@ function buildShell() {
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': t('Quick') },
     slots.map(([path, ic, label]) => h('a', { href: `#${path}`, dataset: { path }, class: path === '/pos' ? 'center' : '' }, path === '/pos' ? h('span', { class: 'center-btn' }, icon(ic, 24)) : icon(ic), h('span', {}, t(label)))),
     h('button', { type: 'button', onclick: () => document.body.classList.toggle('nav-open') }, icon('more'), h('span', {}, t('More'))));
+  // Everything that sits above the bottom bar (page end, Save bars, toasts) uses its real height.
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { if (bottom.offsetHeight) document.documentElement.style.setProperty('--bottom', `${bottom.offsetHeight}px`); }).observe(bottom);
+  }
 
   mount(app,
     h('a', { class: 'skip', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('Skip to content')),
