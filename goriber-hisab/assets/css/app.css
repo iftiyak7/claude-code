@@ -862,3 +862,18 @@ html.own-pull, html.own-pull body { overscroll-behavior-y: contain; }
 .lights-card .list.light-list > li > a { padding: 6px 2px; min-height: 0; }
 .lights-card .light-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: 20px; }
 .lights-card .list.light-list > li:last-child { border-bottom: 1px solid var(--border); }
+
+/* Scan invoice / order */
+button.quick { font: inherit; font-weight: 600; text-align: left; cursor: pointer; width: 100%; }
+.scan-lookup .scan-big { width: 100%; justify-content: center; min-height: 56px; }
+.scan-lookup .row .input { flex: 1; min-width: 0; }
+.scan-frame { position: relative; overflow: hidden; border-radius: var(--radius-sm); background: #000; }
+.scan-frame .scan-video { display: block; width: 100%; max-height: 60vh; object-fit: cover; }
+.scan-line { position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: #ef4444; box-shadow: 0 0 8px 2px rgba(239, 68, 68, .7); animation: gh-scan 1.6s ease-in-out infinite alternate; }
+@keyframes gh-scan { from { transform: translateY(-60px); } to { transform: translateY(60px); } }
+@media (max-width: 420px) { .topbar .theme-btn { display: none; } }
+.sticker-ico { flex: none; border: 2px solid currentColor; border-radius: 3px; opacity: .7; }
+.sticker-ico.s-100x150 { width: 24px; height: 34px; }
+.sticker-ico.s-75x100 { width: 20px; height: 26px; }
+.sticker-ico.s-80mm { width: 22px; height: 34px; border-bottom-style: dashed; }
+.sticker-ico.s-a4 { width: 26px; height: 34px; background: linear-gradient(currentColor, currentColor) center / 2px 100% no-repeat, linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat; }

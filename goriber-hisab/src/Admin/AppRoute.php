@@ -221,6 +221,8 @@ final class AppRoute {
 			$this->login();
 		} elseif ( 'signup' === $path ) {
 			$this->signup();
+		} elseif ( preg_match( '#^print/labels/(\d+(?:,\d+)*)$#', $path, $m ) ) {
+			$this->labels( array_map( 'intval', explode( ',', $m[1] ) ) );
 		} elseif ( preg_match( '#^print/(sale|purchase|payment|return|statement)/(\d+)$#', $path, $m ) ) {
 			$this->print( $m[1], (int) $m[2] );
 		} else {
@@ -582,6 +584,55 @@ JS;
 	 * Printable document. Requires login, membership, a REST nonce (CSRF) and
 	 * the document's own view permission.
 	 */
+	/**
+	 * Parcel stickers for online orders (courier or own delivery): shop,
+	 * customer, products, bill and the cash to collect, with a barcode.
+	 *
+	 * @param array<int,int> $ids Order ids (up to 200).
+	 */
+	private function labels( array $ids ): void {
+		if ( ! is_user_logged_in() ) {
+			auth_redirect();
+		}
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			wp_die( esc_html__( 'This print link has expired. Please print again from the app.', 'goriber-hisab' ), 403 );
+		}
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- verified above.
+		$business = isset( $_GET['b'] ) ? absint( $_GET['b'] ) : 0;
+		$branch   = isset( $_GET['br'] ) ? absint( $_GET['br'] ) : 0;
+		$size     = isset( $_GET['paper'] ) ? sanitize_key( wp_unslash( $_GET['paper'] ) ) : '';
+		$auto     = ! empty( $_GET['autoprint'] );
+		// phpcs:enable
+		try {
+			$ctx = $this->k->contexts->forUser( get_current_user_id(), $business, $branch );
+			$ctx->authorize( 'orders.view' );
+			$orders = array();
+			foreach ( array_slice( array_values( array_unique( array_filter( $ids ) ) ), 0, 200 ) as $id ) {
+				$o = $this->k->orders->get( $ctx, $id );
+				$o['invoice_number'] = $o['sale_id'] ? (string) $this->k->db->value( 'SELECT number FROM ' . $this->k->db->table( 'sales' ) . ' WHERE id = %d AND business_id = %d', array( $o['sale_id'], $ctx->business_id ) ) : '';
+				$orders[] = $o;
+			}
+			$settings     = $this->k->settings->all( $ctx );
+			$business_row = $this->k->businesses->get( $ctx->business_id );
+		} catch ( HisabException $e ) {
+			wp_die( esc_html( $e->getMessage() ), (int) $e->status() );
+		}
+		nocache_headers();
+		$view = array(
+			'orders'   => $orders,
+			'business' => $business_row,
+			'settings' => $settings,
+			'size'     => in_array( $size, array( '100x150', '75x100', '80mm', 'a4' ), true ) ? $size : '100x150',
+			'auto'     => $auto,
+			'ctx'      => $ctx,
+		);
+		$template = (string) apply_filters( 'goriber_hisab/label_template', GORIBER_HISAB_DIR . 'templates/label.php', $view );
+		( static function ( array $view ) use ( $template ) {
+			include $template;
+		} )( $view );
+	}
+
 	private function print( string $type, int $id ): void {
 		if ( ! is_user_logged_in() ) {
 			auth_redirect();
@@ -625,6 +676,8 @@ JS;
 			'paper'    => $paper,
 			'auto'     => $auto,
 			'ctx'      => $ctx,
+			// Invoice of an online order: its order number and who delivers it.
+			'order'    => 'sale' === $type ? $this->k->db->row( 'SELECT number, courier, consignment_id, rider_name, rider_phone FROM ' . $this->k->db->table( 'orders' ) . ' WHERE business_id = %d AND sale_id = %d AND deleted_at IS NULL ORDER BY id DESC LIMIT 1', array( $ctx->business_id, $id ) ) : null,
 		);
 		$template = (string) apply_filters( 'goriber_hisab/print_template', GORIBER_HISAB_DIR . 'templates/print.php', $type, $view );
 		( static function ( array $view ) use ( $template ) {

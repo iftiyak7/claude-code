@@ -57,6 +57,7 @@ final class CoreController extends Controller {
 			$this->route( 'POST', '/notifications/read', fn( BusinessContext $c, array $p ) => $this->deleted( $this->k->notifications->markRead( $c, (array) ( $p['ids'] ?? array() ) ) ) ),
 
 			$this->route( 'GET', '/search', array( $this, 'search' ) ),
+			$this->route( 'GET', '/lookup', array( $this, 'lookup' ) ),
 		);
 	}
 
@@ -265,6 +266,63 @@ final class CoreController extends Controller {
 			}
 		}
 		return array_filter( $out );
+	}
+
+	/**
+	 * A scanned code (barcode on an invoice or receipt, order number, courier
+	 * consignment ID, or a product barcode) → the screen to open. Invoices of
+	 * online orders open the order, which shows the delivery as well.
+	 *
+	 * @param array<string,mixed> $p code.
+	 * @return array{type:string,id:int,path:string,title:string}
+	 */
+	public function lookup( BusinessContext $ctx, array $p ): array {
+		$code = trim( Text::line( $p['code'] ?? '', 120 ) );
+		if ( '' === $code ) {
+			throw new \GoriberHisab\Support\ValidationException( array( 'code' => 'Scan or type a number.' ) );
+		}
+		$db  = $this->k->db;
+		$st  = $db->table( 'sales' );
+		$ot  = $db->table( 'orders' );
+		$hit = static fn( string $type, int $id, string $path, string $title ): array => compact( 'type', 'id', 'path', 'title' );
+		$orders_ok = $ctx->can( 'orders.view' );
+
+		if ( $ctx->can( 'sales.view' ) || $orders_ok ) {
+			$sale = $db->row( "SELECT id, number FROM {$st} WHERE business_id = %d AND number = %s", array( $ctx->business_id, $code ) );
+			if ( $sale ) {
+				$order = $orders_ok ? $db->row( "SELECT id, number FROM {$ot} WHERE business_id = %d AND sale_id = %d AND deleted_at IS NULL ORDER BY id DESC LIMIT 1", array( $ctx->business_id, (int) $sale['id'] ) ) : null;
+				if ( $order ) {
+					return $hit( 'order', (int) $order['id'], '/orders/' . $order['id'], $order['number'] . ' · ' . $sale['number'] );
+				}
+				if ( $ctx->can( 'sales.view' ) ) {
+					return $hit( 'sale', (int) $sale['id'], '/sales/' . $sale['id'], (string) $sale['number'] );
+				}
+			}
+		}
+		if ( $orders_ok ) {
+			$order = $db->row(
+				"SELECT id, number FROM {$ot} WHERE business_id = %d AND deleted_at IS NULL AND (number = %s OR consignment_id = %s OR tracking_code = %s) ORDER BY id DESC LIMIT 1",
+				array( $ctx->business_id, $code, $code, $code )
+			);
+			if ( $order ) {
+				return $hit( 'order', (int) $order['id'], '/orders/' . $order['id'], (string) $order['number'] );
+			}
+		}
+		foreach ( array( 'returns' => array( 'sales.view', '/returns/' ), 'purchases' => array( 'purchases.view', '/purchases/' ) ) as $table => list( $perm, $path ) ) {
+			if ( $ctx->can( $perm ) ) {
+				$row = $db->row( 'SELECT id, number FROM ' . $db->table( $table ) . ' WHERE business_id = %d AND number = %s', array( $ctx->business_id, $code ) );
+				if ( $row ) {
+					return $hit( rtrim( $table, 's' ), (int) $row['id'], $path . $row['id'], (string) $row['number'] );
+				}
+			}
+		}
+		if ( $ctx->can( 'products.view' ) ) {
+			$row = $db->row( 'SELECT id, name FROM ' . $db->table( 'products' ) . ' WHERE business_id = %d AND deleted_at IS NULL AND (barcode = %s OR sku = %s) LIMIT 1', array( $ctx->business_id, $code, $code ) );
+			if ( $row ) {
+				return $hit( 'product', (int) $row['id'], '/products/' . $row['id'], (string) $row['name'] );
+			}
+		}
+		throw new \GoriberHisab\Support\NotFoundException( 'Nothing found for this code.' );
 	}
 
 	private function canCreateBusiness(): bool {

@@ -12,6 +12,8 @@ import { spinner, empty, modal, toast } from './core/ui.js';
 import { sync, queued, refreshSnapshot } from './core/offline.js';
 import { pullToRefresh, reloadApp } from './core/pull.js';
 import { startAlerts } from './core/alerts.js';
+import { openCode, scanDialog } from './core/lookup.js';
+import { setDefaultScan } from './core/scanner.js';
 
 const NAV = [
   ['/', 'dashboard', 'Dashboard', ['dashboard.view']],
@@ -145,6 +147,7 @@ async function boot() {
   }
   registerServiceWorker();
   pullToRefresh();
+  setDefaultScan((code) => { if (!document.querySelector('dialog[open]')) openCode(code); });
   start(render);
   // Load every screen's code in the background so moving around is instant.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
@@ -277,6 +280,7 @@ function buildShell() {
     globalSearch(),
     offline, queueBadge,
     can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm hide-sm', href: '#/pos' }, icon('plus', 16), t('New sale')) : null,
+    can('sales.view') || can('orders.view') ? h('button', { class: 'icon-btn scan-btn', type: 'button', title: t('Scan invoice / order'), 'aria-label': t('Scan invoice / order'), onclick: scanDialog }, icon('barcode', 20)) : null,
     h('button', { class: 'icon-btn refresh-btn', type: 'button', title: t('Refresh'), 'aria-label': t('Refresh'), onclick: (e) => { e.currentTarget.classList.add('spin'); reloadApp(); } }, icon('refresh', 20)),
     themeToggle(),
     langToggle(),
@@ -379,6 +383,17 @@ function globalSearch() {
     } catch { /* offline */ }
   }, 250);
   input.addEventListener('input', run);
+  // Enter on an exact invoice / order number (or a scanner typing into the box) opens it.
+  input.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter' || input.value.trim().length < 3) return;
+    e.preventDefault();
+    const code = input.value.trim();
+    try {
+      const r = await api.get('lookup', { code });
+      results.hidden = true; input.value = ''; input.blur();
+      navigate(r.path);
+    } catch { run(); }
+  });
   input.addEventListener('blur', () => setTimeout(() => { results.hidden = true; }, 200));
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); input.focus(); }

@@ -10,6 +10,7 @@ import { page, card, stat, dataTable, badge, select, input, textarea, field, com
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { workerForm, workersCard } from '../core/workers.js';
+import { openPrint } from '../core/printer.js';
 
 const STATUS = {
   pending: ['info', 'New'], confirmed: ['held', 'Confirmed'], packed: ['held', 'Packed'], shipped: ['partial', 'With courier'],
@@ -43,6 +44,12 @@ async function list(el, query) {
     actions: [
       h('a', { class: 'btn btn-sm', href: '#/orders?status=board' }, icon('truck', 16), t('Courier dashboard')),
       h('a', { class: 'btn btn-sm', href: '#/orders?status=local' }, icon('users', 16), t('Local delivery')),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => {
+        const st = ['confirmed', 'packed', 'shipped', 'pending'].includes(tab) ? tab : 'confirmed';
+        const r = await api.get('orders', { status: st, per_page: 200 });
+        if (st === 'confirmed') r.items.push(...(await api.get('orders', { status: 'packed', per_page: 200 })).items);
+        printStickers(r.items.map((x) => x.id));
+      } }, icon('barcode', 16), t('Print stickers')),
       can('settings.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => courierSettings(() => orders(el, {}, query)) }, icon('settings', 16), t('Courier settings')) : null,
       can('orders.manage') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/orders/new' }, icon('plus', 16), t('New order')) : null,
     ],
@@ -150,6 +157,30 @@ async function board(el, query) {
         can('orders.manage') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => riderForm(o, load) }, t('Rider')) : null))) : empty(t('No parcels on the road.'))));
   }
   load().catch((err) => mount(body, empty(err.message)));
+}
+
+/* ------------------------------------------------------- Parcel stickers */
+
+const STICKERS = [['100x150', '100 × 150 mm', 'Courier sticker (4 × 6 in)'], ['75x100', '75 × 100 mm', 'Small sticker'], ['80mm', '80 mm', 'Receipt printer roll'], ['a4', 'A4', '4 stickers per page']];
+
+/** Pick a sticker size (remembered on this device) and print. */
+export function printStickers(ids) {
+  if (!ids.length) { toast(t('No orders to print.'), 'info'); return; }
+  let size = '100x150';
+  try { size = localStorage.getItem('gh.sticker') || size; } catch { /* ignore */ }
+  const box = h('div', { class: 'rider-pick', role: 'radiogroup' });
+  const paint = () => mount(box, STICKERS.map(([k, label, hint]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(k === size), class: `rider-opt ${k === size ? 'on' : ''}`, onclick: () => { size = k; paint(); } },
+    h('span', { class: `sticker-ico s-${k}` }), h('span', { class: 'cell-stack' }, h('strong', {}, label), h('small', { class: 'muted' }, t(hint))))));
+  paint();
+  const m = modal({
+    title: ids.length === 1 ? t('Print parcel sticker') : t('Print {n} parcel stickers', { n: ids.length }), size: 'sm',
+    body: h('div', { class: 'form' }, h('p', { class: 'muted small' }, t('Customer, phone, address, products, bill and cash to collect — with a barcode that opens the order when scanned.')), box),
+    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
+      try { localStorage.setItem('gh.sticker', size); } catch { /* ignore */ }
+      m.close();
+      openPrint('labels', ids.join(','), { paper: size });
+    } }, icon('printer', 16), t('Print'))],
+  });
 }
 
 /* ------------------------------------------------------- Local delivery */
@@ -286,7 +317,8 @@ async function localBoard(el, query) {
         h('div', { class: 'rider-head' },
           h('span', { class: 'avatar-ini lg' }, r.name.slice(0, 1).toUpperCase()),
           h('div', { class: 'grow' }, h('strong', {}, r.name, r.active ? null : [' ', badge('void', t('Inactive'))]), h('small', { class: 'muted' }, [r.phone, Number(r.fee) ? t('{x} per delivery', { x: money(r.fee) }) : ''].filter(Boolean).join(' · '))),
-          r.phone ? h('a', { class: 'btn btn-sm', href: `tel:${r.phone}` }, t('Call')) : null),
+          r.phone ? h('a', { class: 'btn btn-sm', href: `tel:${r.phone}` }, t('Call')) : null,
+          r.with_him.some((o) => o.status === 'shipped') ? h('button', { class: 'btn btn-sm', type: 'button', title: t('Print stickers'), onclick: () => printStickers(r.with_him.filter((o) => o.status === 'shipped').map((o) => o.id)) }, icon('barcode', 14)) : null),
         h('div', { class: 'rider-stats' },
           h('span', {}, h('b', {}, String(r.with_him.filter((o) => o.status === 'shipped').length)), t('With him now')),
           h('span', { class: 'ok-text' }, h('b', {}, String(r.delivered)), t('Delivered')),
@@ -586,6 +618,7 @@ async function detail(el, id) {
     actions.push(h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: () => closeOrder(o, returning ? 'returned' : 'cancelled', reload) }, returning ? t('Returned') : t('Cancel order')));
   }
   if (o.sale_id && can('sales.view')) actions.push(h('a', { class: 'btn btn-sm', href: `#/sales/${o.sale_id}` }, icon('printer', 16), t('Invoice')));
+  if (!['cancelled'].includes(o.status)) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: () => printStickers([o.id]) }, icon('barcode', 16), t('Sticker')));
 
   const steps = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'];
   const at = steps.indexOf(o.status);

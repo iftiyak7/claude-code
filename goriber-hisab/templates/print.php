@@ -80,6 +80,14 @@ $doc_date  = $doc['sale_date'] ?? $doc['purchase_date'] ?? $doc['return_date'] ?
 $doc_time  = $time( $doc['created_at'] ?? '' );
 $address   = $branch && ! empty( $branch['address'] ) ? $branch['address'] : (string) $biz['address'];
 $seller    = (string) ( $doc['salesperson_name'] ?? '' );
+$order     = $view['order'] ?? null;
+$delivery  = '';
+if ( $order && '' !== (string) $order['courier'] ) {
+	$couriers = \GoriberHisab\Orders\OrderService::COURIERS;
+	$delivery = 'self' === $order['courier']
+		? $L( 'নিজস্ব ডেলিভারি', 'Own delivery' ) . ( $order['rider_name'] ? ' (' . $order['rider_name'] . ')' : '' )
+		: ( $couriers[ $order['courier'] ] ?? (string) $order['courier'] ) . ( $order['consignment_id'] ? ' · ' . $order['consignment_id'] : '' );
+}
 $cashier   = (string) ( $doc['cashier_name'] ?? '' );
 $footer    = (string) $settings['invoice.footer'];
 $footer    = 'Thank you for your business!' === $footer ? $L( 'আমাদের সাথে কেনাকাটার জন্য ধন্যবাদ!', $footer ) : $footer;
@@ -235,6 +243,12 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 	<div class="r-kv">
 		<b><?php echo esc_html( $L( 'নং', 'No' ) ); ?>:</b><span><?php echo esc_html( $number ); ?></span>
 		<b><?php echo esc_html( $L( 'তারিখ', 'Date' ) ); ?>:</b><span><?php echo esc_html( $date( $doc_date ) . ( $doc_time ? '  ' . $doc_time : '' ) ); ?></span>
+		<?php if ( $order ) : ?>
+			<b><?php echo esc_html( $L( 'অর্ডার', 'Order' ) ); ?>:</b><span><?php echo esc_html( $order['number'] ); ?></span>
+			<?php if ( $delivery ) : ?>
+				<b><?php echo esc_html( $L( 'ডেলিভারি', 'Delivery' ) ); ?>:</b><span><?php echo esc_html( $delivery ); ?></span>
+			<?php endif; ?>
+		<?php endif; ?>
 		<?php if ( $seller ) : ?>
 			<b><?php echo esc_html( $L( 'বিক্রেতা', 'Sold by' ) ); ?>:</b><span><?php echo esc_html( $seller ); ?></span>
 		<?php endif; ?>
@@ -362,6 +376,12 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 		<div><small><?php echo esc_html( $L( 'নম্বর', 'Number' ) ); ?></small><strong><?php echo esc_html( $number ); ?></strong></div>
 		<div><small><?php echo esc_html( $L( 'তারিখ', 'Date' ) ); ?></small><strong><?php echo esc_html( $date( $doc_date ) ); ?></strong></div>
 		<div><small><?php echo esc_html( $L( 'সময়', 'Time' ) ); ?></small><strong><?php echo esc_html( $doc_time ?: '—' ); ?></strong></div>
+		<?php if ( $order ) : ?>
+			<div><small><?php echo esc_html( $L( 'অর্ডার', 'Order' ) ); ?></small><strong><?php echo esc_html( $order['number'] ); ?></strong></div>
+			<?php if ( $delivery ) : ?>
+				<div><small><?php echo esc_html( $L( 'ডেলিভারি', 'Delivery' ) ); ?></small><strong><?php echo esc_html( $delivery ); ?></strong></div>
+			<?php endif; ?>
+		<?php endif; ?>
 		<?php if ( 'sale' === $type ) : ?>
 			<div><small><?php echo esc_html( $L( 'বিক্রেতা', 'Sold by' ) ); ?></small><strong><?php echo esc_html( $seller ?: '—' ); ?></strong></div>
 		<?php endif; ?>
