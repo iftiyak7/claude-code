@@ -1,0 +1,1325 @@
+{
+ "site": {
+  "name": "Jashore360",
+  "tagline": "যশোরের সবকিছু, এক অ্যাপে",
+  "headline": "যশোরের সবকিছু খুঁজুন এক জায়গায়",
+  "hotline": "999",
+  "hotlineLabel": "জাতীয় জরুরি সেবা",
+  "hotlineNote": "পুলিশ · ফায়ার সার্ভিস · অ্যাম্বুলেন্স — ২৪ ঘণ্টা, ফ্রি",
+  "contactPhone": "",
+  "contactEmail": "",
+  "facebook": "",
+  "about": "যশোরের হাসপাতাল, জরুরি সেবা, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থানের যাচাইকৃত তথ্য এক জায়গায়।",
+  "disclaimer": "Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম, সরকারি অ্যাপ নয় এবং নিজে কোনো জরুরি সেবা দেয় না।",
+  "snakeTip": "সাপে কামড়ালে ওঝা নয়, দ্রুত নিকটস্থ সরকারি হাসপাতাল বা উপজেলা স্বাস্থ্য কমপ্লেক্সে যান। আক্রান্ত স্থান নাড়াচাড়া কম করুন।"
+ },
+ "areas": [
+  "যশোর সদর",
+  "দড়াটানা",
+  "চিত্রামোড়",
+  "পালবাড়ি",
+  "ঘোপ",
+  "রেলরোড",
+  "নিউমার্কেট",
+  "বেজপাড়া",
+  "শংকরপুর",
+  "খড়কি",
+  "ঝিকরগাছা",
+  "চৌগাছা",
+  "মনিরামপুর",
+  "কেশবপুর",
+  "অভয়নগর",
+  "বাঘারপাড়া",
+  "শার্শা",
+  "বেনাপোল"
+ ],
+ "categories": [
+  {
+   "id": "emergency",
+   "bn": "জরুরি সেবা",
+   "en": "Emergency",
+   "icon": "siren",
+   "color": "#e5484d",
+   "subs": {
+    "hotline": "জাতীয় হটলাইন",
+    "ambulance": "অ্যাম্বুলেন্স",
+    "police": "পুলিশ",
+    "fire": "ফায়ার সার্ভিস",
+    "blood": "রক্ত",
+    "women": "নারী ও শিশু",
+    "disaster": "দুর্যোগ",
+    "power": "বিদ্যুৎ",
+    "water": "পানি",
+    "vet": "পশু চিকিৎসা"
+   },
+   "keys": [
+    "emergency",
+    "জরুরি",
+    "জরুরী",
+    "jorori",
+    "police",
+    "পুলিশ",
+    "thana",
+    "থানা",
+    "fire",
+    "ফায়ার",
+    "আগুন",
+    "ambulance",
+    "অ্যাম্বুলেন্স",
+    "এম্বুলেন্স",
+    "ambulans",
+    "999",
+    "helpline",
+    "হেল্পলাইন",
+    "বিদ্যুৎ",
+    "current",
+    "কারেন্ট",
+    "পানি",
+    "water"
+   ],
+   "criteria": [],
+   "active": true,
+   "subIcons": {
+    "hotline": "phone",
+    "ambulance": "ambulance",
+    "police": "shield",
+    "fire": "flame",
+    "blood": "droplet",
+    "women": "users",
+    "disaster": "cloud",
+    "power": "zap",
+    "water": "waves",
+    "vet": "paw"
+   }
+  },
+  {
+   "id": "hospital",
+   "bn": "হাসপাতাল ও স্বাস্থ্য",
+   "en": "Hospitals",
+   "icon": "hospital",
+   "color": "#0b8fd6",
+   "subs": {
+    "govt": "সরকারি হাসপাতাল",
+    "private": "বেসরকারি হাসপাতাল",
+    "clinic": "ক্লিনিক",
+    "diagnostic": "ডায়াগনস্টিক",
+    "dental": "ডেন্টাল",
+    "eye": "চক্ষু",
+    "pharmacy": "ফার্মেসি",
+    "bloodbank": "ব্লাড ব্যাংক"
+   },
+   "keys": [
+    "hospital",
+    "হাসপাতাল",
+    "hashpatal",
+    "haspatal",
+    "clinic",
+    "ক্লিনিক",
+    "doctor",
+    "ডাক্তার",
+    "daktar",
+    "pharmacy",
+    "ফার্মেসি",
+    "ফার্মেসী",
+    "oshud",
+    "ওষুধ",
+    "farmesi",
+    "medicine",
+    "diagnostic",
+    "ডায়াগনস্টিক",
+    "dentist",
+    "ডেন্টিস্ট",
+    "দাঁত",
+    "চক্ষু",
+    "eye",
+    "চোখ",
+    "blood",
+    "রক্ত",
+    "ব্লাড",
+    "সাপ",
+    "snake",
+    "health",
+    "স্বাস্থ্য"
+   ],
+   "criteria": [
+    "তথ্যের স্বচ্ছতা",
+    "পরিষেবা ব্যবস্থাপনা",
+    "পরিবেশ ও পরিচ্ছন্নতা"
+   ],
+   "active": true
+  },
+  {
+   "id": "restaurant",
+   "bn": "রেস্টুরেন্ট ও খাবার",
+   "en": "Restaurants",
+   "icon": "utensils",
+   "color": "#f2711c",
+   "subs": {
+    "restaurant": "রেস্টুরেন্ট",
+    "fastfood": "ফাস্ট ফুড",
+    "biryani": "বিরিয়ানি ও কাচ্চি",
+    "cafe": "কফি ও চা",
+    "sweets": "মিষ্টি ও বেকারি",
+    "street": "স্ট্রিট ফুড"
+   },
+   "keys": [
+    "restaurant",
+    "resturent",
+    "restaurent",
+    "resturant",
+    "রেস্টুরেন্ট",
+    "রেস্তোরাঁ",
+    "হোটেল খাবার",
+    "food",
+    "খাবার",
+    "khabar",
+    "biryani",
+    "biriyani",
+    "বিরিয়ানি",
+    "kacchi",
+    "kachchi",
+    "কাচ্চি",
+    "pizza",
+    "পিজা",
+    "burger",
+    "বার্গার",
+    "cafe",
+    "coffee",
+    "কফি",
+    "চা",
+    "tea",
+    "mishti",
+    "মিষ্টি",
+    "sweet",
+    "bakery",
+    "বেকারি",
+    "fuchka",
+    "ফুচকা",
+    "eat"
+   ],
+   "criteria": [
+    "খাবারের মান",
+    "পরিচ্ছন্নতা",
+    "সার্ভিস",
+    "দাম অনুযায়ী মান"
+   ],
+   "active": true
+  },
+  {
+   "id": "shop",
+   "bn": "দোকান ও কেনাকাটা",
+   "en": "Shopping",
+   "icon": "bag",
+   "color": "#7c5cff",
+   "subs": {
+    "grocery": "মুদি ও সুপারশপ",
+    "fashion": "পোশাক ও ফ্যাশন",
+    "electronics": "মোবাইল ও ইলেকট্রনিকস",
+    "books": "বই ও স্টেশনারি",
+    "hardware": "হার্ডওয়্যার ও ফার্নিচার",
+    "agri": "কৃষি উপকরণ",
+    "gold": "স্বর্ণ",
+    "gift": "গিফট"
+   },
+   "keys": [
+    "shop",
+    "dokan",
+    "দোকান",
+    "shopping",
+    "শপিং",
+    "market",
+    "মার্কেট",
+    "বাজার",
+    "bazar",
+    "mobile",
+    "মোবাইল",
+    "computer",
+    "কম্পিউটার",
+    "cloth",
+    "পোশাক",
+    "জামা",
+    "saree",
+    "শাড়ি",
+    "book",
+    "বই",
+    "grocery",
+    "মুদি",
+    "supershop",
+    "সুপারশপ",
+    "জুতা",
+    "shoe",
+    "furniture",
+    "ফার্নিচার",
+    "স্বর্ণ",
+    "gold",
+    "বীজ",
+    "সার",
+    "seed"
+   ],
+   "criteria": [
+    "পণ্যের মান",
+    "দাম",
+    "ব্যবহার",
+    "বিক্রয়-পরবর্তী সেবা"
+   ],
+   "active": true
+  },
+  {
+   "id": "place",
+   "bn": "দর্শনীয় স্থান",
+   "en": "Tourist Places",
+   "icon": "landmark",
+   "color": "#12a37a",
+   "subs": {
+    "heritage": "ঐতিহাসিক",
+    "nature": "প্রকৃতি",
+    "park": "পার্ক ও বিনোদন",
+    "religious": "ধর্মীয় স্থাপনা",
+    "market": "হাট ও বাজার"
+   },
+   "keys": [
+    "place",
+    "ঘোরা",
+    "ঘুরতে",
+    "ghurte",
+    "বেড়ানো",
+    "tour",
+    "tourist",
+    "দর্শনীয়",
+    "park",
+    "পার্ক",
+    "picnic",
+    "পিকনিক",
+    "family",
+    "পরিবার",
+    "ফুল",
+    "flower",
+    "মসজিদ",
+    "mosque",
+    "মন্দির",
+    "temple",
+    "historical",
+    "ঐতিহাসিক",
+    "travel"
+   ],
+   "criteria": [
+    "পরিবেশ",
+    "যাতায়াত",
+    "সুযোগ-সুবিধা"
+   ],
+   "active": true
+  },
+  {
+   "id": "hotel",
+   "bn": "হোটেল ও থাকা",
+   "en": "Hotels",
+   "icon": "bed",
+   "color": "#4f6bed",
+   "subs": {
+    "hotel": "হোটেল",
+    "residential": "আবাসিক হোটেল",
+    "guesthouse": "গেস্ট হাউস",
+    "resort": "রিসোর্ট"
+   },
+   "keys": [
+    "hotel",
+    "হোটেল",
+    "residential",
+    "আবাসিক",
+    "guest house",
+    "গেস্ট হাউস",
+    "resort",
+    "রিসোর্ট",
+    "থাকার",
+    "room",
+    "রুম"
+   ],
+   "criteria": [
+    "রুম",
+    "পরিচ্ছন্নতা",
+    "সার্ভিস",
+    "দাম অনুযায়ী মান"
+   ],
+   "active": true
+  },
+  {
+   "id": "service",
+   "bn": "লোকাল সার্ভিস",
+   "en": "Local Services",
+   "icon": "wrench",
+   "color": "#e0a10b",
+   "subs": {
+    "electrician": "ইলেকট্রিশিয়ান",
+    "plumber": "প্লাম্বার",
+    "ac": "এসি ও ফ্রিজ মেরামত",
+    "mobile": "মোবাইল সার্ভিসিং",
+    "photo": "ফটোগ্রাফার",
+    "parlour": "বিউটি পার্লার",
+    "tailor": "দর্জি",
+    "vehicle": "গাড়ি/বাইক মেরামত",
+    "shifting": "বাসা বদল"
+   },
+   "keys": [
+    "service",
+    "সার্ভিস",
+    "servicing",
+    "সার্ভিসিং",
+    "mistri",
+    "মিস্ত্রি",
+    "electrician",
+    "ইলেকট্রিশিয়ান",
+    "plumber",
+    "প্লাম্বার",
+    "ac",
+    "এসি",
+    "fridge",
+    "ফ্রিজ",
+    "repair",
+    "মেরামত",
+    "photographer",
+    "ফটোগ্রাফার",
+    "parlour",
+    "parlor",
+    "পার্লার",
+    "tailor",
+    "দর্জি",
+    "bike",
+    "বাইক",
+    "garage",
+    "গ্যারেজ",
+    "shifting"
+   ],
+   "criteria": [
+    "কাজের মান",
+    "সময়ানুবর্তিতা",
+    "দাম"
+   ],
+   "active": true
+  },
+  {
+   "id": "education",
+   "bn": "শিক্ষা",
+   "en": "Education",
+   "icon": "cap",
+   "color": "#0f9fa8",
+   "subs": {
+    "school": "স্কুল",
+    "college": "কলেজ",
+    "university": "বিশ্ববিদ্যালয়",
+    "madrasa": "মাদ্রাসা",
+    "coaching": "কোচিং ও প্রশিক্ষণ",
+    "library": "লাইব্রেরি"
+   },
+   "keys": [
+    "school",
+    "স্কুল",
+    "college",
+    "কলেজ",
+    "university",
+    "বিশ্ববিদ্যালয়",
+    "versity",
+    "ভার্সিটি",
+    "madrasa",
+    "মাদ্রাসা",
+    "coaching",
+    "কোচিং",
+    "library",
+    "লাইব্রেরি",
+    "পাঠাগার",
+    "education",
+    "শিক্ষা",
+    "training",
+    "প্রশিক্ষণ"
+   ],
+   "criteria": [
+    "পরিবেশ",
+    "তথ্যের স্বচ্ছতা",
+    "সুযোগ-সুবিধা"
+   ],
+   "active": true
+  }
+ ],
+ "banners": [
+  {
+   "id": "b1",
+   "title": "আপনার ব্যবসা যুক্ত করুন",
+   "subtitle": "বিনামূল্যে প্রোফাইল — যাচাইয়ের পর প্রকাশিত হবে",
+   "cta": "যুক্ত করুন",
+   "link": "#/add",
+   "theme": "dark",
+   "image": null,
+   "active": true
+  },
+  {
+   "id": "b2",
+   "title": "গদখালীর ফুলের রাজ্য",
+   "subtitle": "যশোরের দর্শনীয় স্থান ঘুরে দেখুন",
+   "cta": "দেখুন",
+   "link": "#/c/place",
+   "theme": "brand",
+   "image": null,
+   "active": true
+  },
+  {
+   "id": "b3",
+   "title": "জরুরি প্রয়োজনে ৯৯৯",
+   "subtitle": "পুলিশ · ফায়ার · অ্যাম্বুলেন্স — ফ্রি",
+   "cta": "কল করুন",
+   "link": "tel:999",
+   "theme": "danger",
+   "image": null,
+   "active": true
+  }
+ ],
+ "notices": [
+  {
+   "id": "n1",
+   "title": "Jashore360-এ স্বাগতম",
+   "body": "যশোরের নির্ভরযোগ্য তথ্য এক জায়গায়। কোনো তথ্য ভুল দেখলে প্রতিষ্ঠানের পেজ থেকে জানান।",
+   "date": "2026-10-19",
+   "type": "info",
+   "active": true
+  }
+ ],
+ "listings": [
+  {
+   "id": "e999",
+   "cat": "emergency",
+   "sub": "hotline",
+   "name": "জাতীয় জরুরি সেবা ৯৯৯",
+   "nameEn": "National Emergency 999",
+   "phone": "999",
+   "hours": "24h",
+   "status": "verified",
+   "note": "পুলিশ, ফায়ার সার্ভিস ও অ্যাম্বুলেন্স — বিনা খরচে",
+   "tags": [
+    "police",
+    "fire",
+    "ambulance",
+    "পুলিশ",
+    "অ্যাম্বুলেন্স",
+    "ambulance"
+   ],
+   "pin": true
+  },
+  {
+   "id": "e16163",
+   "cat": "emergency",
+   "sub": "fire",
+   "name": "ফায়ার সার্ভিস ও সিভিল ডিফেন্স হটলাইন",
+   "nameEn": "Fire Service Hotline",
+   "phone": "16163",
+   "hours": "24h",
+   "status": "verified",
+   "note": "অগ্নিকাণ্ড ও উদ্ধার",
+   "tags": [
+    "fire",
+    "আগুন"
+   ]
+  },
+  {
+   "id": "e16263",
+   "cat": "emergency",
+   "sub": "hotline",
+   "name": "স্বাস্থ্য বাতায়ন",
+   "nameEn": "Shastho Batayon (Health)",
+   "phone": "16263",
+   "hours": "24h",
+   "status": "verified",
+   "note": "ফোনে চিকিৎসকের পরামর্শ ও স্বাস্থ্য তথ্য",
+   "tags": [
+    "doctor",
+    "ডাক্তার",
+    "health"
+   ]
+  },
+  {
+   "id": "e109",
+   "cat": "emergency",
+   "sub": "women",
+   "name": "নারী ও শিশু নির্যাতন প্রতিরোধ হেল্পলাইন",
+   "nameEn": "Women & Child Helpline",
+   "phone": "109",
+   "hours": "24h",
+   "status": "verified",
+   "note": "বিনা খরচে",
+   "tags": [
+    "women",
+    "নারী",
+    "শিশু"
+   ]
+  },
+  {
+   "id": "e1098",
+   "cat": "emergency",
+   "sub": "women",
+   "name": "চাইল্ড হেল্পলাইন",
+   "nameEn": "Child Helpline",
+   "phone": "1098",
+   "hours": "24h",
+   "status": "verified",
+   "note": "শিশুদের সুরক্ষা ও সহায়তা",
+   "tags": [
+    "child",
+    "শিশু"
+   ]
+  },
+  {
+   "id": "e1090",
+   "cat": "emergency",
+   "sub": "disaster",
+   "name": "দুর্যোগের আগাম বার্তা",
+   "nameEn": "Disaster Early Warning",
+   "phone": "1090",
+   "hours": "24h",
+   "status": "verified",
+   "note": "আবহাওয়া ও দুর্যোগ সতর্কবার্তা",
+   "tags": [
+    "ঝড়",
+    "বন্যা",
+    "weather"
+   ]
+  },
+  {
+   "id": "e333",
+   "cat": "emergency",
+   "sub": "hotline",
+   "name": "জাতীয় কল সেন্টার ৩৩৩",
+   "nameEn": "National Call Centre 333",
+   "phone": "333",
+   "hours": "24h",
+   "status": "verified",
+   "note": "সরকারি সেবা ও তথ্য",
+   "tags": [
+    "govt",
+    "সরকারি"
+   ]
+  },
+  {
+   "id": "e-kotwali",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "যশোর কোতোয়ালি মডেল থানা",
+   "nameEn": "Jashore Kotwali Model Thana",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "lat": 23.1676,
+   "lng": 89.2117
+  },
+  {
+   "id": "e-benapole-ps",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "বেনাপোল পোর্ট থানা",
+   "nameEn": "Benapole Port Thana",
+   "area": "বেনাপোল",
+   "hours": "24h",
+   "status": "pending",
+   "lat": 23.0425,
+   "lng": 88.895
+  },
+  {
+   "id": "e-fire-jsr",
+   "cat": "emergency",
+   "sub": "fire",
+   "name": "যশোর ফায়ার সার্ভিস স্টেশন",
+   "nameEn": "Jashore Fire Station",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "lat": 23.169,
+   "lng": 89.205
+  },
+  {
+   "id": "e-amb-gh",
+   "cat": "emergency",
+   "sub": "ambulance",
+   "name": "জেনারেল হাসপাতাল অ্যাম্বুলেন্স",
+   "nameEn": "General Hospital Ambulance",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "lat": 23.165,
+   "lng": 89.2125
+  },
+  {
+   "id": "e-power",
+   "cat": "emergency",
+   "sub": "power",
+   "name": "বিদ্যুৎ অভিযোগ কেন্দ্র (যশোর)",
+   "nameEn": "Power Complaint Centre",
+   "area": "যশোর সদর",
+   "hours": null,
+   "status": "pending"
+  },
+  {
+   "id": "e-water",
+   "cat": "emergency",
+   "sub": "water",
+   "name": "পৌরসভা পানি সরবরাহ শাখা",
+   "nameEn": "Municipality Water Supply",
+   "area": "যশোর সদর",
+   "hours": null,
+   "status": "pending"
+  },
+  {
+   "id": "e-vet",
+   "cat": "emergency",
+   "sub": "vet",
+   "name": "জেলা ভেটেরিনারি হাসপাতাল",
+   "nameEn": "District Veterinary Hospital",
+   "area": "যশোর সদর",
+   "hours": null,
+   "status": "pending"
+  },
+  {
+   "id": "h-general",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "২৫০ শয্যা জেনারেল হাসপাতাল, যশোর",
+   "nameEn": "250 Bed General Hospital Jashore",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.165,
+   "lng": 89.2125,
+   "tags": [
+    "সদর হাসপাতাল",
+    "sadar hospital",
+    "জরুরি বিভাগ",
+    "সাপ",
+    "snake"
+   ],
+   "note": "সাপে কামড়ালে দ্রুত সরকারি হাসপাতালে যান। অ্যান্টিভেনম প্রাপ্যতা আগে ফোনে নিশ্চিত করুন।"
+  },
+  {
+   "id": "h-cmh",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "সম্মিলিত সামরিক হাসপাতাল (সিএমএইচ), যশোর",
+   "nameEn": "CMH Jashore",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "lat": 23.185,
+   "lng": 89.165
+  },
+  {
+   "id": "h-uhc-jhikargachha",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "ঝিকরগাছা উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Jhikargachha Upazila Health Complex",
+   "area": "ঝিকরগাছা",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.1,
+   "lng": 89.1,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-chougachha",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "চৌগাছা উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Chougachha Upazila Health Complex",
+   "area": "চৌগাছা",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.26,
+   "lng": 89.03,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-monirampur",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "মনিরামপুর উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Monirampur Upazila Health Complex",
+   "area": "মনিরামপুর",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.01,
+   "lng": 89.24,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-keshabpur",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "কেশবপুর উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Keshabpur Upazila Health Complex",
+   "area": "কেশবপুর",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 22.91,
+   "lng": 89.22,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-abhaynagar",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "অভয়নগর উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Abhaynagar Upazila Health Complex",
+   "area": "অভয়নগর",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.02,
+   "lng": 89.42,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-bagherpara",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "বাঘারপাড়া উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Bagherpara Upazila Health Complex",
+   "area": "বাঘারপাড়া",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.22,
+   "lng": 89.35,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-uhc-sharsha",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "শার্শা উপজেলা স্বাস্থ্য কমপ্লেক্স",
+   "nameEn": "Sharsha Upazila Health Complex",
+   "area": "শার্শা",
+   "hours": "24h",
+   "status": "pending",
+   "emergency": true,
+   "lat": 23.08,
+   "lng": 88.97,
+   "tags": [
+    "সাপ",
+    "snake",
+    "উপজেলা"
+   ]
+  },
+  {
+   "id": "h-demo-clinic",
+   "cat": "hospital",
+   "sub": "clinic",
+   "name": "নমুনা ক্লিনিক",
+   "nameEn": "Sample Clinic",
+   "area": "ঘোপ",
+   "hours": "08:00-22:00",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.172,
+   "lng": 89.216
+  },
+  {
+   "id": "h-demo-diag",
+   "cat": "hospital",
+   "sub": "diagnostic",
+   "name": "নমুনা ডায়াগনস্টিক সেন্টার",
+   "nameEn": "Sample Diagnostic Centre",
+   "area": "রেলরোড",
+   "hours": "07:00-23:00",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.164,
+   "lng": 89.206
+  },
+  {
+   "id": "h-demo-pharma",
+   "cat": "hospital",
+   "sub": "pharmacy",
+   "name": "নমুনা ২৪ ঘণ্টা ফার্মেসি",
+   "nameEn": "Sample 24h Pharmacy",
+   "area": "যশোর সদর",
+   "hours": "24h",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1655,
+   "lng": 89.212,
+   "tags": [
+    "ওষুধ",
+    "medicine"
+   ]
+  },
+  {
+   "id": "r-demo-1",
+   "cat": "restaurant",
+   "sub": "biryani",
+   "name": "নমুনা কাচ্চি ঘর",
+   "nameEn": "Sample Kacchi Ghor",
+   "area": "দড়াটানা",
+   "hours": "11:00-23:00",
+   "price": 250,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.168,
+   "lng": 89.209,
+   "features": [
+    "বসে খাওয়া",
+    "ফ্যামিলি সিট",
+    "হোম ডেলিভারি"
+   ],
+   "tags": [
+    "kacchi",
+    "biryani",
+    "তেহারি"
+   ],
+   "featured": true
+  },
+  {
+   "id": "r-demo-2",
+   "cat": "restaurant",
+   "sub": "fastfood",
+   "name": "নমুনা বার্গার পয়েন্ট",
+   "nameEn": "Sample Burger Point",
+   "area": "চিত্রামোড়",
+   "hours": "12:00-23:30",
+   "price": 180,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.166,
+   "lng": 89.2,
+   "features": [
+    "বসে খাওয়া",
+    "হোম ডেলিভারি"
+   ],
+   "tags": [
+    "pizza",
+    "burger",
+    "পিজা"
+   ],
+   "sponsored": true
+  },
+  {
+   "id": "r-demo-3",
+   "cat": "restaurant",
+   "sub": "cafe",
+   "name": "নমুনা চা-কফি কর্নার",
+   "nameEn": "Sample Tea Coffee Corner",
+   "area": "পালবাড়ি",
+   "hours": "08:00-22:00",
+   "price": 80,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.175,
+   "lng": 89.195,
+   "tags": [
+    "tea",
+    "coffee"
+   ]
+  },
+  {
+   "id": "r-demo-4",
+   "cat": "restaurant",
+   "sub": "restaurant",
+   "name": "নমুনা ফ্যামিলি রেস্টুরেন্ট",
+   "nameEn": "Sample Family Restaurant",
+   "area": "নিউমার্কেট",
+   "hours": "10:00-23:00",
+   "price": 400,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.17,
+   "lng": 89.214,
+   "features": [
+    "ফ্যামিলি সিট",
+    "পার্কিং",
+    "বুফে"
+   ],
+   "tags": [
+    "বাংলা খাবার",
+    "chinese",
+    "চাইনিজ"
+   ],
+   "featured": true
+  },
+  {
+   "id": "r-demo-5",
+   "cat": "restaurant",
+   "sub": "sweets",
+   "name": "নমুনা মিষ্টিমুখ",
+   "nameEn": "Sample Mishtimukh",
+   "area": "বেজপাড়া",
+   "hours": "07:00-22:00",
+   "price": 100,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.162,
+   "lng": 89.208,
+   "tags": [
+    "জামতলার মিষ্টি",
+    "দই",
+    "sweet"
+   ]
+  },
+  {
+   "id": "r-demo-6",
+   "cat": "restaurant",
+   "sub": "street",
+   "name": "নমুনা ফুচকা চটপটি",
+   "nameEn": "Sample Fuchka Chotpoti",
+   "area": "খড়কি",
+   "hours": "15:00-22:00",
+   "price": 60,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.16,
+   "lng": 89.195,
+   "tags": [
+    "fuchka",
+    "চটপটি"
+   ]
+  },
+  {
+   "id": "s-demo-1",
+   "cat": "shop",
+   "sub": "electronics",
+   "name": "নমুনা মোবাইল জোন",
+   "nameEn": "Sample Mobile Zone",
+   "area": "নিউমার্কেট",
+   "hours": "10:00-21:00",
+   "off": [
+    5
+   ],
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1705,
+   "lng": 89.2135,
+   "features": [
+    "হোম ডেলিভারি"
+   ]
+  },
+  {
+   "id": "s-demo-2",
+   "cat": "shop",
+   "sub": "fashion",
+   "name": "নমুনা শাড়ি ও থ্রি-পিস",
+   "nameEn": "Sample Saree House",
+   "area": "দড়াটানা",
+   "hours": "10:00-21:00",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1685,
+   "lng": 89.2095,
+   "tags": [
+    "saree",
+    "থ্রি পিস"
+   ]
+  },
+  {
+   "id": "s-demo-3",
+   "cat": "shop",
+   "sub": "grocery",
+   "name": "নমুনা সুপারশপ",
+   "nameEn": "Sample Super Shop",
+   "area": "ঘোপ",
+   "hours": "08:00-22:00",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1725,
+   "lng": 89.217,
+   "features": [
+    "হোম ডেলিভারি",
+    "পার্কিং"
+   ],
+   "featured": true
+  },
+  {
+   "id": "s-demo-4",
+   "cat": "shop",
+   "sub": "books",
+   "name": "নমুনা বইঘর",
+   "nameEn": "Sample Boighor",
+   "area": "রেলরোড",
+   "hours": "09:00-21:00",
+   "off": [
+    5
+   ],
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1645,
+   "lng": 89.2065
+  },
+  {
+   "id": "s-demo-5",
+   "cat": "shop",
+   "sub": "agri",
+   "name": "নমুনা বীজ ও সার ভাণ্ডার",
+   "nameEn": "Sample Seed & Fertilizer",
+   "area": "ঝিকরগাছা",
+   "hours": "08:00-20:00",
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1,
+   "lng": 89.1
+  },
+  {
+   "id": "p-sagardari",
+   "cat": "place",
+   "sub": "heritage",
+   "name": "সাগরদাঁড়ি — মাইকেল মধুসূদন দত্তের বাড়ি",
+   "nameEn": "Sagardari, Madhusudan Dutt Home",
+   "area": "কেশবপুর",
+   "status": "pending",
+   "lat": 22.87,
+   "lng": 89.23,
+   "tags": [
+    "মধুসূদন",
+    "কপোতাক্ষ",
+    "মধুমেলা",
+    "family"
+   ],
+   "note": "মহাকবি মাইকেল মধুসূদন দত্তের জন্মস্থান, কপোতাক্ষ নদের তীরে।"
+  },
+  {
+   "id": "p-godkhali",
+   "cat": "place",
+   "sub": "nature",
+   "name": "গদখালী ফুলের রাজ্য",
+   "nameEn": "Godkhali Flower Fields",
+   "area": "ঝিকরগাছা",
+   "status": "pending",
+   "lat": 23.08,
+   "lng": 89.12,
+   "tags": [
+    "ফুল",
+    "flower",
+    "photo",
+    "ছবি",
+    "family"
+   ],
+   "note": "দেশের অন্যতম বড় ফুল চাষের এলাকা ও ফুলের পাইকারি বাজার।"
+  },
+  {
+   "id": "p-jhapa",
+   "cat": "place",
+   "sub": "nature",
+   "name": "ঝাঁপা বাঁওড় ও ভাসমান সেতু",
+   "nameEn": "Jhapa Baor Floating Bridge",
+   "area": "মনিরামপুর",
+   "status": "pending",
+   "lat": 23.03,
+   "lng": 89.2,
+   "tags": [
+    "বাঁওড়",
+    "সেতু",
+    "family",
+    "picnic"
+   ]
+  },
+  {
+   "id": "p-chanchra",
+   "cat": "place",
+   "sub": "heritage",
+   "name": "চাঁচড়া রাজবাড়ি ও শিবমন্দির",
+   "nameEn": "Chanchra Rajbari & Shiva Temple",
+   "area": "যশোর সদর",
+   "status": "pending",
+   "lat": 23.15,
+   "lng": 89.205,
+   "tags": [
+    "রাজবাড়ি",
+    "মন্দির",
+    "temple",
+    "historical"
+   ]
+  },
+  {
+   "id": "p-institute",
+   "cat": "place",
+   "sub": "heritage",
+   "name": "যশোর ইনস্টিটিউট পাবলিক লাইব্রেরি",
+   "nameEn": "Jashore Institute Public Library",
+   "area": "দড়াটানা",
+   "status": "pending",
+   "lat": 23.167,
+   "lng": 89.21,
+   "tags": [
+    "library",
+    "লাইব্রেরি",
+    "ঐতিহ্য"
+   ]
+  },
+  {
+   "id": "p-benapole",
+   "cat": "place",
+   "sub": "market",
+   "name": "বেনাপোল স্থলবন্দর",
+   "nameEn": "Benapole Land Port",
+   "area": "বেনাপোল",
+   "status": "pending",
+   "lat": 23.0425,
+   "lng": 88.89,
+   "tags": [
+    "border",
+    "সীমান্ত",
+    "port"
+   ]
+  },
+  {
+   "id": "ht-demo-1",
+   "cat": "hotel",
+   "sub": "residential",
+   "name": "নমুনা আবাসিক হোটেল",
+   "nameEn": "Sample Residential Hotel",
+   "area": "রেলরোড",
+   "hours": "24h",
+   "price": 1200,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1642,
+   "lng": 89.207,
+   "features": [
+    "এসি রুম",
+    "ওয়াই-ফাই",
+    "পার্কিং"
+   ],
+   "featured": true
+  },
+  {
+   "id": "ht-demo-2",
+   "cat": "hotel",
+   "sub": "guesthouse",
+   "name": "নমুনা গেস্ট হাউস",
+   "nameEn": "Sample Guest House",
+   "area": "শংকরপুর",
+   "hours": "24h",
+   "price": 900,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.16,
+   "lng": 89.215,
+   "features": [
+    "ফ্যামিলি রুম"
+   ]
+  },
+  {
+   "id": "sv-demo-1",
+   "cat": "service",
+   "sub": "electrician",
+   "name": "নমুনা ইলেকট্রিক সার্ভিস",
+   "nameEn": "Sample Electric Service",
+   "area": "ঘোপ",
+   "hours": "09:00-20:00",
+   "price": 300,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.173,
+   "lng": 89.218
+  },
+  {
+   "id": "sv-demo-2",
+   "cat": "service",
+   "sub": "ac",
+   "name": "নমুনা এসি-ফ্রিজ কেয়ার",
+   "nameEn": "Sample AC Fridge Care",
+   "area": "পালবাড়ি",
+   "hours": "09:00-21:00",
+   "price": 500,
+   "status": "pending",
+   "demo": true,
+   "lat": 23.1755,
+   "lng": 89.196
+  },
+  {
+   "id": "sv-demo-3",
+   "cat": "service",
+   "sub": "photo",
+   "name": "নমুনা ফটোগ্রাফি",
+   "nameEn": "Sample Photography",
+   "area": "যশোর সদর",
+   "hours": null,
+   "status": "pending",
+   "demo": true,
+   "tags": [
+    "wedding",
+    "বিয়ে",
+    "video",
+    "ভিডিও"
+   ]
+  },
+  {
+   "id": "ed-just",
+   "cat": "education",
+   "sub": "university",
+   "name": "যশোর বিজ্ঞান ও প্রযুক্তি বিশ্ববিদ্যালয় (যবিপ্রবি)",
+   "nameEn": "Jashore University of Science & Technology (JUST)",
+   "area": "যশোর সদর",
+   "status": "pending",
+   "lat": 23.233,
+   "lng": 89.125,
+   "tags": [
+    "just",
+    "যবিপ্রবি"
+   ]
+  },
+  {
+   "id": "ed-jmc",
+   "cat": "education",
+   "sub": "college",
+   "name": "যশোর মেডিকেল কলেজ",
+   "nameEn": "Jashore Medical College",
+   "area": "যশোর সদর",
+   "status": "pending",
+   "tags": [
+    "medical"
+   ]
+  },
+  {
+   "id": "ed-mm",
+   "cat": "education",
+   "sub": "college",
+   "name": "সরকারি মাইকেল মধুসূদন কলেজ",
+   "nameEn": "Govt. Michael Madhusudan College",
+   "area": "যশোর সদর",
+   "status": "pending",
+   "tags": [
+    "mm college",
+    "এমএম কলেজ"
+   ]
+  },
+  {
+   "id": "ed-zilla",
+   "cat": "education",
+   "sub": "school",
+   "name": "যশোর জিলা স্কুল",
+   "nameEn": "Jashore Zilla School",
+   "area": "যশোর সদর",
+   "status": "pending"
+  }
+ ]
+}
