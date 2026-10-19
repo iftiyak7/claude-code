@@ -81,6 +81,7 @@ if command -v clpctl >/dev/null; then
     clpctl list --raw 2>/dev/null | grep -q 'site:add:reverse-proxy' || { warn "এই CloudPanel সংস্করণে reverse-proxy কমান্ড নেই।"; exit 1; }
     HT=$(ls -d /home/*/htdocs/"$DOMAIN" 2>/dev/null | head -1 || true)
     SITEUSER=$( [ -n "$HT" ] && stat -c %U "$HT" || echo jashore360 )
+    case "$SITEUSER" in root|clp|nginx|www-data|"$SVC_USER"|'') SITEUSER=jashore360 ;; esac
     tar czf "/root/jashore360-static-backup-$(date +%Y%m%d%H%M).tgz" ${HT:+"$HT"} ${CONF:+"$CONF"} 2>/dev/null || true
     PASS=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
     if [ -n "$HT" ] || [ -n "$CONF" ]; then clpctl site:delete --domainName="$DOMAIN" --force; fi
