@@ -217,6 +217,8 @@ final class AppRoute {
 			$this->alertsFeed();
 		} elseif ( 'download' === $path || 'download/goriber-hisab.apk' === $path ) {
 			$this->downloadApp();
+		} elseif ( 'logout' === $path ) {
+			$this->logout( $mode );
 		} elseif ( 'login' === $path ) {
 			$this->login();
 		} elseif ( 'signup' === $path ) {
@@ -318,7 +320,7 @@ final class AppRoute {
 			'version'   => GORIBER_HISAB_VERSION,
 			'locale'    => $locale,
 			'lang'      => Landing::lang(),
-			'logoutUrl' => esc_url_raw( wp_logout_url( 'admin' === $mode ? self::adminUrl() : self::url() ) ),
+			'logoutUrl' => esc_url_raw( 'admin' === $mode ? wp_logout_url( self::adminUrl() ) : self::url( 'logout' ) ),
 			'adminUrl'  => esc_url_raw( admin_url() ),
 			'appOnly'   => ( new ClientAccess( $this->k ) )->isAppOnly( (int) $user->ID ),
 			'userName'  => $user->display_name,
@@ -358,6 +360,23 @@ final class AppRoute {
 	 * Email + password login. Uses WordPress authentication (wp_signon), so
 	 * password hashing, lockout and 2FA plugins all keep working.
 	 */
+	/**
+	 * Log out and land on the shop login page — never on WordPress's own
+	 * screens (no "Do you really want to log out?" page when the app's
+	 * cached page carries an old nonce).
+	 *
+	 * @return never
+	 */
+	private function logout( string $mode ): void {
+		if ( is_user_logged_in() ) {
+			wp_destroy_current_session();
+			wp_clear_auth_cookie();
+			wp_set_current_user( 0 );
+		}
+		wp_safe_redirect( 'admin' === $mode ? wp_login_url() : self::loginUrl() );
+		exit;
+	}
+
 	private function login(): void {
 		$error = '';
 		$login = '';
@@ -592,7 +611,8 @@ JS;
 	 */
 	private function labels( array $ids ): void {
 		if ( ! is_user_logged_in() ) {
-			auth_redirect();
+			wp_safe_redirect( self::loginUrl() );
+			exit;
 		}
 		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
@@ -637,7 +657,8 @@ JS;
 
 	private function print( string $type, int $id ): void {
 		if ( ! is_user_logged_in() ) {
-			auth_redirect();
+			wp_safe_redirect( self::loginUrl() );
+			exit;
 		}
 		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {

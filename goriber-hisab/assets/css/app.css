@@ -970,3 +970,15 @@ button.kpi:active { transform: scale(.98); }
   .product-form .form-actions.sticky > a.btn { display: none; }
   .product-form .form-actions.sticky .btn { justify-content: center; padding-left: 8px; padding-right: 8px; font-size: .9rem; }
 }
+
+/* Barcode labels: dates, batch, weight, own text */
+.gh-l-dates { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 2mm; font-size: .82em; white-space: normal !important; }
+.gh-l-info, .gh-l-note { font-size: .82em; }
+.extras-title { margin: 12px 0 4px; font-size: .9rem; }
+.extras { display: grid; gap: 6px; }
+.extra-row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; align-items: center; }
+.extra-row .input { min-width: 0; }
+.label-pdf-stage { position: fixed; left: -10000px; top: 0; background: #fff; }
+.label-pdf-stage > .gh-label { margin-bottom: 4px; }
+.gh-sheet-pdf { box-sizing: border-box; width: 210mm; height: 297mm; display: grid; align-content: start; background: #fff; overflow: hidden; margin-bottom: 4px; }
+@media (max-width: 480px) { .extra-row { grid-template-columns: 1fr; gap: 2px; } }

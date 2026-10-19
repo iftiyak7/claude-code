@@ -76,26 +76,34 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  window.ghDownloadPdf = function (name, btn) {
-    var labels = Array.prototype.slice.call(document.querySelectorAll('.lbl'));
-    if (!labels.length || typeof html2canvas !== 'function') return;
+  /** Any list of elements → one PDF page each (page = the element's size). */
+  window.ghPdfFrom = function (elements, name, btn, scale) {
+    var labels = Array.prototype.slice.call(elements);
+    if (!labels.length || typeof html2canvas !== 'function') return Promise.resolve(false);
     var label = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '…'; }
     var pxPerMm = 96 / 25.4;
     var pages = [];
-    var next = function (i) {
-      if (i >= labels.length) {
-        save(name, buildPdf(pages));
-        if (btn) { btn.disabled = false; btn.textContent = label; }
-        return;
-      }
-      var el = labels[i];
-      var box = el.getBoundingClientRect();
-      html2canvas(el, { scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false }).then(function (canvas) {
-        pages.push({ w: canvas.width, h: canvas.height, wmm: box.width / pxPerMm, hmm: box.height / pxPerMm, jpeg: dataUrlBytes(canvas.toDataURL('image/jpeg', 0.92)) });
-        next(i + 1);
-      }, function () { next(i + 1); });
-    };
-    next(0);
+    return new Promise(function (resolve) {
+      var next = function (i) {
+        if (i >= labels.length) {
+          save(name, buildPdf(pages));
+          if (btn) { btn.disabled = false; btn.textContent = label; }
+          resolve(true);
+          return;
+        }
+        var el = labels[i];
+        var box = el.getBoundingClientRect();
+        html2canvas(el, { scale: scale || 3, backgroundColor: '#ffffff', useCORS: true, logging: false }).then(function (canvas) {
+          pages.push({ w: canvas.width, h: canvas.height, wmm: box.width / pxPerMm, hmm: box.height / pxPerMm, jpeg: dataUrlBytes(canvas.toDataURL('image/jpeg', 0.92)) });
+          next(i + 1);
+        }, function () { next(i + 1); });
+      };
+      next(0);
+    });
+  };
+
+  window.ghDownloadPdf = function (name, btn) {
+    return window.ghPdfFrom(document.querySelectorAll('.lbl'), name, btn, 3);
   };
 }());

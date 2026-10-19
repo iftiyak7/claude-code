@@ -7,8 +7,8 @@ import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { money } from '../core/format.js';
-import { page, card, field, input, select, combobox, toast, showError, empty } from '../core/ui.js';
+import { money, date as fmtDate } from '../core/format.js';
+import { page, card, field, input, select, combobox, toast, showError, empty, modal } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { barcodeSvg } from '../core/barcode.js';
 import { printHere } from '../core/printer.js';
@@ -26,12 +26,24 @@ export const LABEL_SIZES = {
   custom: { w: 50, h: 30, label: 'Custom size' },
 };
 
+/** Extra lines a label can carry. Each can be on/off, with one value for all labels or a value per product. */
+export const EXTRAS = [
+  ['mrp', 'MRP', 'number'],
+  ['mfg', 'MFG date', 'date'],
+  ['exp', 'EXP date', 'date'],
+  ['pkg', 'PKG date', 'date'],
+  ['batch', 'Batch no.', 'text'],
+  ['net', 'Net weight', 'text'],
+  ['note', 'Your own text', 'text'],
+];
+
 const KEY = 'gh.labels';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } };
 const save = (o) => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch { /* private mode */ } };
 
 export default async function labels(el, params, query) {
-  const saved = { size: 'roll_38x25', w: 50, h: 30, shop: true, name: true, price: true, code: true, ...load() };
+  const saved = { size: 'roll_38x25', w: 50, h: 30, shop: true, name: true, price: true, code: true, extra: {}, ...load() };
+  saved.extra = saved.extra || {};
   let items = []; // {product_id, variant_id, name, code, price, copies}
 
   const sizeSel = select('size', Object.entries(LABEL_SIZES).map(([k, v]) => [k, t(v.label)]), saved.size);
@@ -40,6 +52,22 @@ export default async function labels(el, params, query) {
   const custom = h('div', { class: 'row' }, field(t('Width (mm)'), cw), field(t('Height (mm)'), ch));
   const opt = (k, label) => { const c = h('input', { type: 'checkbox', checked: !!saved[k] }); c.addEventListener('change', changed); return [k, c, h('label', { class: 'check' }, c, h('span', {}, label))]; };
   const opts = [opt('shop', t('Shop name')), opt('name', t('Product name')), opt('price', t('Price')), opt('code', t('Code number'))];
+  // MRP, MFG / EXP / PKG dates, batch, weight, own text: tick to show; the value here is for every label
+  // (set a different one per product with ✎ in the list).
+  const extras = EXTRAS.map(([k, label, type]) => {
+    const on = h('input', { type: 'checkbox', checked: !!saved.extra[k]?.on });
+    const val = h('input', { class: 'input input-sm', type: type === 'number' ? 'number' : type, value: saved.extra[k]?.v || '', placeholder: type === 'number' ? t('product price') : type === 'text' ? t('e.g. {x}', { x: k === 'net' ? '500 g' : k === 'batch' ? 'B-1024' : t('Made in Bangladesh') }) : '' });
+    on.addEventListener('change', changed);
+    val.addEventListener('input', () => { if (val.value && !on.checked) on.checked = true; changed(); });
+    return [k, on, val, h('div', { class: 'extra-row' }, h('label', { class: 'check' }, on, h('span', {}, t(label))), val)];
+  });
+  const preset = (which) => {
+    const set = { barcode: [], price: ['price', 'code'], full: ['shop', 'name', 'price', 'code'] }[which];
+    for (const [k, c] of opts) c.checked = set.includes(k);
+    for (const [k, on] of extras) on.checked = which === 'full' ? on.checked || ['mfg', 'exp'].includes(k) : false;
+    if (which === 'price') for (const [k, c] of opts) if (k === 'name') c.checked = true;
+    changed();
+  };
   const allCopies = input('all', '', { type: 'number', min: 1, max: 500, placeholder: t('e.g. 10') });
   const listBox = h('div');
   const preview = h('div', { class: 'label-preview' });
@@ -48,6 +76,8 @@ export default async function labels(el, params, query) {
   function settings() {
     const o = { size: sizeSel.value, w: Number(cw.value) || 50, h: Number(ch.value) || 30 };
     for (const [k, c] of opts) o[k] = c.checked;
+    o.extra = {};
+    for (const [k, on, val] of extras) o.extra[k] = { on: on.checked, v: val.value };
     return o;
   }
   function changed() {
@@ -125,7 +155,9 @@ export default async function labels(el, params, query) {
               h('td', {}, it.code ? h('code', {}, it.code) : h('span', { class: 'badge badge-warn' }, t('No barcode'))),
               h('td', { class: 'num' }, money(it.price)),
               h('td', { class: 'num' }, n),
-              h('td', {}, h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', 'aria-label': t('Remove'), onclick: () => { items.splice(i, 1); paint(); } }, icon('x', 16))));
+              h('td', { class: 'row', style: 'flex-wrap:nowrap' },
+                h('button', { class: `btn btn-sm ${it.extra && Object.values(it.extra).some(Boolean) ? 'btn-primary' : ''}`, type: 'button', title: t('Dates & details for this product'), 'aria-label': t('Dates & details for this product'), onclick: () => editItem(it) }, icon('edit', 14)),
+                h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', 'aria-label': t('Remove'), onclick: () => { items.splice(i, 1); paint(); } }, icon('x', 16))));
           })))));
     }
     paintPreview();
@@ -140,6 +172,28 @@ export default async function labels(el, params, query) {
     const sample = ready[0] || { name: t('Sample product'), code: '2000000000015', price: '120' };
     mount(preview, h('div', { class: 'label-preview-box' }, labelEl(sample, o, size)), h('small', { class: 'muted' }, `${size.w} × ${size.h} mm`));
   }
+
+  // Different MFG / EXP / MRP… for one product (empty = use the value for all).
+  function editItem(it) {
+    it.extra = it.extra || {};
+    const ins = EXTRAS.map(([k, label, type]) => [k, field(t(label), input(k, it.extra[k] || '', { type: type === 'number' ? 'number' : type, placeholder: t('same as all labels') }))]);
+    const m = modal({
+      title: it.name, size: 'sm',
+      body: h('div', { class: 'form' }, h('p', { class: 'muted small' }, t('Only for this product. Leave empty to use the value set for all labels.')), h('div', { class: 'form-grid' }, ins.map(([, f]) => f))),
+      actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
+        for (const [k, f] of ins) { it.extra[k] = f.querySelector('input').value; }
+        // Turn the line on when a product gets its own value.
+        for (const [k, on] of extras) if (it.extra[k] && !on.checked) on.checked = true;
+        m.close(); changed(); paint();
+      } }, t('Save'))],
+    });
+  }
+
+  const ready = () => items.filter((i) => i.code && i.copies > 0);
+  const downloadBtn = h('button', { class: 'btn', type: 'button', onclick: async (e) => {
+    if (!ready().length) { toast(t('Add products with a barcode first.'), 'error'); return; }
+    await downloadLabels(ready(), settings(), e.currentTarget);
+  } }, icon('download', 16), t('Download PDF'));
 
   const printBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
     const o = settings();
@@ -162,9 +216,15 @@ export default async function labels(el, params, query) {
       listBox),
     card(t('Label size & content'),
       h('div', { class: 'form' }, field(t('Label size'), sizeSel), custom,
-        h('div', { class: 'label-opts' }, opts.map(([, , l]) => l))),
+        h('div', { class: 'row wrap' }, h('span', { class: 'muted small' }, t('Quick:')),
+          h('button', { class: 'btn btn-sm', type: 'button', onclick: () => preset('barcode') }, t('Barcode only')),
+          h('button', { class: 'btn btn-sm', type: 'button', onclick: () => preset('price') }, t('Name + price')),
+          h('button', { class: 'btn btn-sm', type: 'button', onclick: () => preset('full') }, t('Everything'))),
+        h('div', { class: 'label-opts' }, opts.map(([, , l]) => l)),
+        h('h4', { class: 'extras-title' }, t('More on the sticker')),
+        h('div', { class: 'extras' }, extras.map((x) => x[3]))),
       h('h4', {}, t('Preview')), preview, summary,
-      h('div', { class: 'row', style: 'margin-top:12px' }, printBtn),
+      h('div', { class: 'row', style: 'margin-top:12px' }, printBtn, downloadBtn),
       h('p', { class: 'muted small' }, t('Thermal label printer: choose the same paper size in the print dialog and set margins to none. Sticker sheets: print on A4 at 100% scale (not "fit to page").')))));
   mount(el, p.el);
   custom.hidden = saved.size !== 'custom';
@@ -177,15 +237,67 @@ function sizeOf(o) {
   return o.size === 'custom' ? { ...base, w: Math.max(15, Math.min(120, o.w)), h: Math.max(10, Math.min(120, o.h)) } : base;
 }
 
+/** The extra lines for one label: the product's own value, else the value for all. */
+function extraLines(it, o) {
+  const val = (k) => (it.extra?.[k] || o.extra?.[k]?.v || '');
+  const on = (k) => !!o.extra?.[k]?.on;
+  const d = (v) => (v ? fmtDate(v) : '');
+  const dates = [['mfg', 'MFG'], ['pkg', 'PKG'], ['exp', 'EXP']].filter(([k]) => on(k) && val(k)).map(([k, l]) => `${l}: ${d(val(k))}`);
+  const info = [on('batch') && val('batch') ? `${t('Batch')}: ${val('batch')}` : '', on('net') && val('net') ? `${t('Net')}: ${val('net')}` : ''].filter(Boolean);
+  return {
+    dates,
+    info,
+    note: on('note') ? val('note') : '',
+    mrp: on('mrp') ? (val('mrp') || it.price) : '',
+  };
+}
+
 /** One label, sized in real millimetres. */
 function labelEl(it, o, size) {
-  const pt = Math.max(5, Math.min(11, size.h * 0.27));
+  const x = extraLines(it, o);
+  const lines = (o.shop ? 1 : 0) + (o.name ? 1 : 0) + (x.dates.length ? Math.ceil(x.dates.length / 2) : 0) + (x.info.length ? 1 : 0) + (x.note ? 1 : 0) + (o.code || o.price || x.mrp ? 1 : 0);
+  const pt = Math.max(4.5, Math.min(11, (size.h * 0.27) / Math.max(1, 1 + (lines - 3) * 0.22)));
   const shop = state.business?.name || '';
+  const priceText = x.mrp ? `MRP ${money(x.mrp)}` : o.price ? money(it.price) : '';
   return h('div', { class: 'gh-label', style: `width:${size.w}mm;height:${size.h}mm;font-size:${pt}pt` },
     o.shop && shop ? h('div', { class: 'gh-l-shop' }, shop) : null,
     o.name ? h('div', { class: 'gh-l-name' }, it.name) : null,
     h('div', { class: 'gh-l-bar' }, barcodeSvg(it.code, 50)),
-    o.code || o.price ? h('div', { class: 'gh-l-foot' }, o.code ? h('span', {}, it.code) : null, o.price ? h('strong', {}, money(it.price)) : null) : null);
+    o.code || priceText ? h('div', { class: 'gh-l-foot' }, o.code ? h('span', {}, it.code) : null, priceText ? h('strong', {}, priceText) : null) : null,
+    x.dates.length ? h('div', { class: 'gh-l-dates' }, x.dates.map((dt) => h('span', {}, dt))) : null,
+    x.info.length ? h('div', { class: 'gh-l-info' }, x.info.join(' · ')) : null,
+    x.note ? h('div', { class: 'gh-l-note' }, x.note) : null);
+}
+
+/** Same pages as printing, drawn into a PDF (one page per roll label, or per A4 sheet). */
+async function downloadLabels(items, o, btn) {
+  const size = sizeOf(o);
+  const all = [];
+  for (const it of items) for (let i = 0; i < it.copies; i++) all.push(labelEl(it, o, size));
+  if (all.length > 600) { toast(t('Too many labels for one PDF. Download at most 600 at a time.'), 'error'); return; }
+  const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = `${window.BZL.assetsUrl}${src}?v=${window.BZL.version}`; el.onload = res; el.onerror = rej; document.head.append(el); });
+  try {
+    if (typeof window.html2canvas !== 'function') await load('vendor/html2canvas.min.js');
+    if (typeof window.ghPdfFrom !== 'function') await load('js/sticker-pdf.js');
+  } catch { toast(t('Could not prepare the PDF.'), 'error'); return; }
+  const box = h('div', { class: 'label-pdf-stage' });
+  let pages;
+  if (size.cols) {
+    const per = size.cols * size.rows;
+    pages = [];
+    for (let i = 0; i < all.length; i += per) {
+      pages.push(h('div', { class: 'gh-sheet-pdf', style: `padding:${size.top}mm 0 0 ${size.left}mm;grid-template-columns:repeat(${size.cols},${size.w}mm);grid-auto-rows:${size.h}mm` }, all.slice(i, i + per)));
+    }
+  } else {
+    pages = all;
+  }
+  box.append(...pages);
+  document.body.append(box);
+  try {
+    const name = `barcode-labels-${new Date().toISOString().slice(0, 10)}.pdf`;
+    await window.ghPdfFrom(pages, name, btn, size.cols ? 2 : 4);
+    toast(t('PDF downloaded'));
+  } finally { box.remove(); }
 }
 
 /** Print through an overlay that is the only thing visible on paper. */
