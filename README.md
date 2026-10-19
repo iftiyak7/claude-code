@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilan
 
 পাসওয়ার্ড ভুলে গেলে:
 ```bash
-sudo -u jashore360 python3 /opt/jashore360/server/server.py --data /var/lib/jashore360 reset-password admin
+sudo -u j360svc python3 /opt/jashore360/server/server.py --data /var/lib/jashore360 reset-password admin
 ```
 
 ## লোকাল ডেভেলপমেন্ট

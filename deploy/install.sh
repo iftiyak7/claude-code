@@ -12,6 +12,7 @@ APP=/opt/jashore360
 DATA=/var/lib/jashore360
 PORT=8360
 SVC=jashore360
+SVC_USER=j360svc   # not "jashore360": CloudPanel deletes the site user of that name when the site is replaced
 say() { printf '\n\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\n\033[1;33m!!\033[0m %s\n' "$*"; }
 [ "$(id -u)" -eq 0 ] || { echo "root হিসেবে চালান (sudo)"; exit 1; }
@@ -28,15 +29,15 @@ rm -rf "$TMP"
 chmod -R a+rX "$APP"
 
 say "সার্ভিস চালু"
-id "$SVC" >/dev/null 2>&1 || useradd --system --home-dir "$DATA" --shell /usr/sbin/nologin "$SVC"
-mkdir -p "$DATA"; chown -R "$SVC:$SVC" "$DATA"; chmod 750 "$DATA"
+id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$DATA" --shell /usr/sbin/nologin "$SVC_USER"
+mkdir -p "$DATA"; chown -R "$SVC_USER:$SVC_USER" "$DATA"; chmod 750 "$DATA"
 cat > /etc/systemd/system/$SVC.service <<UNIT
 [Unit]
 Description=Jashore360 app server
 After=network.target
 
 [Service]
-User=$SVC
+User=$SVC_USER
 ExecStart=/usr/bin/env python3 $APP/server/server.py --data $DATA --port $PORT
 Restart=always
 RestartSec=2
@@ -56,7 +57,7 @@ systemctl restart "$SVC"
 for i in $(seq 1 20); do curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/bootstrap" && break; sleep 0.5; done
 curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/bootstrap" || { journalctl -u "$SVC" -n 30 --no-pager; echo "সার্ভিস চালু হয়নি"; exit 1; }
 
-CREDS=$(sudo -u "$SVC" python3 "$APP/server/server.py" --data "$DATA" ensure-admin admin || true)
+CREDS=$(sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" ensure-admin admin || true)
 if [ -n "$CREDS" ]; then
   printf '%s\n' "$CREDS" > /root/jashore360-admin.txt; chmod 600 /root/jashore360-admin.txt
 fi
