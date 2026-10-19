@@ -336,7 +336,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 	<?php if ( 'sale' === $type && $settings['invoice.terms'] ) : ?>
 		<div class="r-center r-small" style="margin-top:3px"><?php echo nl2br( esc_html( $settings['invoice.terms'] ) ); ?></div>
 	<?php endif; ?>
-	<div class="r-center r-small muted" style="margin-top:6px"><?php echo esc_html( $L( 'প্রিন্ট', 'Printed' ) . ': ' . $digits( $now_local->format( 'd/m/Y h:i A' ) ) ); ?><br>Goriber Hisab</div>
+	<div class="r-center r-small muted" style="margin-top:6px"><?php echo esc_html( $L( 'প্রিন্ট', 'Printed' ) . ': ' . $digits( $now_local->format( 'd/m/Y h:i A' ) ) ); ?></div>
 
 <?php else : ?>
 	<!-- ============================ A4 / A5 DOCUMENT ============================ -->
@@ -579,7 +579,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 	<?php if ( '' !== $footer ) : ?>
 		<div class="thanks"><strong><?php echo nl2br( esc_html( $footer ) ); ?></strong></div>
 	<?php endif; ?>
-	<div class="powered"><?php echo esc_html( $L( 'প্রিন্ট', 'Printed' ) . ': ' . $digits( $now_local->format( 'd/m/Y h:i A' ) ) ); ?> · Goriber Hisab</div>
+	<div class="powered"><?php echo esc_html( $L( 'প্রিন্ট', 'Printed' ) . ': ' . $digits( $now_local->format( 'd/m/Y h:i A' ) ) ); ?></div>
 <?php endif; ?>
 </div>
 <?php if ( $view['auto'] ) : ?>

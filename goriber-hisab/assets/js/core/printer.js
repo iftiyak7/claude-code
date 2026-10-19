@@ -174,7 +174,6 @@ export function receiptBytes(sale) {
   if (footer) p.bold().line(footer).bold(false);
   if (s['invoice.terms']) p.line(String(s['invoice.terms']).split('\n')[0]);
   p.line(`${t('Printed')}: ${new Date().toLocaleString([], { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`);
-  p.line('Goriber Hisab');
   p.feed(3);
   if (s['printer.auto_cut']) p.cut();
   if (s['printer.open_drawer']) p.drawer();
@@ -183,7 +182,7 @@ export function receiptBytes(sale) {
 
 export function testPageBytes() {
   const p = new EscPos(Number(state.settings['printer.width']) === 58 ? 58 : 80);
-  p.align('center').bold().size(2, 2).line('Goriber Hisab').size(1, 1).bold(false)
+  p.align('center').bold().size(2, 2).line(state.business?.name || 'Goriber Hisab').size(1, 1).bold(false)
     .line(t('Printer test')).rule().align('left')
     .pair('Left', 'Right').line('1234567890'.repeat(5).slice(0, p.cols))
     .line('বাংলা লেখা পরীক্ষা').align('center').barcode('TEST-123').feed(3).cut();

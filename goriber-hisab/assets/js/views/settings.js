@@ -120,7 +120,7 @@ const RENDER = {
       ['invoice.signature_label', t('Signature label'), 'text'],
       ['invoice.footer', t('Footer message'), 'textarea'],
       ['invoice.terms', t('Terms & conditions'), 'textarea'],
-    ]);
+    ], { after: shopOnReceipt() });
   },
 
   async sales(S) {
@@ -272,6 +272,17 @@ const RENDER = {
     return h('div', {}, out);
   },
 };
+
+/** Invoice tab: what the shop part of every receipt shows, and where to change it. */
+function shopOnReceipt() {
+  const b = state.business || {};
+  return card(t('Shop details on receipts'),
+    h('div', { class: 'receipt-shop' },
+      b.logo_url ? h('img', { src: b.logo_url, alt: '' }) : h('span', { class: 'receipt-shop-nologo' }, t('No logo')),
+      h('div', {}, h('strong', {}, b.name || '—'), h('div', { class: 'muted small' }, [b.address, b.phone].filter(Boolean).join(' · ') || t('No address or phone yet')))),
+    h('p', { class: 'muted small' }, t('Every invoice, receipt and parcel sticker shows your shop name, logo, address and phone — nothing else.')),
+    h('a', { class: 'btn btn-sm btn-primary', href: '#/settings/business' }, icon('edit', 14), t('Change name, logo & address')));
+}
 
 function rateForm(r, onDone) {
   const f = h('form', { class: 'form' }, h('div', { class: 'form-grid' },

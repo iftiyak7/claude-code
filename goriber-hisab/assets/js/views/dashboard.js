@@ -13,7 +13,6 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { whatsappUrl, reminderText, sendReminderSms } from '../core/remind.js';
 import { lightCounts, lightRow } from '../core/lights.js';
-import { scanBar } from '../core/lookup.js';
 
 const WIDGETS = [['sales', 'Sales'], ['purchases', 'Purchases'], ['expenses', 'Expenses'], ['profit', 'Profit'], ['collection', 'Collection'], ['due', 'Due'], ['stock', 'Stock'], ['cash', 'Cash & bank']];
 
@@ -38,7 +37,6 @@ export default async function dashboard(el) {
     ['products.create', '#/products/new', 'products', t('Add product')],
     ['customers.create', '#/customers/new', 'customers', t('Add customer')],
   ].filter(([perm]) => can(perm));
-  if (can('sales.view') || can('orders.view')) p.body.append(scanBar());
   if (quick.length) {
     p.body.append(h('nav', { class: 'quick-actions', 'aria-label': t('Quick actions') },
       quick.map(([, href, ic, label, onclick]) => h(href ? 'a' : 'button', { class: 'quick', href, type: href ? null : 'button', onclick }, h('span', { class: 'quick-icon' }, icon(ic, 22)), h('span', {}, label)))));
@@ -83,26 +81,46 @@ export default async function dashboard(el) {
     const todayR = { range: 'today' };
     const drill = (metric, title, r = range) => () => drillDown(metric, title, r);
 
-    const today = h('div', { class: 'stats' },
-      show('sales') && stat(t("Today's sales"), money(T.sales), { hint: t('{n} invoices', { n: T.sales_count }), change: change(T.sales, Y.sales, false, vsY), onclick: drill('sales', t("Today's sales"), todayR) }),
-      show('purchases') && stat(t("Today's purchases"), money(T.purchases), { onclick: drill('purchases', t("Today's purchases"), todayR) }),
-      show('expenses') && stat(t("Today's expenses"), money(T.expenses), { change: change(T.expenses, Y.expenses, true, vsY), onclick: drill('expenses', t("Today's expenses"), todayR) }),
-      show('profit') && T.profit !== null && stat(t("Today's profit"), money(T.profit), { tone: Number(T.profit) < 0 ? 'bad' : 'ok', change: change(T.profit, Y.profit, false, vsY), onclick: drill('profit', t("Today's profit"), todayR) }),
-      show('collection') && stat(t("Today's collection"), money(T.collection), { tone: 'ok', onclick: drill('collection', t("Today's collection"), todayR) }),
-      show('due') && stat(t("Today's due"), money(T.sales_due), { tone: Number(T.sales_due) > 0 ? 'warn' : '', onclick: drill('due', t("Today's due"), todayR) }));
+    // One tile: icon, what it is in plain words, the number, and what it means.
+    const tile = (ic, tone, label, value, { caption = '', change: ch = null, onclick } = {}) => h(onclick ? 'button' : 'div', { class: `kpi kpi-${tone}`, type: onclick ? 'button' : null, onclick },
+      h('span', { class: 'kpi-ico' }, icon(ic, 20)),
+      h('span', { class: 'kpi-body' },
+        h('span', { class: 'kpi-label' }, label),
+        h('strong', { class: 'kpi-value' }, value ?? '—'),
+        caption || ch ? h('span', { class: 'kpi-cap' }, ch ? h('span', { class: `stat-change ${ch.good ? 'up' : 'down'}` }, ch.text) : null, ch && caption ? ' · ' : '', caption) : null),
+      onclick ? h('span', { class: 'kpi-go', 'aria-hidden': 'true' }, '›') : null);
 
-    const overview = h('div', { class: 'stats' },
-      show('sales') && stat(t('Total sales'), money(O.sales), { hint: Number(O.returns) ? t('Returns {x}', { x: money(O.returns) }) : '', change: change(O.sales, P.sales, false, vsP), onclick: drill('sales', t('Sales')) }),
-      show('purchases') && stat(t('Total purchases'), money(O.purchases), { onclick: drill('purchases', t('Purchases')) }),
-      O.revenue !== null && stat(t('Revenue'), money(O.revenue), { change: change(O.revenue, P.revenue, false, vsP), onclick: drill('profit', t('Profit & loss')) }),
-      show('expenses') && stat(t('Expenses'), money(O.expenses), { change: change(O.expenses, P.expenses, true, vsP), onclick: drill('expenses', t('Expenses')) }),
-      show('profit') && O.profit !== null && stat(t('Net profit'), money(O.profit), { tone: Number(O.profit) < 0 ? 'bad' : 'ok', hint: O.gross_profit !== null ? t('Gross {x}', { x: money(O.gross_profit) }) : '', change: change(O.profit, P.profit, false, vsP), onclick: drill('profit', t('Profit & loss')) }),
-      show('collection') && stat(t('Collection'), money(O.collection), { tone: 'ok', change: change(O.collection, P.collection, false, vsP), onclick: drill('collection', t('Collection')) }),
-      show('due') && stat(t('Customer due'), money(O.customer_due), { tone: 'warn', onclick: drill('customer_due', t('Customer due')) }),
-      show('due') && stat(t('Supplier due'), money(O.supplier_due), { onclick: drill('supplier_due', t('Supplier due')) }),
-      show('stock') && O.stock_value !== null && stat(t('Stock value'), money(O.stock_value), { hint: d.low_stock ? t('{n} low on stock', { n: d.low_stock }) : '', tone: d.low_stock ? 'warn' : '', onclick: drill('stock', t('Stock')) }),
-      show('cash') && O.cash_balance !== null && stat(t('Cash balance'), money(O.cash_balance), { onclick: drill('cash', t('Cash & bank')) }),
-      show('cash') && O.bank_balance !== null && stat(t('Bank & mobile'), money(O.bank_balance), { onclick: drill('cash', t('Cash & bank')) }));
+    // Today at a glance: the sales figure big, the rest underneath.
+    const todayBox = h('section', { class: 'today-hero' },
+      h('div', { class: 'hero-main', role: show('sales') ? 'button' : null, tabindex: show('sales') ? 0 : null, onclick: show('sales') ? drill('sales', t("Today's sales"), todayR) : null },
+        h('span', { class: 'hero-label' }, t("Today's sales")),
+        h('strong', { class: 'hero-value' }, money(T.sales)),
+        h('span', { class: 'hero-sub' }, t('{n} invoices', { n: T.sales_count }), (() => { const c = change(T.sales, Y.sales, false, vsY); return c ? h('span', { class: `hero-chg ${c.good ? 'up' : 'down'}` }, c.text) : null; })())),
+      h('div', { class: 'hero-grid' },
+        show('profit') && T.profit !== null && tile('reports', Number(T.profit) < 0 ? 'bad' : 'ok', t('Profit'), money(T.profit), { caption: t('after product cost & expenses'), onclick: drill('profit', t("Today's profit"), todayR) }),
+        show('collection') && tile('cash', 'ok', t('Cash received'), money(T.collection), { caption: t('sales + old dues collected'), onclick: drill('collection', t("Today's collection"), todayR) }),
+        show('due') && tile('alert', Number(T.sales_due) > 0 ? 'warn' : 'muted', t('Sold on credit'), money(T.sales_due), { caption: t('not paid yet'), onclick: drill('due', t("Today's due"), todayR) }),
+        show('expenses') && tile('expenses', 'bad', t('Expenses'), money(T.expenses), { onclick: drill('expenses', t("Today's expenses"), todayR) }),
+        show('purchases') && tile('purchases', 'info', t('Purchases'), money(T.purchases), { onclick: drill('purchases', t("Today's purchases"), todayR) })));
+
+    // The chosen period, in three plain groups.
+    const group = (title, ...tiles) => {
+      const list = tiles.filter(Boolean);
+      return list.length ? h('section', { class: 'kpi-group' }, h('h3', { class: 'kpi-group-title' }, title), h('div', { class: 'kpi-grid' }, list)) : null;
+    };
+    const salesGroup = group(t('Sales & profit'),
+      show('sales') && tile('sales', 'brand', t('Sales'), money(O.sales), { caption: Number(O.returns) ? t('Returns {x}', { x: money(O.returns) }) : '', change: change(O.sales, P.sales, false, vsP), onclick: drill('sales', t('Sales')) }),
+      show('profit') && O.profit !== null && tile('reports', Number(O.profit) < 0 ? 'bad' : 'ok', t('Profit'), money(O.profit), { caption: t('after product cost & expenses'), change: change(O.profit, P.profit, false, vsP), onclick: drill('profit', t('Profit & loss')) }),
+      show('expenses') && tile('expenses', 'bad', t('Expenses'), money(O.expenses), { caption: t('rent, salary, bills…'), change: change(O.expenses, P.expenses, true, vsP), onclick: drill('expenses', t('Expenses')) }),
+      show('purchases') && tile('purchases', 'info', t('Purchases'), money(O.purchases), { caption: t('products bought'), onclick: drill('purchases', t('Purchases')) }));
+    const moneyGroup = group(t('Money'),
+      show('collection') && tile('cash', 'ok', t('Cash received'), money(O.collection), { caption: t('in this period'), change: change(O.collection, P.collection, false, vsP), onclick: drill('collection', t('Collection')) }),
+      show('cash') && O.cash_balance !== null && tile('cash', 'brand', t('Cash in hand'), money(O.cash_balance), { caption: t('now'), onclick: drill('cash', t('Cash & bank')) }),
+      show('cash') && O.bank_balance !== null && tile('payments', 'info', t('Bank & mobile'), money(O.bank_balance), { caption: t('bKash, Nagad, bank'), onclick: drill('cash', t('Cash & bank')) }));
+    const owedGroup = group(t('Dues & stock'),
+      show('due') && tile('customers', 'warn', t('Customers owe you'), money(O.customer_due), { caption: t('to collect'), onclick: drill('customer_due', t('Customer due')) }),
+      show('due') && tile('suppliers', 'muted', t('You owe suppliers'), money(O.supplier_due), { caption: t('to pay'), onclick: drill('supplier_due', t('Supplier due')) }),
+      show('stock') && O.stock_value !== null && tile('inventory', d.low_stock ? 'warn' : 'muted', t('Stock value'), money(O.stock_value), { caption: d.low_stock ? t('{n} low on stock', { n: d.low_stock }) : t('at cost price'), onclick: drill('stock', t('Stock')) }));
 
     const pts = d.charts.points;
     const series = [{ key: 'sales', label: t('Sales') }, { key: 'purchases', label: t('Purchases') }, { key: 'expenses', label: t('Expenses') }];
@@ -143,8 +161,9 @@ export default async function dashboard(el) {
     }
 
     mount(content,
-      h('h2', { class: 'section-title' }, t('Today')), today,
-      h('h2', { class: 'section-title' }, t('{from} – {to}', { from: date(d.from), to: date(d.to) })), overview,
+      h('h2', { class: 'section-title' }, t('Today')), todayBox,
+      h('h2', { class: 'section-title' }, t('{from} – {to}', { from: date(d.from), to: date(d.to) })),
+      h('div', { class: 'kpi-groups' }, salesGroup, moneyGroup, owedGroup),
       lightsBox,
       charts,
       dues || lows ? h('div', { class: 'grid-2' }, dues, lows) : null,
