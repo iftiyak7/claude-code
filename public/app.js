@@ -465,7 +465,7 @@
       </div></div>
       <div class="actionbar"><button class="sq ${isSaved(id) ? 'on' : ''}" data-save="${esc(id)}" aria-label="সেভ">${icon('heart', 22)}</button>
         <a class="sq" href="${dirUrl(it)}" target="_blank" rel="noopener" data-map="${esc(id)}" aria-label="দিকনির্দেশ">${icon('nav', 21)}</a>
-        ${it.phone ? `<a class="btn block ${it.cat === 'emergency' ? 'red' : 'dark'}" href="tel:${esc(it.phone)}" data-call-track="${esc(id)}">${icon('phone', 19)}কল করুন · ${bn(it.phone)}</a>`
+        ${it.phone ? `<a class="btn block ${it.cat === 'emergency' ? 'red' : 'dark'}" href="tel:${esc(it.phone)}" data-call-track="${esc(id)}">${icon('phone', 19)}কল করুন</a>`
           : `<a class="btn block dark" href="${mapUrl(it)}" target="_blank" rel="noopener" data-map="${esc(id)}">${icon('map', 19)}ম্যাপে দেখুন</a>`}</div>`;
   };
 
