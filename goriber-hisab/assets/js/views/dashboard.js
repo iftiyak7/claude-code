@@ -13,7 +13,7 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { whatsappUrl, reminderText, sendReminderSms } from '../core/remind.js';
 import { lightCounts, lightRow } from '../core/lights.js';
-import { scanDialog } from '../core/lookup.js';
+import { scanBar } from '../core/lookup.js';
 
 const WIDGETS = [['sales', 'Sales'], ['purchases', 'Purchases'], ['expenses', 'Expenses'], ['profit', 'Profit'], ['collection', 'Collection'], ['due', 'Due'], ['stock', 'Stock'], ['cash', 'Cash & bank']];
 
@@ -31,7 +31,6 @@ export default async function dashboard(el) {
   // Big, thumb-friendly shortcuts for the most common daily jobs.
   const quick = [
     ['pos.use', '#/pos', 'pos', t('New sale')],
-    [can('orders.view') ? 'orders.view' : 'sales.view', null, 'barcode', t('Scan invoice'), scanDialog],
     ['orders.manage', '#/orders/new', 'truck', t('Online order')],
     ['payments.receive', '#/payments/receive', 'cash', t('Receive due')],
     ['expenses.create', '#/expenses/new', 'expenses', t('Add expense')],
@@ -39,6 +38,7 @@ export default async function dashboard(el) {
     ['products.create', '#/products/new', 'products', t('Add product')],
     ['customers.create', '#/customers/new', 'customers', t('Add customer')],
   ].filter(([perm]) => can(perm));
+  if (can('sales.view') || can('orders.view')) p.body.append(scanBar());
   if (quick.length) {
     p.body.append(h('nav', { class: 'quick-actions', 'aria-label': t('Quick actions') },
       quick.map(([, href, ic, label, onclick]) => h(href ? 'a' : 'button', { class: 'quick', href, type: href ? null : 'button', onclick }, h('span', { class: 'quick-icon' }, icon(ic, 22)), h('span', {}, label)))));

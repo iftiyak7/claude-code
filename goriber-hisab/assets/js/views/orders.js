@@ -175,11 +175,18 @@ export function printStickers(ids) {
   const m = modal({
     title: ids.length === 1 ? t('Print parcel sticker') : t('Print {n} parcel stickers', { n: ids.length }), size: 'sm',
     body: h('div', { class: 'form' }, h('p', { class: 'muted small' }, t('Customer, phone, address, products, bill and cash to collect — with a barcode that opens the order when scanned.')), box),
-    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
-      try { localStorage.setItem('gh.sticker', size); } catch { /* ignore */ }
-      m.close();
-      openPrint('labels', ids.join(','), { paper: size });
-    } }, icon('printer', 16), t('Print'))],
+    actions: [
+      h('button', { class: 'btn', type: 'button', onclick: () => {
+        try { localStorage.setItem('gh.sticker', size); } catch { /* ignore */ }
+        m.close();
+        openPrint('labels', ids.join(','), { paper: size, autoprint: false, extra: { download: '1' } });
+      } }, icon('download', 16), t('Download PDF')),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
+        try { localStorage.setItem('gh.sticker', size); } catch { /* ignore */ }
+        m.close();
+        openPrint('labels', ids.join(','), { paper: size });
+      } }, icon('printer', 16), t('Print')),
+    ],
   });
 }
 

@@ -46,6 +46,7 @@ $geo = array(
 	'80mm'    => array( 'page' => '80mm auto', 'w' => '76mm', 'h' => 'auto', 'font' => '11px', 'max' => 12, 'per' => 1 ),
 	'a4'      => array( 'page' => 'A4', 'w' => '98mm', 'h' => '140mm', 'font' => '11.5px', 'max' => 7, 'per' => 4 ),
 )[ $size ];
+$pdf_name = ( count( $orders ) === 1 ? 'sticker-' . $orders[0]['number'] : 'stickers-' . gmdate( 'Y-m-d' ) . '-' . count( $orders ) ) . '.pdf';
 $title = count( $orders ) === 1 ? $L( 'পার্সেল স্টিকার', 'Parcel sticker' ) . ' ' . $orders[0]['number'] : sprintf( $L( '%d টি পার্সেল স্টিকার', '%d parcel stickers' ), count( $orders ) );
 ?>
 <!doctype html>
@@ -110,7 +111,8 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 </head>
 <body>
 <div class="toolbar">
-	<button type="button" class="primary" onclick="ghPrint()"><?php echo esc_html( $L( 'প্রিন্ট / PDF', 'Print / PDF' ) ); ?></button>
+	<button type="button" class="primary" onclick="ghPrint()"><?php echo esc_html( $L( 'প্রিন্ট', 'Print' ) ); ?></button>
+	<button type="button" class="primary" id="gh-pdf" onclick="ghDownloadPdf(<?php echo esc_attr( wp_json_encode( $pdf_name ) ); ?>, this)">⬇ <?php echo esc_html( $L( 'PDF ডাউনলোড', 'Download PDF' ) ); ?></button>
 	<button type="button" onclick="ghClose()"><?php echo esc_html( $L( 'বন্ধ করুন', 'Close' ) ); ?></button>
 </div>
 <div class="sheet">
@@ -189,7 +191,11 @@ foreach ( $orders as $o ) :
 	</div>
 <?php endforeach; ?>
 </div>
-<?php if ( $view['auto'] ) : ?>
+<script src="<?php echo esc_url( GORIBER_HISAB_URL . 'assets/vendor/html2canvas.min.js?v=' . GORIBER_HISAB_VERSION ); ?>"></script>
+<script src="<?php echo esc_url( GORIBER_HISAB_URL . 'assets/js/sticker-pdf.js?v=' . GORIBER_HISAB_VERSION ); ?>"></script>
+<?php if ( ! empty( $view['download'] ) ) : ?>
+<script>window.addEventListener('load',function(){setTimeout(function(){ghDownloadPdf(<?php echo wp_json_encode( $pdf_name ); ?>,document.getElementById('gh-pdf'));},400);});</script>
+<?php elseif ( $view['auto'] ) : ?>
 <script>window.addEventListener('load',function(){setTimeout(ghPrint,300);});</script>
 <?php endif; ?>
 </body>

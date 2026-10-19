@@ -45,3 +45,20 @@ export function scanDialog() {
   });
   setTimeout(() => inp.focus(), 50);
 }
+
+/** Always-visible scan box (dashboard): scanner or typing + Enter, or the camera. */
+export function scanBar() {
+  const inp = h('input', { class: 'input', type: 'search', autocomplete: 'off', placeholder: t('Scan invoice / receipt barcode or type its number'), 'aria-label': t('Invoice or order number') });
+  const go = async () => { if (inp.value.trim() && await openCode(inp.value)) inp.value = ''; else inp.select(); };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  return h('div', { class: 'scan-bar' },
+    h('span', { class: 'scan-bar-icon' }, icon('barcode', 22)),
+    h('div', { class: 'scan-bar-main' },
+      h('strong', {}, t('Scan invoice / order')),
+      h('div', { class: 'row' }, inp,
+        h('button', { class: 'btn btn-primary', type: 'button', onclick: go }, t('Open')),
+        cameraSupported() ? h('button', { class: 'btn', type: 'button', title: t('Scan with camera'), 'aria-label': t('Scan with camera'), onclick: async () => {
+          const code = await scanWithCamera();
+          if (code) openCode(code);
+        } }, icon('camera', 18), h('span', { class: 'hide-sm' }, t('Camera'))) : null)));
+}

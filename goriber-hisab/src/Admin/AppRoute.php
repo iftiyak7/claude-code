@@ -603,6 +603,7 @@ JS;
 		$branch   = isset( $_GET['br'] ) ? absint( $_GET['br'] ) : 0;
 		$size     = isset( $_GET['paper'] ) ? sanitize_key( wp_unslash( $_GET['paper'] ) ) : '';
 		$auto     = ! empty( $_GET['autoprint'] );
+		$download = ! empty( $_GET['download'] );
 		// phpcs:enable
 		try {
 			$ctx = $this->k->contexts->forUser( get_current_user_id(), $business, $branch );
@@ -624,7 +625,8 @@ JS;
 			'business' => $business_row,
 			'settings' => $settings,
 			'size'     => in_array( $size, array( '100x150', '75x100', '80mm', 'a4' ), true ) ? $size : '100x150',
-			'auto'     => $auto,
+			'auto'     => $auto && ! $download,
+			'download' => $download,
 			'ctx'      => $ctx,
 		);
 		$template = (string) apply_filters( 'goriber_hisab/label_template', GORIBER_HISAB_DIR . 'templates/label.php', $view );

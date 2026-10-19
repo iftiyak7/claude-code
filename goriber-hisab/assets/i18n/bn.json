@@ -1729,5 +1729,8 @@
 "Print {n} parcel stickers": "{n}টি পার্সেল স্টিকার প্রিন্ট",
 "Customer, phone, address, products, bill and cash to collect — with a barcode that opens the order when scanned.": "কাস্টমারের নাম, ফোন, ঠিকানা, পণ্য, বিল আর কত টাকা নিতে হবে সব থাকবে। সাথে বারকোড, স্ক্যান করলে অর্ডার খুলে যাবে।",
 "Sticker": "স্টিকার",
-"Print stickers": "স্টিকার প্রিন্ট"
+"Print stickers": "স্টিকার প্রিন্ট",
+"Download PDF": "PDF ডাউনলোড",
+"Scan invoice / receipt barcode or type its number": "রসিদের বারকোড স্ক্যান করুন বা নম্বর লিখুন",
+"Camera": "ক্যামেরা"
 }
