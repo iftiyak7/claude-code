@@ -278,7 +278,8 @@ final class PlatformService extends Service {
 	 * @return array<string,mixed>
 	 */
 	public function shops( array $args = array() ): array {
-		$where  = array( 'b.deleted_at IS NULL' );
+		$archived = 'archived' === ( $args['status'] ?? '' );
+		$where    = array( $archived ? 'b.deleted_at IS NOT NULL' : 'b.deleted_at IS NULL' );
 		$params = array();
 		$q      = Text::line( $args['search'] ?? '', 100 );
 		if ( '' !== $q ) {
@@ -290,7 +291,7 @@ final class PlatformService extends Service {
 		}
 		$rows  = $this->db->rows( $this->select() . ' WHERE ' . implode( ' AND ', $where ) . ' ORDER BY b.id DESC', $params );
 		$items = array();
-		$want  = (string) ( $args['status'] ?? 'all' );
+		$want  = $archived ? 'all' : (string) ( $args['status'] ?? 'all' );
 		foreach ( $rows as $row ) {
 			$shop = $this->present( $row );
 			$s    = $shop['subscription']['status'];
@@ -313,13 +314,79 @@ final class PlatformService extends Service {
 	 * @return array<string,mixed>
 	 */
 	public function shop( int $business_id ): array {
-		$row = $this->db->row( $this->select() . ' WHERE b.id = %d AND b.deleted_at IS NULL', array( $business_id ) );
+		$row = $this->db->row( $this->select() . ' WHERE b.id = %d', array( $business_id ) );
 		if ( null === $row ) {
 			throw new NotFoundException( 'Shop not found.' );
 		}
 		$shop             = $this->present( $row );
 		$shop['payments'] = $this->payments( array( 'business_id' => $business_id, 'per_page' => 100 ) )['items'];
 		return $shop;
+	}
+
+	/**
+	 * Archive: the shop disappears from the list and nobody can open it, but
+	 * every record stays and it can be brought back.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function archiveShop( int $admin_id, int $business_id ): array {
+		$this->shop( $business_id );
+		$this->db->update(
+			$this->db->table( 'businesses' ),
+			array(
+				'deleted_at' => $this->now(),
+				'deleted_by' => $admin_id,
+			),
+			array( 'id' => $business_id )
+		);
+		return $this->shop( $business_id );
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function restoreShop( int $business_id ): array {
+		$this->shop( $business_id );
+		$this->db->update(
+			$this->db->table( 'businesses' ),
+			array(
+				'deleted_at' => null,
+				'deleted_by' => 0,
+			),
+			array( 'id' => $business_id )
+		);
+		return $this->shop( $business_id );
+	}
+
+	/**
+	 * Delete an archived shop for ever: every record of the business in every
+	 * table. The confirmation must be the shop's exact name. Logins are kept
+	 * (a person may own other shops); only their access to this shop goes.
+	 *
+	 * @param array<string,string> $tables Table key => has business_id (from the schema).
+	 * @return array{deleted:bool,rows:int}
+	 */
+	public function deleteShop( int $business_id, string $confirm, array $tables ): array {
+		$shop = $this->shop( $business_id );
+		if ( empty( $shop['deleted_at'] ) ) {
+			throw new ValidationException( array(), 'Archive the shop first. Only archived shops can be deleted.' );
+		}
+		if ( trim( $confirm ) !== trim( (string) $shop['name'] ) ) {
+			throw ValidationException::field( 'confirm', 'Type the shop name exactly to delete it.' );
+		}
+		$rows = 0;
+		$this->db->transaction(
+			function () use ( $business_id, $tables, &$rows ) {
+				foreach ( $tables as $key ) {
+					$rows += (int) $this->db->execute( 'DELETE FROM ' . $this->db->table( $key ) . ' WHERE business_id = %d', array( $business_id ) );
+				}
+				$rows += (int) $this->db->execute( 'DELETE FROM ' . $this->db->table( 'businesses' ) . ' WHERE id = %d', array( $business_id ) );
+			}
+		);
+		return array(
+			'deleted' => true,
+			'rows'    => $rows,
+		);
 	}
 
 	/**
@@ -933,6 +1000,7 @@ final class PlatformService extends Service {
 			'owner_id'     => (int) $row['owner_id'],
 			'owner'        => $owner ? array( 'name' => $owner['name'], 'email' => $owner['email'], 'login' => $owner['login'] ) : null,
 			'created_at'   => (string) $row['created_at'],
+			'deleted_at'   => $row['deleted_at'] ?? null,
 			'last_seen_at' => $row['last_seen_at'] ?? null,
 			'users'        => (int) ( $row['users'] ?? 0 ),
 			'pending'      => (int) ( $row['pending'] ?? 0 ),

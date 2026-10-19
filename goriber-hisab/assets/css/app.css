@@ -917,11 +917,7 @@ button.kpi:active { transform: scale(.98); }
   .hero-grid .kpi-go { display: none; }
   .hero-grid .kpi-ico { width: 30px; height: 30px; }
   .hero-grid .kpi-value { font-size: 1.1rem; }
-  /* Shortcuts: one swipeable row instead of a tall grid. */
-  .quick-actions { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 4px; scrollbar-width: none; }
-  .quick-actions::-webkit-scrollbar { display: none; }
-  .quick-actions .quick { flex: 0 0 auto; min-height: 0; flex-direction: column; gap: 6px; padding: 10px 12px; width: 92px; text-align: center; font-size: .78rem; line-height: 1.2; }
-  .quick-actions .quick .quick-icon { width: 36px; height: 36px; }
+}
 }
 .scan-box { position: absolute; left: 10%; right: 10%; top: 30%; bottom: 30%; border: 2px solid rgba(255, 255, 255, .85); border-radius: 10px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); pointer-events: none; }
 .scan-frame .scan-video { cursor: crosshair; }

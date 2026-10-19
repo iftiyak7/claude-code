@@ -66,7 +66,7 @@ export default async function platform(el, params, query) {
   const reload = () => platform(el, params, query);
 
   if (tab === 'shops') {
-    const status = select('status', [['all', t('All shops')], ['active', t('Active')], ['expiring', t('Ending in 7 days')], ['expired', t('Expired')], ['trial', t('Trial')], ['suspended', t('Suspended')], ['pending', t('New sign-ups')]], query.status || 'all', { 'aria-label': t('Status') });
+    const status = select('status', [['all', t('All shops')], ['active', t('Active')], ['expiring', t('Ending in 7 days')], ['expired', t('Expired')], ['trial', t('Trial')], ['suspended', t('Suspended')], ['pending', t('New sign-ups')], ['archived', t('Archived')]], query.status || 'all', { 'aria-label': t('Status') });
     const table = dataTable({
       query,
       searchPlaceholder: t('Search shop, phone, email…'),
@@ -428,7 +428,54 @@ async function manageShop(id, onChange) {
       { label: t('Method'), render: (x) => `${methodLabel(x.method)}${x.reference ? ` · ${x.reference}` : ''}` },
       { label: t('Period'), render: (x) => (x.period_to ? `${date(x.period_from)} – ${date(x.period_to)}` : '—') },
       { label: t('Status'), render: (x) => badge({ pending: 'partial', approved: 'paid', rejected: 'void' }[x.status], t(x.status === 'pending' ? 'Waiting' : x.status === 'approved' ? 'Approved' : 'Rejected')) },
-    ], shop.payments) : h('p', { class: 'muted' }, t('No payments yet.'))));
+    ], shop.payments) : h('p', { class: 'muted' }, t('No payments yet.'))),
+    dangerZone(shop, () => { m.close(); onChange(); }, refresh));
+}
+
+/**
+ * Archive (hide, keep everything, can come back), restore, and — owner only,
+ * archived shops only — delete for ever after three separate confirmations.
+ */
+function dangerZone(shop, closed, refresh) {
+  const id = shop.id;
+  if (!shop.deleted_at) {
+    return card(t('Archive'),
+      h('p', { class: 'muted small' }, t('Archived shops disappear from the list and nobody can open them. Nothing is deleted — you can bring the shop back any time from "Archived".')),
+      h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
+        if (!(await confirmDialog(t('Archive {n}? Its users cannot log in until you restore it. No data is deleted.', { n: shop.name }), { danger: true, confirmText: t('Archive') }))) return;
+        try { await api.post(`platform/shops/${id}/archive`); toast(t('Shop archived')); closed(); } catch (err) { showError(err); }
+      } }, icon('trash', 16), t('Archive shop')));
+  }
+  const del = async () => {
+    // 1st: are you sure?
+    if (!(await confirmDialog(t('Delete {n} for ever?', { n: shop.name }), { danger: true, confirmText: t('Yes, continue') }))) return;
+    // 2nd: say exactly what goes.
+    if (!(await confirmDialog(t('Every sale, product, customer, order, payment and setting of {n} will be erased. This cannot be undone and the data cannot be recovered. Delete?', { n: shop.name }), { danger: true, title: t('Last warning'), confirmText: t('Delete everything') }))) return;
+    // 3rd: type the shop name.
+    const nameIn = input('confirm', '', { autocomplete: 'off', placeholder: shop.name });
+    const go = h('button', { class: 'btn btn-danger', type: 'button', disabled: true }, icon('trash', 16), t('Delete for ever'));
+    nameIn.addEventListener('input', () => { go.disabled = nameIn.value.trim() !== shop.name.trim(); });
+    const m3 = modal({
+      title: t('Type the shop name to delete'), size: 'sm',
+      body: h('div', { class: 'form' }, h('p', {}, t('To confirm, type: {n}', { n: '' }), h('strong', {}, shop.name)), nameIn),
+      actions: [go],
+    });
+    go.addEventListener('click', async () => {
+      go.disabled = true;
+      try {
+        await api.post(`platform/shops/${id}/delete`, { confirm: nameIn.value });
+        m3.close(); toast(t('{n} was deleted for ever.', { n: shop.name })); closed();
+      } catch (err) { go.disabled = false; showError(err); }
+    });
+  };
+  return card(t('Archived shop'),
+    h('p', { class: 'warn-text' }, t('This shop is archived — hidden and closed. All its data is still here.')),
+    h('div', { class: 'row wrap' },
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+        try { await api.post(`platform/shops/${id}/restore`); toast(t('Shop restored')); refresh(); } catch (err) { showError(err); }
+      } }, icon('return', 16), t('Restore shop')),
+      state.me.platform?.owner ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: del }, icon('trash', 16), t('Delete for ever')) : null),
+    state.me.platform?.owner ? null : h('p', { class: 'muted small' }, t('Only the site owner can delete a shop for ever.')));
 }
 
 /** SMS gateway for every shop on this site (thank-you SMS after a sale, due reminders). */

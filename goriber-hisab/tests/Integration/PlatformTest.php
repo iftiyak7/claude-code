@@ -232,4 +232,39 @@ final class PlatformTest extends IntegrationTestCase {
 		$c = $mk( 'c@gmail.com' );
 		$this->assertThrows( ValidationException::class, fn() => $this->k->platform->trialFor( $c['business_id'], $c['user_id'] ) );
 	}
+
+	public function testArchiveRestoreAndDeleteForEver(): void {
+		$shop = $this->open();
+		$id   = (int) $shop['id'];
+		$ctx  = $this->k->businesses->systemContext( $id, $this->owner );
+		$this->k->contacts->create( $ctx, 'customer', array( 'name' => 'Karim', 'phone' => '01811000000' ) );
+		$tables = array();
+		foreach ( \GoriberHisab\Database\Schema::tables() as $key => $def ) {
+			if ( isset( $def['columns']['business_id'] ) ) {
+				$tables[] = $key;
+			}
+		}
+
+		// Only archived shops can be deleted.
+		$this->assertThrows( ValidationException::class, fn() => $this->k->platform->deleteShop( $id, 'Rahim Store', $tables ) );
+
+		$this->k->platform->archiveShop( $this->owner, $id );
+		$this->assertSame( 0, count( array_filter( $this->k->platform->shops()['items'], static fn( $s ) => $s['id'] === $id ) ) );
+		$this->assertSame( $id, $this->k->platform->shops( array( 'status' => 'archived' ) )['items'][0]['id'] );
+		$this->assertThrows( \Throwable::class, fn() => $this->k->contexts->forUser( $this->owner, $id ) );
+
+		$this->k->platform->restoreShop( $id );
+		$this->assertSame( 1, count( array_filter( $this->k->platform->shops()['items'], static fn( $s ) => $s['id'] === $id ) ) );
+		$this->assertSame( 0, (int) $this->k->platform->shops( array( 'status' => 'archived' ) )['total'] );
+
+		$this->k->platform->archiveShop( $this->owner, $id );
+		$e = $this->assertThrows( ValidationException::class, fn() => $this->k->platform->deleteShop( $id, 'rahim store', $tables ) );
+		$this->assertTrue( isset( $e->errors()['confirm'] ) );
+		$out = $this->k->platform->deleteShop( $id, 'Rahim Store', $tables );
+		$this->assertTrue( $out['deleted'] );
+		$this->assertTrue( $out['rows'] > 3 );
+		$this->assertSame( 0, (int) $this->db->value( 'SELECT COUNT(*) FROM ' . $this->db->table( 'contacts' ) . ' WHERE business_id = %d', array( $id ) ) );
+		$this->assertSame( 0, (int) $this->db->value( 'SELECT COUNT(*) FROM ' . $this->db->table( 'businesses' ) . ' WHERE id = %d', array( $id ) ) );
+		$this->assertThrows( \Throwable::class, fn() => $this->k->platform->shop( $id ) );
+	}
 }

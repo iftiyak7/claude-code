@@ -36,6 +36,9 @@ final class PlatformController extends Controller {
 			$this->route( 'POST', '/platform/shops', fn( $n, array $p ) => $this->guard( fn() => $this->k->platform->openShop( get_current_user_id(), $p ) ), $admin + array( 'created' => true ) ),
 			$this->route( 'GET', '/platform/shops/(?P<id>\d+)', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->shop( self::id( $r ) ) ), $admin ),
 			$this->route( 'PUT', '/platform/shops/(?P<id>\d+)', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->updateShop( self::id( $r ), $p ) ), $admin ),
+			$this->route( 'POST', '/platform/shops/(?P<id>\d+)/archive', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->archiveShop( get_current_user_id(), self::id( $r ) ) ), $admin ),
+			$this->route( 'POST', '/platform/shops/(?P<id>\d+)/restore', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->restoreShop( self::id( $r ) ) ), $admin ),
+			$this->route( 'POST', '/platform/shops/(?P<id>\d+)/delete', fn( $n, array $p, $r ) => $this->ownerOnly( fn() => $this->deleteShop( self::id( $r ), (string) ( $p['confirm'] ?? '' ) ) ), $admin ),
 			$this->route( 'POST', '/platform/shops/(?P<id>\d+)/password', fn( $n, array $p, $r ) => $this->guard( fn() => $this->password( self::id( $r ), (string) ( $p['password'] ?? '' ) ) ), $admin ),
 			$this->route( 'POST', '/platform/shops/(?P<id>\d+)/payments', fn( $n, array $p, $r ) => $this->guard( fn() => $this->k->platform->recordPayment( get_current_user_id(), self::id( $r ), $p ) ), $admin + array( 'created' => true ) ),
 			$this->route( 'GET', '/platform/payments', fn( $n, array $p ) => $this->guard( fn() => $this->k->platform->payments( $p ) ), $admin ),
@@ -143,6 +146,23 @@ final class PlatformController extends Controller {
 			throw new PermissionException( __( 'Only the site owner can change this.', 'goriber-hisab' ) );
 		}
 		return $fn();
+	}
+
+	/**
+	 * Every table that holds this shop's records.
+	 *
+	 * @return array{deleted:bool,rows:int}
+	 */
+	private function deleteShop( int $id, string $confirm ): array {
+		$tables = array();
+		foreach ( \GoriberHisab\Database\Schema::tables() as $key => $def ) {
+			if ( isset( $def['columns']['business_id'] ) ) {
+				$tables[] = $key;
+			}
+		}
+		$out = $this->k->platform->deleteShop( $id, $confirm, $tables );
+		delete_option( 'bizledger_last_backup_' . $id );
+		return $out;
 	}
 
 	/**
