@@ -54,7 +54,7 @@ UNIT
 systemctl daemon-reload
 systemctl enable "$SVC" >/dev/null 2>&1
 systemctl restart "$SVC"
-for i in $(seq 1 20); do curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/bootstrap" && break; sleep 0.5; done
+for i in $(seq 1 20); do curl -fs -o /dev/null "http://127.0.0.1:$PORT/api/bootstrap" && break; sleep 0.5; done
 curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/bootstrap" || { journalctl -u "$SVC" -n 30 --no-pager; echo "সার্ভিস চালু হয়নি"; exit 1; }
 
 CREDS=$(sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" ensure-admin admin || true)
@@ -141,5 +141,7 @@ if [ -n "$CREDS" ]; then
   echo " 🔑 অ্যাডমিন লগইন (এখনই কোথাও লিখে রাখুন):"
   printf '%s\n' "$CREDS" | sed 's/^/    /'
   echo "    (/root/jashore360-admin.txt ফাইলেও রাখা আছে। লগইনের পর পাসওয়ার্ড বদলে নিন)"
+else
+  echo "    অ্যাডমিন লগইন আগের মতোই আছে। প্রথম পাসওয়ার্ড: cat /root/jashore360-admin.txt"
 fi
 echo "════════════════════════════════════════════"
