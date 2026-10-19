@@ -94,6 +94,13 @@ if command -v clpctl >/dev/null; then
       || warn "SSL হয়নি — Hostinger DNS-এ $DOMAIN এর A রেকর্ড 72.62.198.94 আছে কি না দেখুন, তারপর CloudPanel → Sites → $DOMAIN → SSL/TLS থেকে Let's Encrypt চালান"
     nginx -t -q 2>/dev/null && (systemctl reload nginx 2>/dev/null || nginx -s reload) || true
   fi
+  if openssl x509 -in "/etc/nginx/ssl-certificates/$DOMAIN.crt" -noout -issuer 2>/dev/null | grep -qi "let's encrypt" \
+     && openssl x509 -in "/etc/nginx/ssl-certificates/$DOMAIN.crt" -noout -checkend 0 >/dev/null 2>&1; then
+    python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT" https      # valid certificate: send http visitors to https
+    if nginx -t -q 2>/dev/null; then systemctl reload nginx 2>/dev/null || nginx -s reload; else python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT"; fi
+  else
+    SSL_WARN="SSL সার্টিফিকেট এখনো ঠিক হয়নি — সাইট ও Android অ্যাপ https ছাড়া ঠিকমতো চলবে না। Hostinger DNS-এ $DOMAIN ও www.$DOMAIN এর A রেকর্ড 72.62.198.94 কি না দেখুন, তারপর CloudPanel → Sites → $DOMAIN → SSL/TLS → Actions → New Let's Encrypt Certificate চাপুন, তারপর এই কমান্ড আবার চালান।"
+  fi
   URL="https://$DOMAIN"
 else
   command -v nginx >/dev/null || { apt-get update -qq && apt-get install -y -qq nginx; }
@@ -143,6 +150,7 @@ fi
 [ "${RELOAD:-}" = 1 ] && (nginx -t -q && (systemctl reload nginx 2>/dev/null || nginx -s reload)) || true
 
 echo
+[ -n "${SSL_WARN:-}" ] && warn "$SSL_WARN"
 echo "════════════════════════════════════════════"
 echo " ✅ Jashore360 চালু হয়েছে"
 echo "    অ্যাপ:          $URL"

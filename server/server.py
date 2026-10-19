@@ -39,12 +39,18 @@ TEXT_TYPES = ('text/', 'application/javascript', 'application/json', 'image/svg+
 mimetypes.add_type('application/manifest+json', '.webmanifest')
 mimetypes.add_type('application/javascript', '.js')
 mimetypes.add_type('image/webp', '.webp')
+mimetypes.add_type('video/mp4', '.mp4')
+mimetypes.add_type('video/webm', '.webm')
+mimetypes.add_type('video/quicktime', '.mov')
 
-SETTING_KEYS = ('site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app')
+SETTING_KEYS = ('site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms')
+DICT_SETTINGS = ('site', 'payment', 'app', 'terms')
 MODERATOR_SETTINGS = {'notices'}           # every other setting is owner-only
 CLASS_KINDS = ('job', 'rent', 'mess')
 CLASS_DAYS = 30
 STATUSES = ('verified', 'pending', 'needs_update', 'temp_closed', 'closed')
+MAX_IMAGES, MAX_VIDEOS = 10, 2
+MAX_IMAGE_BYTES, MAX_VIDEO_BYTES = 8 * 1024 * 1024, 60 * 1024 * 1024
 
 
 # ---------------------------------------------------------------- storage
@@ -87,10 +93,12 @@ CREATE TABLE IF NOT EXISTS classifieds (
   created_at INTEGER, updated_at INTEGER, expires_at INTEGER, views INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS daily (day TEXT NOT NULL, metric TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, metric));
 CREATE TABLE IF NOT EXISTS adstats (id TEXT PRIMARY KEY, imps INTEGER NOT NULL DEFAULT 0, clicks INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS media (name TEXT PRIMARY KEY, user_id INTEGER, kind TEXT NOT NULL, size INTEGER, created_at INTEGER);
 """
 
 MIGRATIONS = [('listings', 'owner_id', 'INTEGER'), ('listings', 'plan', 'TEXT'), ('listings', 'paid_until', 'TEXT'),
-              ('reviews', 'user_id', 'INTEGER'), ('admins', 'role', "TEXT NOT NULL DEFAULT 'owner'")]
+              ('reviews', 'user_id', 'INTEGER'), ('admins', 'role', "TEXT NOT NULL DEFAULT 'owner'"),
+              ('users', 'terms_v', 'INTEGER'), ('users', 'terms_at', 'INTEGER')]
 
 
 def init_db():
@@ -108,7 +116,7 @@ def init_db():
         for k in SETTING_KEYS:
             if k in have:
                 continue
-            val = seed.get(k, {} if k in ('site', 'payment', 'app') else [])
+            val = seed.get(k, {} if k in DICT_SETTINGS else [])
             if k == 'ads' and 'banners' in have:      # older installs kept homepage banners under "banners"
                 val = [dict(b, placement='home') for b in json.loads(c.execute("SELECT value FROM settings WHERE key='banners'").fetchone()[0])]
             c.execute('INSERT INTO settings VALUES (?,?)', (k, json.dumps(val, ensure_ascii=False)))
@@ -266,6 +274,42 @@ def save_image(data_url, max_bytes):
     return '/uploads/' + name
 
 
+UPLOAD_RE = re.compile(r'^/uploads/([a-f0-9]{24}\.(jpg|png|webp|mp4|webm|mov))$')
+IMAGE_EXTS, VIDEO_EXTS = ('jpg', 'png', 'webp'), ('mp4', 'webm', 'mov')
+
+
+def sniff(head, kind):
+    if kind == 'image':
+        ext = next((e for sig, e in IMG_SIG.items() if head.startswith(sig)), None)
+        return None if ext == 'webp' and head[8:12] != b'WEBP' else ext
+    if head[4:8] == b'ftyp':
+        return 'mov' if head[8:10] == b'qt' else 'mp4'
+    return 'webm' if head.startswith(b'\x1aE\xdf\xa3') else None
+
+
+def clean_media(d, uid=None, keep=()):
+    """images/videos lists from a form. Users may only attach files they uploaded themselves (or that the item already had)."""
+    allowed = None
+    if uid is not None:
+        names = [m.group(1) for k in ('images', 'videos') if isinstance(d.get(k), list)
+                 for u in d[k] if isinstance(u, str) for m in [UPLOAD_RE.match(u)] if m][:40]
+        allowed = {u.rsplit('/', 1)[-1] for u in keep}
+        if names:
+            with db() as c:
+                allowed |= {r[0] for r in c.execute('SELECT name FROM media WHERE user_id=? AND name IN (%s)' % ','.join('?' * len(names)), (uid, *names))}
+    out = {}
+    for key, exts, cap in (('images', IMAGE_EXTS, MAX_IMAGES), ('videos', VIDEO_EXTS, MAX_VIDEOS)):
+        urls = []
+        for u in d.get(key) if isinstance(d.get(key), list) else []:
+            m = UPLOAD_RE.match(u) if isinstance(u, str) else None
+            ok = m and m.group(2) in exts and (allowed is None or m.group(1) in allowed)
+            ok = ok or (uid is None and key == 'images' and isinstance(u, str) and re.match(r'^https://\S+$', u))
+            if ok and u not in urls:
+                urls.append(u)
+        out[key] = urls[:cap] or None
+    return out
+
+
 BN_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
 
 
@@ -325,9 +369,8 @@ def clean_listing(d, admin):
             out[k] = round(float(d[k]), 6) if d.get(k) not in (None, '') else None
         except (TypeError, ValueError):
             out[k] = None
-    imgs = d.get('images') or []
-    out['images'] = [u for u in imgs if isinstance(u, str) and re.match(r'^(/uploads/[\w.]+|https://\S+)$', u)][:8] or None
     if admin:
+        out.update(clean_media(d))
         out['status'] = d.get('status') if d.get('status') in STATUSES else 'pending'
         out['verifiedAt'] = s(d.get('verifiedAt'), 10)
         if out['status'] == 'verified' and not out['verifiedAt']:
@@ -579,9 +622,51 @@ class Handler(BaseHTTPRequestHandler):
             'Content-Disposition': 'attachment; filename="Jashore360-%s.apk"' % re.sub(r'[^\w.]', '', app.get('versionName', '')),
             'Cache-Control': 'no-cache'})
 
+    def upload_file(self, path):
+        m = UPLOAD_RE.match(path)
+        full = m and os.path.join(UPLOADS, m.group(1))
+        if not full or not os.path.isfile(full):
+            raise ApiError(404, 'পাওয়া যায়নি')
+        size = os.path.getsize(full)
+        ctype = mimetypes.guess_type(full)[0] or 'application/octet-stream'
+        start, end, status = 0, size - 1, 200
+        rng = re.match(r'^bytes=(\d*)-(\d*)$', self.headers.get('Range', ''))
+        if rng and size and (rng.group(1) or rng.group(2)):
+            if rng.group(1):
+                start, end = int(rng.group(1)), min(int(rng.group(2) or size - 1), size - 1)
+            else:
+                start = max(0, size - int(rng.group(2)))
+            if start > end:
+                self.send_response(416)
+                self.send_header('Content-Range', 'bytes */%d' % size)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            status = 206
+        self.send_response(status)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(end - start + 1))
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        if status == 206:
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (start, end, size))
+        self.end_headers()
+        if self._head:
+            return
+        with open(full, 'rb') as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(left, 256 * 1024))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def static(self, path):
         if path.startswith('/uploads/'):
-            base, rel, cache = UPLOADS, path[len('/uploads/'):], 'public, max-age=31536000, immutable'
+            return self.upload_file(path)
         else:
             base, rel, cache = PUBLIC, path.lstrip('/'), 'no-cache'
             rel = {'': 'index.html', 'app': 'app.html', 'app/': 'app.html', 'admin': 'admin/index.html', 'admin/': 'admin/index.html'}.get(rel, rel)
@@ -774,9 +859,13 @@ def auth_register(h):
         raise ApiError(400, 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)')
     if len(pw) < 6:
         raise ApiError(400, 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর')
+    if not b.get('terms'):
+        raise ApiError(400, 'শর্তাবলিতে সম্মতি দিন')
     with db() as c:
+        tv = (get_setting(c, 'terms') or {}).get('version') or 0
         try:
-            uid = c.execute('INSERT INTO users (name, phone, pass, created_at) VALUES (?,?,?,?)', (name, phone, hash_pw(pw), int(time.time()))).lastrowid
+            uid = c.execute('INSERT INTO users (name, phone, pass, created_at, terms_v, terms_at) VALUES (?,?,?,?,?,?)',
+                            (name, phone, hash_pw(pw), int(time.time()), tv, int(time.time()))).lastrowid
         except sqlite3.IntegrityError:
             raise ApiError(409, 'এই নম্বরে আগেই অ্যাকাউন্ট আছে — লগইন করুন')
         inc(c, 'signups')
@@ -874,7 +963,7 @@ def my_add_listing(h):
         plan = plans.get(b.get('plan'))
         if not plan:
             raise ApiError(400, 'একটি প্যাকেজ বেছে নিন')
-    doc['images'] = [save_image(p, 3 * 1024 * 1024) for p in (b.get('photos') or [])[:5]] or None
+    doc.update(user_media(h, b))
     doc = {k: v for k, v in doc.items() if v is not None}
     lid, now = new_id('u'), int(time.time())
     with db() as c:
@@ -924,7 +1013,7 @@ def my_add_classified(h):
         raise ApiError(429, 'আজ অনেক বিজ্ঞাপন দেওয়া হয়েছে, পরে চেষ্টা করুন')
     kind = b.get('kind')
     doc = clean_classified(kind, b)
-    doc['images'] = [save_image(p, 3 * 1024 * 1024) for p in (b.get('photos') or [])[:5]] or None
+    doc.update(user_media(h, b))
     doc = {k: v for k, v in doc.items() if v is not None}
     cid, now = new_id('c'), int(time.time())
     with db() as c:
@@ -946,6 +1035,120 @@ def my_del_classified(h, cid):
 def my_del_listing(h, lid):
     with db() as c:
         c.execute("DELETE FROM listings WHERE id=? AND owner_id=? AND review IN ('unpaid','pending','rejected')", (lid, h.me['id']))
+    h.json({'ok': True})
+
+
+@route('POST', '/my/media', auth='user')
+def my_media(h):
+    """One photo or video per request, sent as the raw file body, streamed to disk."""
+    ctype = h.headers.get('Content-Type', '').split(';')[0].strip().lower()
+    kind = 'image' if ctype.startswith('image/') else 'video' if ctype.startswith('video/') else None
+    if not kind:
+        raise ApiError(415, 'শুধু ছবি বা ভিডিও আপলোড করা যায়')
+    n = int(h.headers.get('Content-Length') or 0)
+    if not 0 < n <= (MAX_IMAGE_BYTES if kind == 'image' else MAX_VIDEO_BYTES):
+        raise ApiError(413, 'ছবি সর্বোচ্চ ৮ MB' if kind == 'image' else 'ভিডিও সর্বোচ্চ ৬০ MB')
+    if not rate_ok('media:%d' % h.me['id'], 100, 86400):
+        raise ApiError(429, 'আজ অনেক ফাইল আপলোড হয়েছে, পরে চেষ্টা করুন')
+    h._consumed = True
+    head = h.rfile.read(min(n, 64 * 1024))
+    ext = sniff(head, kind)
+    if not ext:
+        h.close_connection = True
+        raise ApiError(400, 'ফাইলের ফরম্যাট সঠিক নয় (ছবি: JPG/PNG/WebP, ভিডিও: MP4/WebM/MOV)')
+    name = secrets.token_hex(12) + '.' + ext
+    part = os.path.join(UPLOADS, name + '.part')
+    left = n - len(head)
+    with open(part, 'wb') as f:
+        f.write(head)
+        while left > 0:
+            chunk = h.rfile.read(min(left, 1 << 20))
+            if not chunk:
+                break
+            f.write(chunk)
+            left -= len(chunk)
+    if left:
+        os.remove(part)
+        h.close_connection = True
+        raise ApiError(400, 'আপলোড অসম্পূর্ণ, আবার চেষ্টা করুন')
+    os.replace(part, os.path.join(UPLOADS, name))
+    with db() as c:
+        c.execute('INSERT INTO media VALUES (?,?,?,?,?)', (name, h.me['id'], kind, n, int(time.time())))
+    h.json({'url': '/uploads/' + name, 'kind': kind})
+
+
+def user_media(h, b, keep=()):
+    """Media for a user's form: uploaded URLs, plus base64 photos from older app versions."""
+    m = clean_media(b, h.me['id'], keep)
+    imgs = m['images'] or []
+    for p in (b.get('photos') or [])[:max(0, MAX_IMAGES - len(imgs))]:
+        try:
+            imgs.append(save_image(p, 3 * 1024 * 1024))
+        except ValueError as e:
+            raise ApiError(400, str(e))
+    return {'images': imgs or None, 'videos': m['videos']}
+
+
+USER_LISTING_FIELDS = ('name', 'area', 'address', 'phone', 'phone2', 'hours', 'price', 'web', 'facebook', 'about', 'note', 'images', 'videos')
+
+
+@route('GET', r'/my/listings/([\w-]+)', auth='user')
+def my_get_listing(h, lid):
+    with db() as c:
+        r = c.execute('SELECT * FROM listings WHERE id=? AND owner_id=?', (lid, h.me['id'])).fetchone()
+    if not r:
+        raise ApiError(404, 'পাওয়া যায়নি')
+    h.json(dict(json.loads(r['doc']), id=r['id'], review=r['review'], plan=r['plan'], paidUntil=r['paid_until']))
+
+
+@route('PUT', r'/my/listings/([\w-]+)', auth='user')
+def my_edit_listing(h, lid):
+    """Owners can edit any time. A published (or rejected) listing goes back to the admin for approval."""
+    b = h.body()
+    with db() as c:
+        r = c.execute('SELECT * FROM listings WHERE id=? AND owner_id=?', (lid, h.me['id'])).fetchone()
+    if not r:
+        raise ApiError(404, 'পাওয়া যায়নি')
+    old = json.loads(r['doc'])
+    new = clean_listing(dict(b, cat=old.get('cat'), sub=old.get('sub')), admin=False)    # category is fixed: it decides the price
+    new.update(user_media(h, b, (old.get('images') or []) + (old.get('videos') or [])))
+    doc = {k: v for k, v in old.items() if k not in USER_LISTING_FIELDS}
+    doc.update({k: new[k] for k in USER_LISTING_FIELDS if new.get(k) is not None})
+    review = 'pending' if r['review'] in ('approved', 'rejected') else r['review']
+    if r['review'] == 'approved':
+        doc['editedAt'] = int(time.time())
+    with db() as c:
+        c.execute('UPDATE listings SET doc=?, review=?, updated_at=? WHERE id=?', (json.dumps(doc, ensure_ascii=False), review, int(time.time()), lid))
+    bump()
+    h.json({'ok': True, 'review': review})
+
+
+@route('PUT', r'/my/classifieds/(\w+)', auth='user')
+def my_edit_classified(h, cid):
+    """Edit before or after approval; every edit needs the admin's approval again."""
+    b = h.body()
+    with db() as c:
+        r = c.execute('SELECT * FROM classifieds WHERE id=? AND user_id=?', (cid, h.me['id'])).fetchone()
+    if not r:
+        raise ApiError(404, 'বিজ্ঞাপনটি পাওয়া যায়নি')
+    old = json.loads(r['doc'])
+    doc = clean_classified(r['kind'], b)
+    doc.update(user_media(h, b, (old.get('images') or []) + (old.get('videos') or [])))
+    if r['review'] != 'pending' or old.get('editedAt'):
+        doc['editedAt'] = int(time.time())
+    doc = {k: v for k, v in doc.items() if v is not None}
+    with db() as c:
+        c.execute("UPDATE classifieds SET doc=?, review='pending', expires_at=NULL, updated_at=? WHERE id=?",
+                  (json.dumps(doc, ensure_ascii=False), int(time.time()), cid))
+    bump()
+    h.json({'ok': True})
+
+
+@route('POST', '/my/terms', auth='user')
+def my_terms(h):
+    with db() as c:
+        v = (get_setting(c, 'terms') or {}).get('version') or 0
+        c.execute('UPDATE users SET terms_v=?, terms_at=? WHERE id=?', (v, int(time.time()), h.me['id']))
     h.json({'ok': True})
 
 
@@ -1057,10 +1260,13 @@ def adm_update(h, lid):
     b = h.body()
     doc = clean_listing(b, admin=True)
     with db() as c:
-        r = c.execute('SELECT review, paid_until FROM listings WHERE id=?', (lid,)).fetchone()
+        r = c.execute('SELECT review, paid_until, doc FROM listings WHERE id=?', (lid,)).fetchone()
         if not r:
             raise ApiError(404, 'পাওয়া যায়নি')
         review = b.get('_review') if b.get('_review') in ('approved', 'pending', 'rejected', 'unpaid') else r['review']
+        edited = json.loads(r['doc']).get('editedAt')
+        if edited and review != 'approved':           # still waiting for the admin to look at the owner's changes
+            doc['editedAt'] = edited
         paid_until = r['paid_until']
         if '_paidUntil' in b and h.staff['role'] == 'owner':
             paid_until = s(b.get('_paidUntil'), 10)
@@ -1086,6 +1292,8 @@ def adm_review_listing(h, lid):
         doc = json.loads(r['doc'])
         if decision == 'approved' and b.get('verified'):
             doc.update(status='verified', verifiedAt=today())
+        if decision == 'approved':
+            doc.pop('editedAt', None)
         c.execute('UPDATE listings SET review=?, doc=?, updated_at=? WHERE id=?', (decision, json.dumps(doc, ensure_ascii=False), int(time.time()), lid))
     bump()
     h.audit('listing.' + decision, doc.get('name'))
@@ -1208,8 +1416,14 @@ def adm_classified_review(h, cid):
         raise ApiError(400, 'সঠিক নয়')
     days = to_int(b.get('days')) or CLASS_DAYS
     with db() as c:
-        c.execute('UPDATE classifieds SET review=?, expires_at=?, updated_at=? WHERE id=?',
-                  (decision, int(time.time()) + days * 86400 if decision == 'approved' else None, int(time.time()), cid))
+        r = c.execute('SELECT doc FROM classifieds WHERE id=?', (cid,)).fetchone()
+        if not r:
+            raise ApiError(404, 'পাওয়া যায়নি')
+        doc = json.loads(r['doc'])
+        if decision == 'approved':
+            doc.pop('editedAt', None)
+        c.execute('UPDATE classifieds SET review=?, doc=?, expires_at=?, updated_at=? WHERE id=?',
+                  (decision, json.dumps(doc, ensure_ascii=False), int(time.time()) + days * 86400 if decision == 'approved' else None, int(time.time()), cid))
     bump()
     h.audit('classified.' + decision, cid)
     h.json({'ok': True})
@@ -1303,7 +1517,7 @@ def adm_put_setting(h, key):
     if key not in MODERATOR_SETTINGS and h.staff['role'] != 'owner':
         raise ApiError(403, 'শুধু মূল অ্যাডমিন এটি করতে পারেন')
     val = h.body()
-    expected = dict if key in ('site', 'payment', 'app') else list
+    expected = dict if key in DICT_SETTINGS else list
     if not isinstance(val, expected):
         raise ApiError(400, 'ফরম্যাট সঠিক নয়')
     if key == 'categories':
@@ -1321,6 +1535,10 @@ def adm_put_setting(h, key):
                 raise ApiError(400, 'প্যাকেজের আইডি ও দাম সঠিকভাবে দিন')
             p['price'], p['days'] = to_int(p['price']), to_int(p.get('days')) or 365
     with db() as c:
+        if key == 'terms':                         # a new version makes everyone accept again
+            old = get_setting(c, 'terms') or {}
+            val = {'bn': s(val.get('bn'), 30000) or '', 'en': s(val.get('en'), 30000) or '', 'updated': today(),
+                   'version': (old.get('version') or 0) + (1 if (val.get('bn'), val.get('en')) != (old.get('bn'), old.get('en')) else 0)}
         c.execute('INSERT OR REPLACE INTO settings VALUES (?,?)', (key, json.dumps(val, ensure_ascii=False)))
     bump()
     h.audit('settings.' + key)

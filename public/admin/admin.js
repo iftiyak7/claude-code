@@ -15,7 +15,9 @@
   const compact = n => n >= 1e6 ? num((n / 1e6).toFixed(1)) + 'M' : n >= 1e4 ? num(Math.round(n / 1e3)) + 'K' : num(Number(n || 0).toLocaleString('en-IN'));
   const money = n => '৳' + num(Number(n || 0).toLocaleString('en-IN'));
   const locale = () => LANG() === 'bn' ? 'bn-BD' : 'en-GB';
-  const date = t => t ? new Date(t * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const date = t => !t ? '' : typeof t === 'string'                     // "YYYY-MM-DD" dates vs unix timestamps
+    ? new Date(t).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })
+    : new Date(t * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const day = d => d ? new Date(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   const LOGO = '<svg viewBox="0 0 24 24"><path d="M12 21.5s-7.2-6.3-7.2-11.8a7.2 7.2 0 0 1 14.4 0c0 5.5-7.2 11.8-7.2 11.8z" fill="#fff"/><circle cx="12" cy="9.6" r="2.8" fill="#0f1b2d"/></svg>';
   const STATUS = { verified: ['যাচাইকৃত', 'ok'], pending: ['যাচাই চলছে', 'warn'], needs_update: ['আপডেট প্রয়োজন', 'warn'], temp_closed: ['সাময়িক বন্ধ', 'bad'], closed: ['স্থায়ীভাবে বন্ধ', 'bad'] };
@@ -61,7 +63,7 @@
   const upload = async file => (await api('/admin/upload', { data: await compress(file) })).url;
 
   /* ---------------- data ---------------- */
-  const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app'];
+  const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms'];
   const cats = () => S.settings.categories || [];
   const catOf = id => cats().find(c => c.id === id) || { bn: id, en: id, icon: 'info', color: '#8b95a7', subs: {} };
   const catName = c => LANG() === 'en' ? c.en || c.bn : c.bn;
@@ -109,7 +111,7 @@
     ['ব্যবসা ও আয়', [['payments', 'wallet', 'পেমেন্ট', 'pays'], ['users', 'users', 'ব্যবহারকারী'], ['plans', 'tag', 'প্যাকেজ ও পেমেন্ট সেটিংস', null, true],
       ['ads', 'image', 'বিজ্ঞাপন (Ads)', null, true]]],
     ['অ্যাপ সাজানো', [['categories', 'grid', 'ক্যাটাগরি', null, true], ['notices', 'bell', 'ঘোষণা']]],
-    ['সিস্টেম', [['app', 'download', 'অ্যাপ রিলিজ (APK)', null, true], ['settings', 'cog', 'সাধারণ সেটিংস', null, true], ['admins', 'shield', 'অ্যাডমিন ও নিরাপত্তা']]]
+    ['সিস্টেম', [['app', 'download', 'অ্যাপ রিলিজ (APK)', null, true], ['settings', 'cog', 'সাধারণ সেটিংস', null, true], ['terms', 'doc', 'শর্তাবলি', null, true], ['admins', 'shield', 'অ্যাডমিন ও নিরাপত্তা']]]
   ];
   const TITLES = Object.fromEntries(NAV.flatMap(g => g[1]).map(x => [x[0], x[2]]));
 
@@ -269,6 +271,7 @@
             `<label class="check"><input type="checkbox" name="${k}" ${l[k] ? 'checked' : ''}><span>${T(t)}${s ? `<small>${T(s)}</small>` : ''}</span></label>`).join('')}
         </div></div>
         <div class="card"><h3>${T('ছবি')} <small class="muted" style="font-weight:400">${T('প্রথম ছবিটি কভার')}</small></h3><div class="cbody"><div class="imgs" data-imgs></div></div></div>
+        ${l.videos?.length ? `<div class="card"><h3>${T('ভিডিও')}</h3><div class="cbody"><div class="vvideos" data-vids></div></div></div>` : ''}
         ${!isNew ? `<div class="card"><h3>${T('পরিসংখ্যান')}</h3><div class="cbody stat3">
           <div><b>${num(l._views)}</b><small>${T('ভিউ')}</small></div><div><b>${num(l._calls)}</b><small>${T('কল')}</small></div><div><b>${num(l._maps)}</b><small>${T('ম্যাপ')}</small></div></div></div>` : ''}
       </div>
@@ -277,7 +280,8 @@
       </form>`);
     const form = root.querySelector('[data-edit]');
     form._images = [...(l.images || [])];
-    fillSubs(form); drawImgs(form);
+    form._videos = [...(l.videos || [])];
+    fillSubs(form); drawImgs(form); drawVids(form);
   };
 
   function fillSubs(form) {
@@ -288,13 +292,18 @@
     const box = form.querySelector('[data-imgs]');
     box.innerHTML = form._images.map((u, i) => `<div class="im"><img src="${esc(u)}" alt="">${i === 0 ? `<span class="tag ok cover">${T('কভার')}</span>` : ''}
       <div class="ops"><button type="button" data-imgfirst="${i}" title="${T('কভার করুন')}">${icon('star', 14)}</button><button type="button" data-imgdel="${i}" title="${T('সরান')}">${icon('x', 14)}</button></div></div>`).join('')
-      + (form._images.length < 8 ? `<label class="up">${icon('upload', 20)}<span>${T('ছবি যোগ')}</span><input type="file" accept="image/*" multiple data-imgup></label>` : '');
+      + (form._images.length < 10 ? `<label class="up">${icon('upload', 20)}<span>${T('ছবি যোগ')}</span><input type="file" accept="image/*" multiple data-imgup></label>` : '');
+  }
+  function drawVids(form) {
+    const box = form.querySelector('[data-vids]'); if (!box) return;
+    box.innerHTML = form._videos.map((u, i) => `<div class="vid"><video src="${esc(u)}" controls playsinline preload="metadata"></video>
+      <button type="button" class="btn sm red" data-viddel="${i}">${icon('trash', 15)}${T('সরান')}</button></div>`).join('') || `<p class="muted">${T('ভিডিও নেই')}</p>`;
   }
   function readListing(form) {
     const fd = new FormData(form), v = Object.fromEntries(fd);
     const out = { name: v.name, nameEn: v.nameEn, cat: v.cat, sub: v.sub, about: v.about, note: v.note, features: v.features, tags: v.tags, phone: v.phone, phone2: v.phone2,
       web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, price: (v.price || '').replace(/[^\d]/g, ''),
-      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, images: form._images };
+      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, images: form._images, videos: form._videos || [] };
     if ('_paidUntil' in v) out._paidUntil = v._paidUntil;
     ['featured', 'sponsored', 'pin', 'demo', 'hidden'].forEach(k => out[k] = !!v[k]);
     return out;
@@ -313,13 +322,14 @@
       <div class="card">${list.map(l => `<div class="item" style="align-items:flex-start">${thumb(l)}<div class="body"><b>${esc(l.name)}</b>
         <small>${esc(catName(catOf(l.cat)))} › ${esc(subName(catOf(l.cat), l.sub))} · ${esc(l.area || '')} · ${esc(l.phone || T('ফোন নেই'))}</small>
         ${l.about ? `<p>${esc(l.about)}</p>` : ''}<small>${T('জমাদাতা')}: ${esc(l._owner ? `${l._owner.name} (${l._owner.phone})` : l._contact || '—')} · ${date(l._created)}</small>
-        <div class="tags" style="margin-top:6px">${l._plan ? `<span class="tag ad">${T('প্যাকেজ')}: ${esc(l._plan)}</span>` : `<span class="tag ok">${T('ফ্রি')}</span>`}
+        <div class="tags" style="margin-top:6px">${l.editedAt ? `<span class="tag warn">${T('সম্পাদিত — আবার দেখুন')}</span>` : ''}${l.videos?.length ? `<span class="tag">${icon('video', 13)} ${num(l.videos.length)}</span>` : ''}
+          ${l._plan ? `<span class="tag ad">${T('প্যাকেজ')}: ${esc(l._plan)}</span>` : `<span class="tag ok">${T('ফ্রি')}</span>`}
           ${l._payment ? `<span class="tag ${PAYSTATE[l._payment.status]?.[1]}">${T('পেমেন্ট')}: ${T(PAYSTATE[l._payment.status]?.[0])} · ${money(l._payment.amount)}</span>` : ''}</div>
         ${l.images?.length ? `<div style="display:flex;gap:6px;margin-top:8px">${l.images.map(u => `<img class="rvphoto" src="${esc(u)}" alt="">`).join('')}</div>` : ''}</div>
         <div class="acts">${tab === 'pending' ? `<button class="btn sm" data-approve="${l.id}" data-verified="1">${icon('check', 16)}${T('যাচাইকৃত হিসেবে প্রকাশ')}</button>
           <button class="btn sm ghost" data-approve="${l.id}">${T('প্রকাশ (যাচাই চলছে)')}</button>` : ''}
           ${tab === 'unpaid' && l._payment?.status === 'submitted' ? `<a class="btn sm" href="#/payments">${icon('wallet', 16)}${T('পেমেন্ট যাচাই করুন')}</a>` : ''}
-          <a class="btn sm ghost" href="#/listings/${l.id}">${icon('edit', 16)}${T('সম্পাদনা')}</a>
+          <a class="btn sm ghost" href="#/listings/${l.id}">${icon('eye', 16)}${T('দেখুন ও সম্পাদনা')}</a>
           ${tab !== 'rejected' ? `<button class="btn sm red" data-reject="${l.id}">${T('বাতিল')}</button>` : `<button class="iconbtn red" data-dellisting="${l.id}">${icon('trash', 18)}</button>`}</div></div>`).join('')
         || empty(T('কিছু নেই'), `<div>${T('নতুন জমা এলে এখানে দেখাবে।')}</div>`, 'check')}</div>`);
   };
@@ -346,6 +356,7 @@
   /* ---------------- classifieds ---------------- */
   pages.classifieds = async (_, p) => {
     const all = await api('/admin/classifieds'), tab = p.get('tab') || 'pending', now = Date.now() / 1000;
+    S.cls = all;
     const state = c => c.review === 'approved' ? (c.expires > now ? 'live' : 'expired') : c.review;
     const list = all.filter(c => state(c) === tab);
     S.counts = { ...(S.counts || {}), classifiedsPending: all.filter(c => c.review === 'pending').length };
@@ -354,14 +365,57 @@
         `<a class="${tab === k ? 'on' : ''}" href="#/classifieds?tab=${k}">${T(t)} (${num(all.filter(c => state(c) === k).length)})</a>`).join('')}</div>
       <div class="card">${list.map(c => { const [kn, ic, col] = KINDS[c.kind];
         return `<div class="item" style="align-items:flex-start"><span class="thumb" style="--c:${col}">${c.images?.[0] ? `<img src="${esc(c.images[0])}" alt="">` : icon(ic, 20)}</span>
-        <div class="body"><b>${esc(c.title)}</b><small>${T(kn)} · ${c.price ? money(c.price) + ' · ' : ''}${esc(c.area || '')} · ${esc(c.userName)} (${esc(c.phone)}) · ${date(c.t)}</small>
-        ${c.description ? `<p>${esc(c.description.slice(0, 300))}</p>` : ''}${tab === 'live' ? `<small>${T('মেয়াদ')}: ${date(c.expires)} · ${T('{v} ভিউ', { v: num(c.views) })}</small>` : ''}</div>
+        <div class="body"><b>${esc(c.title)}</b>${c.editedAt && c.review === 'pending' ? ` <span class="tag warn">${T('সম্পাদিত — আবার দেখুন')}</span>` : ''}
+        <small>${T(kn)} · ${c.price ? money(c.price) + ' · ' : ''}${esc(c.area || '')} · ${esc(c.userName)} (${esc(c.phone)}) · ${date(c.t)}</small>
+        ${c.description ? `<p>${esc(c.description.slice(0, 300))}</p>` : ''}${tab === 'live' ? `<small>${T('মেয়াদ')}: ${date(c.expires)} · ${T('{v} ভিউ', { v: num(c.views) })}</small>` : ''}
+        ${c.images?.length || c.videos?.length ? `<small>${icon('image', 13)} ${num(c.images?.length || 0)} · ${icon('video', 13)} ${num(c.videos?.length || 0)}</small>` : ''}</div>
         <div class="acts">${tab !== 'live' ? `<select data-cldays="${c.id}" title="${T('কত দিন দেখাবে')}">${[7, 15, 30, 60].map(d => `<option value="${d}" ${d === 30 ? 'selected' : ''}>${T('{n} দিন', { n: num(d) })}</option>`).join('')}</select>
           <button class="btn sm" data-clreview="${c.id}|approved">${icon('check', 16)}${T('অনুমোদন')}</button>` : ''}
           ${tab === 'pending' || tab === 'live' ? `<button class="btn sm red" data-clreview="${c.id}|rejected">${T('বাতিল')}</button>` : ''}
-          <a class="iconbtn" href="/app/#/ad/${c.id}" target="_blank" title="${T('অ্যাপে দেখুন')}">${icon('external', 17)}</a>
+          <button class="btn sm ghost" data-clview="${c.id}">${icon('eye', 16)}${T('দেখুন')}</button>
+          ${tab === 'live' ? `<a class="iconbtn" href="/app/#/ad/${c.id}" target="_blank" title="${T('অ্যাপে দেখুন')}">${icon('external', 17)}</a>` : ''}
           <button class="iconbtn red" data-cldel="${c.id}" title="${T('মুছুন')}">${icon('trash', 18)}</button></div></div>`; }).join('') || empty(T('কিছু নেই'), '', 'megaphone')}</div>`);
   };
+
+  const CLOPT = { family: 'ফ্যামিলি বাসা', bachelor: 'ব্যাচেলর বাসা', flat: 'ফ্ল্যাট', room: 'রুম', shop: 'দোকান', office: 'অফিস', single: 'সিঙ্গেল রুম', double: 'ডাবল রুম',
+    shared: 'শেয়ারড সিট', male: 'ছেলে', female: 'মেয়ে', full: 'ফুলটাইম', part: 'পার্টটাইম', intern: 'ইন্টার্নশিপ', remote: 'রিমোট' };
+  const CLFIELDS = {
+    job: [['company', 'প্রতিষ্ঠান'], ['jobType', 'চাকরির ধরন'], ['vacancies', 'পদ সংখ্যা'], ['qualification', 'যোগ্যতা'], ['experience', 'অভিজ্ঞতা'], ['deadline', 'আবেদনের শেষ তারিখ'], ['howToApply', 'আবেদনের নিয়ম']],
+    rent: [['propertyType', 'ধরন'], ['rooms', 'রুম'], ['baths', 'বাথরুম'], ['size', 'আয়তন (বর্গফুট)'], ['floor', 'তলা'], ['availableFrom', 'কবে থেকে'], ['facilities', 'সুবিধা']],
+    mess: [['seatType', 'সিটের ধরন'], ['gender', 'কাদের জন্য'], ['seats', 'খালি সিট'], ['availableFrom', 'কবে থেকে'], ['facilities', 'সুবিধা']]
+  };
+  const mediaHtml = x => `${x.images?.length ? `<div class="vgallery">${x.images.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy"></a>`).join('')}</div>` : ''}
+    ${x.videos?.length ? `<div class="vvideos">${x.videos.map(u => `<video src="${esc(u)}" controls playsinline preload="metadata"></video>`).join('')}</div>` : ''}`;
+
+  function viewModal(title, body, foot) {
+    document.querySelector('.modal-bg')?.remove();
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal wide"><div class="mhead"><h3>${title}</h3><button type="button" class="iconbtn" data-x>${icon('x', 20)}</button></div>
+      <div class="mbody">${body}</div>${foot ? `<div class="mfoot">${foot}</div>` : ''}</div>`;
+    document.body.appendChild(bg);
+    bg.addEventListener('click', e => { if (e.target === bg || e.target.closest('[data-x]')) bg.remove(); });
+  }
+
+  function viewClassified(c) {
+    const [kn, , col] = KINDS[c.kind], now = Date.now() / 1000;
+    const rows = [['মূল্য', c.price ? money(c.price) + (c.kind === 'job' ? ' / ' + T('মাস (বেতন)') : ' / ' + T('মাস')) : ''],
+      ...CLFIELDS[c.kind].map(([k, l]) => [l, k === 'deadline' || k === 'availableFrom' ? (c[k] ? date(c[k]) : '') : CLOPT[c[k]] ? T(CLOPT[c[k]]) : c[k] != null ? String(c[k]) : '']),
+      ['এলাকা', c.area], ['ঠিকানা', c.address], ['যোগাযোগের নাম', c.contactName], ['মোবাইল', c.phone], ['WhatsApp', c.whatsapp]].filter(r => r[1]);
+    const state = c.review === 'approved' ? (c.expires > now ? ['চলমান', 'ok'] : ['মেয়াদ শেষ', 'bad']) : c.review === 'rejected' ? ['বাতিল', 'bad'] : ['অপেক্ষমাণ', 'warn'];
+    viewModal(esc(c.title), `
+      <div class="tags" style="margin-bottom:12px"><span class="tag" style="background:color-mix(in srgb, ${col} 14%, transparent);color:${col}">${T(kn)}</span><span class="tag ${state[1]}">${T(state[0])}</span>
+        ${c.editedAt ? `<span class="tag warn">${T('সম্পাদিত')}: ${date(c.editedAt)}</span>` : ''}</div>
+      ${mediaHtml(c)}
+      ${c.description ? `<p class="vdesc">${esc(c.description)}</p>` : ''}
+      <dl class="vlist">${rows.map(([l, v]) => `<dt>${T(l)}</dt><dd>${l === 'মোবাইল' || l === 'WhatsApp' ? `<a href="tel:${esc(v)}">${esc(v)}</a>` : esc(v)}</dd>`).join('')}
+        <dt>${T('জমাদাতা')}</dt><dd>${esc(c.userName)} · ${esc(c.userPhone)}</dd><dt>${T('জমার সময়')}</dt><dd>${date(c.t)}</dd>
+        ${c.review === 'approved' ? `<dt>${T('মেয়াদ')}</dt><dd>${date(c.expires)} · ${T('{v} ভিউ', { v: num(c.views) })}</dd>` : ''}</dl>`,
+      `${c.review !== 'approved' || c.expires <= now ? `<select data-cldays="${c.id}">${[7, 15, 30, 60].map(d => `<option value="${d}" ${d === 30 ? 'selected' : ''}>${T('{n} দিন', { n: num(d) })}</option>`).join('')}</select>
+        <button class="btn" data-clreview="${c.id}|approved">${icon('check', 16)}${T('অনুমোদন')}</button>` : ''}
+       ${c.review !== 'rejected' ? `<button class="btn red" data-clreview="${c.id}|rejected">${T('বাতিল')}</button>` : ''}
+       <button class="btn ghost" data-x>${T('বন্ধ করুন')}</button>`);
+  }
 
   /* ---------------- users ---------------- */
   pages.users = async (_, p) => {
@@ -591,17 +645,36 @@
       ['headlineEn', 'text', 'হোমপেজের শিরোনাম (English)'], ['hotline', 'text', 'প্রধান জরুরি নম্বর', 'হোম ও জরুরি পেজের বড় কল বাটন'], ['hotlineNote', 'text', 'জরুরি নম্বরের বিবরণ'],
       ['hotlineNoteEn', 'text', 'জরুরি নম্বরের বিবরণ (English)'], ['contactPhone', 'text', 'যোগাযোগের ফোন'], ['contactEmail', 'text', 'যোগাযোগের ইমেইল'], ['facebook', 'text', 'ফেসবুক পেজ লিংক'],
       ['about', 'textarea', 'আমাদের সম্পর্কে'], ['aboutEn', 'textarea', 'আমাদের সম্পর্কে (English)'], ['disclaimer', 'textarea', 'দাবিত্যাগ (ফুটারে দেখায়)'],
-      ['disclaimerEn', 'textarea', 'দাবিত্যাগ (English)'], ['snakeTip', 'textarea', 'সাপে কামড়ের নির্দেশনা (জরুরি পেজ)'], ['snakeTipEn', 'textarea', 'সাপে কামড়ের নির্দেশনা (English)']];
+      ['disclaimerEn', 'textarea', 'দাবিত্যাগ (English)'], ['snakeTip', 'textarea', 'সাপে কামড়ের নির্দেশনা (জরুরি পেজ)'], ['snakeTipEn', 'textarea', 'সাপে কামড়ের নির্দেশনা (English)'],
+      ['classifiedDisclaimer', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের নিচের সতর্কতা'], ['classifiedDisclaimerEn', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের সতর্কতা (English)'],
+      ['listingDisclaimer', 'textarea', 'প্রতিষ্ঠানের পেজের নিচের সতর্কতা'], ['listingDisclaimerEn', 'textarea', 'প্রতিষ্ঠানের পেজের সতর্কতা (English)']];
     const pair = (a, b) => `<div class="two">${fieldHtml(F[a], s[F[a][0]])}${fieldHtml(F[b], s[F[b][0]])}</div>`;
     shell('settings', T('সাধারণ সেটিংস'), '', `<div class="split"><form class="card" data-site><h3>${T('অ্যাপের তথ্য')}</h3><div class="cbody form">
         ${fieldHtml(F[0], s.name)}${pair(1, 2)}${pair(3, 4)}${fieldHtml(F[5], s.hotline)}${pair(6, 7)}${pair(8, 9)}${fieldHtml(F[10], s.facebook)}
-        ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
+        ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}${pair(17, 18)}${pair(19, 20)}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
       <div class="grid"><form class="card" data-areas><h3>${T('এলাকার তালিকা')}</h3><div class="cbody form"><label class="field"><span>${T('প্রতি লাইনে একটি এলাকা')}</span>
         <textarea name="areas" rows="14">${esc((S.settings.areas || []).join('\n'))}</textarea></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
         <div class="card"><h3>${T('ব্যাকআপ')}</h3><div class="cbody"><p class="muted" style="margin-top:0">${T('সব তালিকা, রিভিউ, পেমেন্ট, ব্যবহারকারী ও সেটিংস একটি ফাইলে ডাউনলোড করুন। নিয়মিত ব্যাকআপ রাখুন।')}</p>
           <a class="btn dark" href="/api/admin/export">${icon('download', 18)}${T('ব্যাকআপ ডাউনলোড')}</a></div></div></div></div>`);
     root.querySelector('[data-site]').onsubmit = async e => { e.preventDefault(); await saveSetting('site', { ...s, ...readFields(e.target, F) }); };
     root.querySelector('[data-areas]').onsubmit = async e => { e.preventDefault(); await saveSetting('areas', e.target.areas.value.split('\n').map(x => x.trim()).filter(Boolean)); };
+  };
+
+  pages.terms = async () => {
+    await load();
+    const t = S.settings.terms || {};
+    shell('terms', T('শর্তাবলি'), '', `<p class="muted" style="margin-top:0">${T('অ্যাপে প্রথমবার ঢোকার সময় ও অ্যাকাউন্ট খোলার সময় ব্যবহারকারীকে এই শর্তাবলিতে সম্মতি দিতে হয়। লেখা বদলালে সবাইকে আবার সম্মতি দিতে হবে।')}</p>
+      ${t.version ? `<div class="note info">${icon('doc', 20)}<div>${T('বর্তমান ভার্সন')}: <b>${num(t.version)}</b>${t.updated ? ` · ${T('আপডেট')}: ${date(t.updated)}` : ''} · <a href="/app/#/terms" target="_blank">${T('অ্যাপে দেখুন')}</a></div></div>` : ''}
+      <form class="split" data-terms>
+        <div class="card"><h3>বাংলা</h3><div class="cbody form"><label class="field"><span>${T('শর্তাবলি (বাংলা)')}</span><textarea name="bn" rows="22">${esc(t.bn || '')}</textarea>
+          <em>${T('প্রতিটি অনুচ্ছেদের মাঝে একটি ফাঁকা লাইন দিন')}</em></label></div></div>
+        <div class="card"><h3>English</h3><div class="cbody form"><label class="field"><span>${T('শর্তাবলি (English)')}</span><textarea name="en" rows="22">${esc(t.en || '')}</textarea></label></div></div>
+        <div class="savebar" style="grid-column:1/-1"><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></form>`);
+    root.querySelector('[data-terms]').onsubmit = async e => {
+      e.preventDefault();
+      await saveSetting('terms', { bn: e.target.bn.value, en: e.target.en.value });
+      S.settings.terms = await api('/admin/settings/terms'); route();
+    };
   };
 
   pages.admins = async () => {
@@ -686,9 +759,11 @@
       await refreshList(); return route();
     }
     if (d.clreview) {
-      const [id, review] = d.clreview.split('|'), days = root.querySelector(`[data-cldays="${id}"]`)?.value || 30;
-      await run(() => api(`/admin/classifieds/${id}/review`, { review, days }), review === 'approved' ? 'অনুমোদন হয়েছে' : 'বাতিল করা হয়েছে'); return route();
+      const [id, review] = d.clreview.split('|'), days = (b.closest('.modal') || root).querySelector(`[data-cldays="${id}"]`)?.value || 30;
+      await run(() => api(`/admin/classifieds/${id}/review`, { review, days }), review === 'approved' ? 'অনুমোদন হয়েছে' : 'বাতিল করা হয়েছে');
+      document.querySelector('.modal-bg')?.remove(); return route();
     }
+    if (d.clview) { const c = (S.cls || []).find(x => x.id === d.clview); return c && viewClassified(c); }
     if (d.cldel) { if (!confirm(T('মুছে ফেলবেন?'))) return; await run(() => api('/admin/classifieds/' + d.cldel, undefined, 'DELETE'), 'মুছে ফেলা হয়েছে'); return route(); }
     if (d.banuser) { const [id, v] = d.banuser.split('|'); if (v === '1' && !confirm(T('এই ব্যবহারকারী আর লগইন করতে পারবেন না। নিশ্চিত?'))) return;
       await run(() => api('/admin/users/' + id, { banned: v === '1' }, 'PUT'), 'আপডেট হয়েছে'); return route(); }
@@ -728,6 +803,7 @@
     }
     if (d.pickicon) { const box = b.closest('.field'); box.querySelector('input').value = d.pickicon; box.querySelectorAll('[data-pickicon]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if ('clearimg' in d) { const box = b.closest('.imgupload'); box.querySelector('input[type=hidden]').value = ''; box.querySelector('.pv').style.backgroundImage = ''; return; }
+    if (d.viddel != null) { const f = b.closest('form'); f._videos.splice(+d.viddel, 1); return drawVids(f); }
     if (d.imgdel != null) { const f = b.closest('form'); f._images.splice(+d.imgdel, 1); return drawImgs(f); }
     if (d.imgfirst != null) { const f = b.closest('form'); f._images.unshift(...f._images.splice(+d.imgfirst, 1)); return drawImgs(f); }
     if ('addadmin' in d) {
@@ -750,7 +826,7 @@
     if (el.matches('[data-catsel]')) return fillSubs(el.form);
     if (el.matches('[data-imgup]')) {
       const f = el.closest('form');
-      for (const file of [...el.files].slice(0, 8 - f._images.length)) {
+      for (const file of [...el.files].slice(0, 10 - f._images.length)) {
         try { toast(T('ছবি আপলোড হচ্ছে…')); f._images.push(await upload(file)); drawImgs(f); } catch (er) { toast(er.message, true); }
       }
       toast(T('ছবি যোগ হয়েছে')); return;

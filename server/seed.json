@@ -18,7 +18,9 @@
   "hotlineNoteEn": "Police · Fire service · Ambulance — 24 hours, free",
   "aboutEn": "Verified information on hospitals, emergency services, restaurants, shops, services and places in Jashore.",
   "disclaimerEn": "Jashore360 is an independent information platform. It is not a government app and does not provide emergency services itself.",
-  "snakeTipEn": "For a snake bite, go straight to the nearest government hospital or upazila health complex — not a traditional healer. Keep the bitten limb still."
+  "snakeTipEn": "For a snake bite, go straight to the nearest government hospital or upazila health complex — not a traditional healer. Keep the bitten limb still.",
+  "classifiedDisclaimer": "নিজ দায়িত্বে যাচাই করে চাকরি বা বাসা ভাড়া নিন। বিজ্ঞাপনদাতা বা বাড়ির মালিকের সাথে Jashore360-এর কোনো সম্পর্ক নেই। কোনো প্রতারণা বা ক্ষতি হলে Jashore360 দায়ী থাকবে না।",
+  "classifiedDisclaimerEn": "Verify everything yourself before taking a job or renting. Jashore360 has no connection with advertisers or property owners and is not responsible for any fraud or loss."
  },
  "areas": [
   "যশোর সদর",
@@ -1489,5 +1491,11 @@
    "ctaEn": "Call"
   }
  ],
- "app": {}
+ "app": {},
+ "terms": {
+  "version": 1,
+  "updated": "2026-10-20",
+  "bn": "১. Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম। এটি সরকারি অ্যাপ নয় এবং নিজে কোনো জরুরি সেবা দেয় না। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।\n\n২. অ্যাপের তথ্য যতটা সম্ভব যাচাই করা হয়, তবে ভুল বা পুরনো তথ্য থাকতে পারে। গুরুত্বপূর্ণ সিদ্ধান্তের আগে সরাসরি যোগাযোগ করে নিশ্চিত হোন।\n\n৩. চাকরি, বাসা ভাড়া ও মেস ভাড়ার বিজ্ঞাপন ব্যবহারকারীরা দেন। বিজ্ঞাপনদাতা বা বাড়ির মালিকের সাথে Jashore360-এর কোনো সম্পর্ক নেই। নিজ দায়িত্বে যাচাই করে লেনদেন করুন। আগাম টাকা পাঠানোর আগে সরাসরি দেখে নিন। কোনো প্রতারণা বা ক্ষতি হলে Jashore360 দায়ী থাকবে না।\n\n৪. অ্যাকাউন্ট খুলতে সঠিক নাম ও নিজের মোবাইল নম্বর দিতে হবে। আপনার পাসওয়ার্ডের নিরাপত্তা আপনার দায়িত্ব।\n\n৫. মিথ্যা, বিভ্রান্তিকর, আপত্তিকর বা অন্যের অধিকার ক্ষুণ্ণ করে এমন তথ্য, ছবি, ভিডিও বা রিভিউ দেওয়া যাবে না। এমন কিছু পেলে অ্যাডমিন তা সরাতে এবং অ্যাকাউন্ট বন্ধ করতে পারবেন।\n\n৬. ব্যবসার প্যাকেজের টাকা পেমেন্ট যাচাইয়ের পর ফেরতযোগ্য নয়, তবে তথ্য প্রকাশ না হলে যোগাযোগ করুন।\n\n৭. আপনার দেওয়া তথ্য, ছবি ও ভিডিও অ্যাপে প্রকাশের অনুমতি আপনি দিচ্ছেন। আপনার মোবাইল নম্বর শুধু অ্যাকাউন্ট ও যোগাযোগের জন্য ব্যবহার হবে, বিক্রি করা হবে না।\n\n৮. Jashore360 প্রয়োজনে এই শর্তাবলি পরিবর্তন করতে পারে। পরিবর্তন হলে অ্যাপে আবার সম্মতি চাওয়া হবে।",
+  "en": "1. Jashore360 is an independent information platform. It is not a government app and does not provide emergency services itself. In an emergency, call 999.\n\n2. Information is verified as far as possible, but it may be wrong or out of date. Confirm directly before making important decisions.\n\n3. Job, rental and mess ads are posted by users. Jashore360 has no connection with advertisers or property owners. Verify everything yourself; see the place in person before sending any advance money. Jashore360 is not responsible for any fraud or loss.\n\n4. You must use your real name and your own mobile number to open an account. You are responsible for keeping your password safe.\n\n5. Do not post false, misleading or offensive information, photos, videos or reviews, or anything that violates others' rights. The admin may remove such content and close the account.\n\n6. Business plan payments are not refundable once verified; contact us if your listing is not published.\n\n7. You allow the information, photos and videos you submit to be published in the app. Your mobile number is used only for your account and contact, and is never sold.\n\n8. Jashore360 may change these terms. When they change, the app will ask for your consent again."
+ }
 }

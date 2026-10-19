@@ -245,3 +245,17 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 
 :root[data-theme="dark"] .tabs .on { background: var(--ink); color: var(--bg); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabs .on { background: var(--ink); color: var(--bg); } }
+
+/* v4: detail view, media */
+.modal.wide { width: min(760px, 100%); }
+.modal .mfoot select { margin-right: auto; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 10px; font: inherit; }
+.vgallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.vgallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; background: var(--surface-2); }
+.vvideos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.vvideos video { width: 100%; max-height: 360px; border-radius: 12px; background: #000; display: block; }
+.vvideos .vid { display: grid; gap: 8px; justify-items: start; }
+.vdesc { white-space: pre-wrap; margin: 0 0 14px; line-height: 1.65; }
+.vlist { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 8px 18px; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+.vlist dt { color: var(--muted); }
+.vlist dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 560px) { .vlist { grid-template-columns: 1fr; gap: 2px; } .vlist dd { margin-bottom: 8px; } }

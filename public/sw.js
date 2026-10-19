@@ -1,5 +1,5 @@
 /* Offline support: app shell stale-while-revalidate, data network-first, uploads cache-first. */
-const CACHE = 'j360-v3';
+const CACHE = 'j360-v4';
 const SHELL = ['/app/', '/app.css', '/app.js', '/icons.js', '/i18n.js', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
@@ -14,6 +14,7 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match(e.request)));
     return;
   }
+  if (/\.(mp4|webm|mov)$/.test(url.pathname) || e.request.headers.has('range')) return;   // videos stream with Range requests
   if (url.pathname.startsWith('/uploads/')) {
     e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(r => { if (r.ok) { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); } return r; })));
     return;

@@ -393,3 +393,21 @@ a.profilehead { color: inherit; }
 .welcome .wlang button.on { color: var(--ink); }
 .count select + select { margin-left: auto; }
 h4 { font-size: 14px; color: var(--ink-2); margin: 18px 0 10px; }
+
+/* v4: media upload, videos, terms, disclaimers */
+.photos .ph video { width: 100%; height: 100%; object-fit: cover; background: #000; display: block; }
+.photos .ph .vtag { position: absolute; left: 6px; bottom: 6px; width: 22px; height: 22px; border-radius: 7px; background: rgba(0, 0, 0, .6); color: #fff; display: grid; place-items: center; }
+.photos .ph .prog { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .45); overflow: hidden; }
+.photos .ph .prog i { display: block; height: 100%; background: var(--brand); transition: width .2s; }
+.photos .ph:has(.prog) img, .photos .ph:has(.prog) video { opacity: .55; }
+.videos { display: grid; gap: 10px; margin-top: 16px; }
+.videos video { width: 100%; max-height: 440px; border-radius: 16px; background: #000; display: block; }
+.note.disc { margin-top: 16px; font-size: 13px; line-height: 1.55; }
+.terms p { margin: 0 0 14px; }
+.welcome .wterms { display: flex; gap: 10px; align-items: flex-start; text-align: left; font-size: 14px; margin: 0 0 14px; color: rgba(255, 255, 255, .85); }
+.welcome .wterms input { width: 20px; height: 20px; accent-color: var(--brand); margin: 1px 0 0; flex: none; }
+.welcome .wterms button { background: none; border: 0; padding: 0; color: #7ee2bd; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.welcome .wtext { text-align: left; max-height: 34vh; overflow-y: auto; background: rgba(255, 255, 255, .07); border-radius: 14px; padding: 14px; margin: 0 0 14px; font-size: 13px; color: rgba(255, 255, 255, .8); }
+.welcome .wtext p { margin: 0 0 10px; }
+.welcome .btn:disabled { opacity: .45; }
+.photos label[hidden] { display: none; }

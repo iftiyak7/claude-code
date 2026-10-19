@@ -73,7 +73,9 @@
     calendar: ['r:3,5,18,16,2', 'M3 10h18M8 3v4M16 3v4'],
     layers: ['m12 3 9 5-9 5-9-5z', 'm3 13 9 5 9-5'],
     wallet: ['M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14.5h.01'],
-    sparkle: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z']
+    sparkle: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z'],
+    video: ['r:3,6,13,12,2', 'M16 10.5 21 7.5v9l-5-3'],
+    doc: ['M6 3h8l4 4v14H6z', 'M14 3v4h4M9 12h6M9 16h6']
   };
   const el = e => {
     if (e.startsWith('c:')) { const [cx, cy, r] = e.slice(2).split(','); return `<circle cx="${cx}" cy="${cy}" r="${r}"/>`; }
