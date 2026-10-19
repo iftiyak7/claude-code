@@ -12,7 +12,21 @@ python3 -m http.server 8080
 # তারপর ব্রাউজারে http://localhost:8080
 ```
 
-**অনলাইনে প্রকাশ:** GitHub → Settings → Pages → "Deploy from a branch" → branch ও `/ (root)` বেছে নিন। Netlify, Vercel বা Cloudflare Pages-এও ফোল্ডারটি সরাসরি আপলোড করা যায়।
+### নিজের VPS-এ (Ubuntu/Debian)
+
+```bash
+git clone https://github.com/iftiyak7/claude-code.git jashore360
+cd jashore360 && git checkout claude/vigilant-heisenberg-wpt1tp
+sudo DOMAIN=yourdomain.com EMAIL=you@example.com bash deploy/setup.sh
+```
+
+স্ক্রিপ্টটি nginx ইনস্টল করে, ফাইলগুলো `/var/www/jashore360`-এ কপি করে, gzip ও ক্যাশ সেট করে, আর ফ্রি HTTPS (Let's Encrypt) চালু করে।
+ডোমেইন না থাকলে `sudo bash deploy/setup.sh` চালান, তখন সাইট `http://<সার্ভারের IP>`-এ চলবে।
+**আপডেট:** `git pull && sudo DOMAIN=yourdomain.com bash deploy/setup.sh`
+
+> অফলাইন মোড, অ্যাপ ইনস্টল ও "কাছাকাছি" (লোকেশন) ফিচার ব্রাউজার শুধু HTTPS-এ চালু করে। তাই ডোমেইন + HTTPS ব্যবহার করুন।
+
+**অন্যভাবে প্রকাশ:** GitHub → Settings → Pages → "Deploy from a branch" → branch ও `/ (root)` বেছে নিন। Netlify, Vercel বা Cloudflare Pages-এও ফোল্ডারটি সরাসরি আপলোড করা যায়।
 
 ## Phase 1-এ যা আছে
 
@@ -45,6 +59,7 @@ index.html            অ্যাপ শেল ও বটম নেভিগে
 css/app.css           ডিজাইন (লাইট/ডার্ক, মোবাইল-ফার্স্ট)
 js/data.js            ক্যাটাগরি, এলাকা, রেটিং মানদণ্ড ও সিড তথ্য
 js/app.js             রাউটার, পেজ, সার্চ, রিভিউ, অ্যাডমিন
+deploy/                VPS-এ চালানোর nginx কনফিগ ও সেটআপ স্ক্রিপ্ট
 sw.js                 অফলাইন ক্যাশ (stale-while-revalidate)
 manifest.webmanifest  PWA ইনস্টল তথ্য
 ```
