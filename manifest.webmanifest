@@ -1,0 +1,14 @@
+{
+  "name": "Jashore360 — যশোরের সবকিছু",
+  "short_name": "Jashore360",
+  "description": "যশোরের জরুরি সেবা, হাসপাতাল, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থান এক অ্যাপে।",
+  "lang": "bn",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
