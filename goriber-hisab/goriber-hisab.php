@@ -3,7 +3,7 @@
  * Plugin Name:       Goriber Hisab – Accounting, Inventory, Sales & POS
  * Plugin URI:        https://github.com/iftiyak7/claude-code
  * Description:       Business management for shops and companies: POS, sales, purchases, inventory, customers, suppliers, dues, double-entry accounting, invoices and reports.
- * Version:           1.18.0
+ * Version:           1.19.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            Goriber Hisab
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GORIBER_HISAB_VERSION', '1.18.0' );
+define( 'GORIBER_HISAB_VERSION', '1.19.0' );
 define( 'GORIBER_HISAB_FILE', __FILE__ );
 define( 'GORIBER_HISAB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GORIBER_HISAB_URL', plugin_dir_url( __FILE__ ) );

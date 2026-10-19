@@ -72,7 +72,7 @@ export default async function inventory(el, params, query) {
 }
 
 function refLink(m) {
-  const map = { sale: 'sales', purchase: 'purchases', return: 'returns', product: 'products' };
+  const map = { sale: 'sales', purchase: 'purchases', return: 'returns', product: 'products', adjustment: 'accounting/journal', adjustment_void: 'accounting/journal' };
   const base = map[m.reference_type];
   const label = m.reference_no || m.note || '—';
   return base && Number(m.reference_id) ? h('a', { href: `#/${base}/${m.reference_id}` }, label) : h('span', { class: 'muted' }, label);

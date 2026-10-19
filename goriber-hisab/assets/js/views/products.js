@@ -373,6 +373,9 @@ async function form(el, id = 0) {
 
   // Editing: the count can be corrected right here (a stock adjustment, so the history stays right).
   const editStock = !!id && pr.type !== 'service' && !sizes.on() && pr.track_stock !== false && Number(pr.track_stock) !== 0 && can('inventory.adjust');
+  // More than before: was it already in the shop (forgot the opening stock — not profit) or really extra?
+  const whySel = select('stock_why', [['opening', t('It was already in the shop (I forgot to enter it) — not profit')], ['gain', t('Found extra when counting — count as a gain')]], 'opening');
+  const stockWhy = h('div', { class: 'field wide', hidden: true }, h('label', {}, t('Where did the extra stock come from?')), whySel);
   let again = false;
   const saveBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit', onclick: () => { again = false; } }, icon('check', 18), t('Save product'));
   const againBtn = !id ? h('button', { class: 'btn btn-lg', type: 'submit', onclick: () => { again = true; } }, icon('plus', 18), t('Save & add another')) : null;
@@ -391,6 +394,7 @@ async function form(el, id = 0) {
         field(t('Category'), withAdd(catSel, 'categories', t('New category'))),
         !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
         editStock ? field(t('Stock now'), money_input('stock_now', String(Number(pr.stock_qty) || 0)), { hint: t('Change it to correct the count — saved as a stock adjustment') }) : null,
+        editStock ? stockWhy : null,
         field(t('Alert when stock falls to'), money_input('min_stock', num(pr.min_stock), { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
     sizes.el,
     more,
@@ -401,17 +405,23 @@ async function form(el, id = 0) {
   const wholeStock = () => f.querySelectorAll('[name=opening_qty], [name=stock_now]').forEach((x) => { x.closest('.field').hidden = sizes.on(); });
   sizes.onToggle(wholeStock);
   wholeStock();
+  const stockIn = f.querySelector('[name=stock_now]');
+  stockIn?.addEventListener('input', () => { stockWhy.hidden = !(Number(stockIn.value) > Number(pr.stock_qty || 0)); });
   typeSel.addEventListener('change', () => { f.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => { x.closest('.field').hidden = typeSel.value === 'service'; }); });
 
   bindForm(f, async (v) => {
     try {
       const stockNow = v.stock_now;
-      delete v.stock_now;
+      const why = v.stock_why;
+      delete v.stock_now; delete v.stock_why;
       if (sizes.on()) { const bad = sizes.check(); if (bad) throw new Error(bad); }
       const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
       await sizes.save(saved.id, v);
       if (editStock && stockNow !== '' && stockNow !== undefined && Number(stockNow) !== Number(pr.stock_qty || 0)) {
-        await api.post('stock/adjust', { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
+        const extra = Number(stockNow) - Number(pr.stock_qty || 0);
+        await api.post('stock/adjust', extra > 0 && why === 'opening'
+          ? { product_id: id, mode: 'opening', qty: String(extra), reason: t('Stock already in hand (entered later)') }
+          : { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
       }
       if (again) { toast(t('{n} added — add the next one', { n: saved.name })); form(el); return; }
       toast(t('Saved'));

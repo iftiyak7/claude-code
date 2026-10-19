@@ -182,6 +182,42 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertBooksBalanced( 'opening adjust' );
 	}
 
+	public function testAdjustmentCanBecomeOpeningStockOrBeCancelled(): void {
+		$p = $this->product( 'Kathbadam', '500', '300' );
+		// Forgot the opening stock, then "corrected" the count: booked as a gain at first.
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'set', 'qty' => '10', 'reason' => 'Count' ) );
+		$profit = fn() => $this->k->reports->dashboard( $this->ctx, array( 'range' => 'today' ) )['today']['profit'];
+		$this->assertMoney( '3000', $profit() );
+		$e  = $this->db->table( 'journal_entries' );
+		$id = (int) $this->db->value( "SELECT MAX(id) FROM {$e} WHERE business_id = %d AND source = 'stock_adjustment'", array( $this->ctx->business_id ) );
+		$this->assertSame( 'gain', $this->k->stock->adjustmentInfo( $this->ctx, $id )['kind'] );
+		$this->assertSame( '10.0000', $this->k->stock->adjustmentInfo( $this->ctx, $id )['qty'] );
+
+		// It was already in the shop: not profit any more.
+		$this->assertSame( 'opening', $this->k->stock->reclassifyAdjustment( $this->ctx, $id, 'opening' )['kind'] );
+		$this->assertMoney( '0', $profit() );
+		$this->assertBooksBalanced( 'reclassified' );
+		// And back.
+		$this->k->stock->reclassifyAdjustment( $this->ctx, $id, 'gain' );
+		$this->assertMoney( '3000', $profit() );
+
+		// Cancel: stock back to 0, profit back to 0, cannot cancel twice.
+		$this->assertTrue( $this->k->stock->voidAdjustment( $this->ctx, $id )['voided'] );
+		$this->assertSame( '0.0000', $this->qty( $p ) );
+		$this->assertMoney( '0', $profit() );
+		$this->assertBooksBalanced( 'cancelled' );
+		$this->assertThrows( \GoriberHisab\Support\ConflictException::class, fn() => $this->k->stock->voidAdjustment( $this->ctx, $id ) );
+
+		// A loss can be cancelled too (stock comes back).
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'opening', 'qty' => '5', 'unit_cost' => '300' ) );
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'remove', 'qty' => '2', 'reason' => 'Broken' ) );
+		$loss = (int) $this->db->value( "SELECT MAX(id) FROM {$e} WHERE business_id = %d AND source = 'stock_adjustment'", array( $this->ctx->business_id ) );
+		$this->assertSame( 'loss', $this->k->stock->adjustmentInfo( $this->ctx, $loss )['kind'] );
+		$this->k->stock->voidAdjustment( $this->ctx, $loss );
+		$this->assertSame( '5.0000', $this->qty( $p ) );
+		$this->assertBooksBalanced( 'loss cancelled' );
+	}
+
 	public function testDashboardDrilldown(): void {
 		$p = $this->product( 'Honey', '300', '200', '20' );
 		$c = $this->customer( 'Karim' );

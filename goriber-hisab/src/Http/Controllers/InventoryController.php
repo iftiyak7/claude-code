@@ -22,6 +22,9 @@ final class InventoryController extends Controller {
 			$this->route( 'GET', '/stock', fn( BusinessContext $c, array $a ) => $s->levels( $c, $a ) ),
 			$this->route( 'GET', '/stock/lights', fn( BusinessContext $c, array $a ) => $s->lights( $c, $a ) ),
 			$this->route( 'GET', '/stock/movements', fn( BusinessContext $c, array $a ) => $s->movements( $c, $a ) ),
+			$this->route( 'GET', '/stock/adjustments/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $s->adjustmentInfo( $c, self::id( $r ) ) ),
+			$this->route( 'POST', '/stock/adjustments/(?P<id>\d+)/kind', fn( BusinessContext $c, array $a, $r ) => $s->reclassifyAdjustment( $c, self::id( $r ), (string) ( $a['kind'] ?? '' ) ) ),
+			$this->route( 'POST', '/stock/adjustments/(?P<id>\d+)/void', fn( BusinessContext $c, array $a, $r ) => $s->voidAdjustment( $c, self::id( $r ) ) ),
 			$this->route( 'POST', '/stock/adjust', fn( BusinessContext $c, array $a ) => $s->adjust( $c, $a ), array( 'created' => true ) ),
 		);
 	}

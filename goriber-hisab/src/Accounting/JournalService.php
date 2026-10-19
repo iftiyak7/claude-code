@@ -137,6 +137,17 @@ final class JournalService extends Service {
 	}
 
 	/**
+	 * Reverse one live entry (used by documents that undo themselves, e.g. a stock adjustment).
+	 */
+	public function reverseOne( BusinessContext $ctx, int $entry_id, string $memo = '' ): void {
+		$entry = $this->findScoped( $ctx, 'journal_entries', $entry_id, 'Journal entry' );
+		if ( (int) $entry['is_reversal'] || (int) $entry['is_reversed'] ) {
+			throw ValidationException::field( 'id', 'This entry was already reversed.' );
+		}
+		$this->reverseEntry( $ctx, $entry, null, $memo );
+	}
+
+	/**
 	 * @param array<string,mixed> $entry Entry row.
 	 */
 	private function reverseEntry( BusinessContext $ctx, array $entry, ?string $date, string $memo ): void {

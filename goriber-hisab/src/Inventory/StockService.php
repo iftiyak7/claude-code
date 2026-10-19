@@ -14,6 +14,7 @@ use GoriberHisab\Audit\AuditLogger;
 use GoriberHisab\Database\Database;
 use GoriberHisab\Settings\SettingsService;
 use GoriberHisab\Support\Clock;
+use GoriberHisab\Support\ConflictException;
 use GoriberHisab\Support\Decimal;
 use GoriberHisab\Support\Events;
 use GoriberHisab\Support\Service;
@@ -211,6 +212,147 @@ final class StockService extends Service {
 	}
 
 	/**
+	 * A stock adjustment as booked: what kind it is, the movement behind it, and
+	 * what can still be done with it.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function adjustmentInfo( BusinessContext $ctx, int $entry_id ): array {
+		$ctx->authorize( 'inventory.view' );
+		$et    = $this->db->table( 'journal_entries' );
+		$lt    = $this->db->table( 'journal_lines' );
+		$at    = $this->db->table( 'accounts' );
+		$entry = $this->db->row( "SELECT * FROM {$et} WHERE id = %d AND business_id = %d", array( $entry_id, $ctx->business_id ) );
+		if ( null === $entry || 'stock_adjustment' !== $entry['source'] ) {
+			throw new \GoriberHisab\Support\NotFoundException( 'Stock adjustment not found.' );
+		}
+		$lines = $this->db->rows( "SELECT l.*, a.system_key FROM {$lt} l JOIN {$at} a ON a.id = l.account_id WHERE l.entry_id = %d AND l.business_id = %d", array( $entry_id, $ctx->business_id ) );
+		$kind  = 'loss';
+		foreach ( $lines as $l ) {
+			if ( Decimal::of( $l['credit'] ) > 0 && 'opening_balance' === $l['system_key'] ) {
+				$kind = 'opening';
+			} elseif ( Decimal::of( $l['credit'] ) > 0 && 'inventory_adjustment' === $l['system_key'] ) {
+				$kind = 'gain';
+			}
+		}
+		$mv = $this->movementFor( $ctx, $entry );
+		return array(
+			'id'         => (int) $entry['id'],
+			'date'       => (string) $entry['entry_date'],
+			'memo'       => (string) $entry['memo'],
+			'amount'     => Decimal::toString( Decimal::of( $entry['total'] ) ),
+			'kind'       => $kind,
+			'product_id' => (int) $entry['source_id'],
+			'qty'        => $mv ? Decimal::toString( Decimal::of( $mv['qty'] ) ) : null,
+			'voided'     => (bool) (int) $entry['is_reversed'] || (bool) (int) $entry['is_reversal'],
+		);
+	}
+
+	/**
+	 * Stock that was really already in the shop (forgot the opening stock):
+	 * book it to opening balance instead of profit — or the other way round.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function reclassifyAdjustment( BusinessContext $ctx, int $entry_id, string $to ): array {
+		$ctx->authorize( 'inventory.adjust' );
+		$info = $this->adjustmentInfo( $ctx, $entry_id );
+		if ( $info['voided'] ) {
+			throw new ConflictException( 'This adjustment was cancelled.' );
+		}
+		if ( 'loss' === $info['kind'] ) {
+			throw new ConflictException( 'Only a stock increase can be changed this way.' );
+		}
+		$this->assertOpenPeriod( $ctx, $info['date'] );
+		$to = 'opening' === $to ? 'opening' : 'gain';
+		if ( $to === $info['kind'] ) {
+			return $info;
+		}
+		$at   = $this->db->table( 'accounts' );
+		$lt   = $this->db->table( 'journal_lines' );
+		$from = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, 'opening' === $to ? 'inventory_adjustment' : 'opening_balance' ) );
+		$into = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, 'opening' === $to ? 'opening_balance' : 'inventory_adjustment' ) );
+		$this->db->execute( "UPDATE {$lt} SET account_id = %d WHERE entry_id = %d AND business_id = %d AND account_id = %d AND credit > 0", array( $into, $entry_id, $ctx->business_id, $from ) );
+		$this->audit->log( $ctx, 'update', 'stock', $info['product_id'], 'opening' === $to ? 'Stock adjustment #' . $entry_id . ' booked as stock already in hand (not profit)' : 'Stock adjustment #' . $entry_id . ' booked as a stock gain' );
+		return $this->adjustmentInfo( $ctx, $entry_id );
+	}
+
+	/**
+	 * Cancel an adjustment: the stock goes back and the entry is reversed.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function voidAdjustment( BusinessContext $ctx, int $entry_id ): array {
+		$ctx->authorize( 'inventory.adjust' );
+		$info = $this->adjustmentInfo( $ctx, $entry_id );
+		if ( $info['voided'] ) {
+			throw new ConflictException( 'This adjustment was already cancelled.' );
+		}
+		$et    = $this->db->table( 'journal_entries' );
+		$entry = (array) $this->db->row( "SELECT * FROM {$et} WHERE id = %d", array( $entry_id ) );
+		$mv    = $this->movementFor( $ctx, $entry );
+		if ( null === $mv ) {
+			throw new ConflictException( 'The stock movement of this adjustment was not found, so it cannot be cancelled automatically. Make an opposite stock adjustment instead.' );
+		}
+		$qty   = Decimal::of( $mv['qty'] );
+		$value = Decimal::of( $entry['total'] );
+		$this->db->transaction(
+			function () use ( $ctx, $mv, $qty, $value, $entry_id, $info ) {
+				$meta = array(
+					'type'           => 'adjustment',
+					'reference_type' => 'adjustment_void',
+					'reference_id'   => $entry_id,
+					'note'           => 'Cancelled stock adjustment #' . $entry_id,
+					'branch_id'      => (int) $mv['branch_id'],
+					'field'          => 'qty',
+				);
+				$item = array( 'product_id' => (int) $mv['product_id'], 'variant_id' => (int) $mv['variant_id'], 'qty' => abs( $qty ), 'value' => $value );
+				if ( $qty > 0 ) {
+					$this->out( $ctx, $item, $meta );
+				} else {
+					$this->in( $ctx, $item, $meta );
+				}
+				$this->journal->reverseOne( $ctx, $entry_id, 'Cancelled: ' . $info['memo'] );
+				$this->audit->log( $ctx, 'void', 'stock', $info['product_id'], 'Stock adjustment #' . $entry_id . ' cancelled' );
+			}
+		);
+		return $this->adjustmentInfo( $ctx, $entry_id );
+	}
+
+	/**
+	 * The stock movement an adjustment entry made (linked since 1.19; older ones
+	 * matched by product, date and value).
+	 *
+	 * @param array<string,mixed> $entry Journal entry row.
+	 * @return array<string,mixed>|null
+	 */
+	private function movementFor( BusinessContext $ctx, array $entry ): ?array {
+		$mt  = $this->db->table( 'stock_movements' );
+		$row = $this->db->row( "SELECT * FROM {$mt} WHERE business_id = %d AND reference_type = 'adjustment' AND reference_id = %d ORDER BY id DESC LIMIT 1", array( $ctx->business_id, (int) $entry['id'] ) );
+		if ( $row ) {
+			return $row;
+		}
+		$value = Decimal::toString( Decimal::of( $entry['total'] ) );
+		$rows  = $this->db->rows(
+			"SELECT * FROM {$mt} WHERE business_id = %d AND product_id = %d AND reference_type = 'adjustment' AND reference_id = 0 AND movement_date = %s ORDER BY id DESC",
+			array( $ctx->business_id, (int) $entry['source_id'], (string) $entry['entry_date'] )
+		);
+		foreach ( $rows as $r ) {
+			if ( Decimal::toString( Decimal::of( $r['value'] ) ) === $value || Decimal::toString( abs( Decimal::of( $r['value'] ) ) ) === $value ) {
+				return $r;
+			}
+		}
+		return null;
+	}
+
+	private function assertOpenPeriod( BusinessContext $ctx, string $date ): void {
+		$lock = (string) ( $this->settings->all( $ctx )['accounting.lock_date'] ?? '' );
+		if ( '' !== $lock && $date <= $lock ) {
+			throw new ConflictException( 'The books are locked for this date.' );
+		}
+	}
+
+	/**
 	 * Current average cost (for previews/sale line costing).
 	 */
 	public function averageCost( BusinessContext $ctx, int $product_id, int $variant_id = 0, ?int $branch_id = null ): int {
@@ -367,6 +509,11 @@ final class StockService extends Service {
 					),
 					$lines
 				);
+				$mt  = $this->db->table( 'stock_movements' );
+				$mid = (int) $this->db->value( "SELECT MAX(id) FROM {$mt} WHERE business_id = %d AND product_id = %d AND variant_id = %d AND reference_type = 'adjustment' AND reference_id = 0", array( $ctx->business_id, $product_id, $variant_id ) );
+				if ( $mid ) {
+					$this->db->update( $mt, array( 'reference_id' => $entry ), array( 'id' => $mid ) );
+				}
 				$this->audit->log(
 					$ctx,
 					'adjust',
