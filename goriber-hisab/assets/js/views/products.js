@@ -189,6 +189,7 @@ async function form(el, id = 0) {
   if (!can(id ? 'products.edit' : 'products.create')) { mount(el, empty(t('You do not have permission for this.'))); return; }
   const pr = id ? await api.get(`products/${id}`) : { track_stock: true, type: 'standard', status: 'active' };
   const opt = (list, empty_label) => [['', empty_label], ...(list || []).map((x) => [x.id, x.name])];
+  const num = (v) => (Number(v) ? String(Number(v)) : '');
   const taxes = state.me.tax_rates || [];
   const typeSel = select('type', [['standard', t('Stock item')], ['service', t('Service (no stock)')]], pr.type);
   const stockFields = h('div', { class: 'form-grid' },
@@ -238,8 +239,8 @@ async function form(el, id = 0) {
   paintUnits();
 
   // Live profit: selling − purchase.
-  const sell = money_input('selling_price', pr.selling_price && Number(pr.selling_price) ? pr.selling_price : '', { required: true, placeholder: '0' });
-  const buy = can('products.cost') ? money_input('purchase_price', pr.purchase_price && Number(pr.purchase_price) ? pr.purchase_price : '', { placeholder: '0' }) : null;
+  const sell = money_input('selling_price', num(pr.selling_price), { required: true, placeholder: '0' });
+  const buy = can('products.cost') ? money_input('purchase_price', num(pr.purchase_price), { placeholder: '0' }) : null;
   const profit = h('div', { class: 'profit-line' });
   const paintProfit = () => {
     const sp = Number(sell.value); const bp = Number(buy?.value);
@@ -271,13 +272,15 @@ async function form(el, id = 0) {
       field(t('Barcode'), h('div', { class: 'row' }, barcodeIn, scanBtn)),
       !id ? h('div', { class: 'field' }, checkbox('auto_barcode', true, t('Generate a barcode if empty'))) : null,
       field(t('SKU'), input('sku', pr.sku)),
-      field(t('Wholesale price'), money_input('wholesale_price', Number(pr.wholesale_price) ? pr.wholesale_price : '')),
-      field(t('Minimum selling price'), money_input('min_selling_price', Number(pr.min_selling_price) ? pr.min_selling_price : ''), { hint: t('Staff cannot sell below this') }),
+      field(t('Wholesale price'), money_input('wholesale_price', num(pr.wholesale_price))),
+      field(t('Minimum selling price'), money_input('min_selling_price', num(pr.min_selling_price)), { hint: t('Staff cannot sell below this') }),
       state.settings['tax.enabled'] ? field(state.settings['tax.label'], select('tax_rate_id', [['', t('Business default')], ...taxes.map((r) => [r.id, `${r.name} (${Number(r.rate)}%)`])], pr.tax_rate_id || '')) : null,
       field(t('Status'), select('status', [['active', t('Active')], ['inactive', t('Inactive')]], pr.status)),
       field(t('Description'), textarea('description', pr.description), { wide: true })),
     stockFields);
 
+  // Editing: the count can be corrected right here (a stock adjustment, so the history stays right).
+  const editStock = !!id && pr.type !== 'service' && !Number(pr.has_variants) && pr.track_stock !== false && Number(pr.track_stock) !== 0 && can('inventory.adjust');
   let again = false;
   const saveBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit', onclick: () => { again = false; } }, icon('check', 18), t('Save product'));
   const againBtn = !id ? h('button', { class: 'btn btn-lg', type: 'submit', onclick: () => { again = true; } }, icon('plus', 18), t('Save & add another')) : null;
@@ -295,7 +298,8 @@ async function form(el, id = 0) {
         h('div', { class: 'field wide' }, h('label', {}, t('Unit')), unitChips, unitSel),
         field(t('Category'), withAdd(catSel, 'categories', t('New category'))),
         !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
-        field(t('Alert when stock falls to'), money_input('min_stock', Number(pr.min_stock) ? pr.min_stock : '', { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
+        editStock ? field(t('Stock now'), money_input('stock_now', String(Number(pr.stock_qty) || 0)), { hint: t('Change it to correct the count — saved as a stock adjustment') }) : null,
+        field(t('Alert when stock falls to'), money_input('min_stock', num(pr.min_stock), { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
     more,
     imageId,
     h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: id ? `#/products/${id}` : '#/products' }, t('Cancel')), againBtn, saveBtn));
@@ -305,7 +309,12 @@ async function form(el, id = 0) {
 
   bindForm(f, async (v) => {
     try {
+      const stockNow = v.stock_now;
+      delete v.stock_now;
       const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
+      if (editStock && stockNow !== '' && stockNow !== undefined && Number(stockNow) !== Number(pr.stock_qty || 0)) {
+        await api.post('stock/adjust', { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
+      }
       if (again) { toast(t('{n} added — add the next one', { n: saved.name })); form(el); return; }
       toast(t('Saved'));
       navigate(`/products/${saved.id}`);

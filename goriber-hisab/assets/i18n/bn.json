@@ -1828,5 +1828,7 @@
 "Batch": "ব্যাচ",
 "Too many labels for one PDF. Download at most 600 at a time.": "একবারে এত লেবেলের PDF হবে না। একবারে সর্বোচ্চ ৬০০টা ডাউনলোড করুন।",
 "Could not prepare the PDF.": "PDF তৈরি করা যায়নি।",
-"PDF downloaded": "PDF ডাউনলোড হয়েছে"
+"PDF downloaded": "PDF ডাউনলোড হয়েছে",
+"Change it to correct the count — saved as a stock adjustment": "গুনে দেখে ঠিক সংখ্যা লিখুন, স্টক অ্যাডজাস্টমেন্ট হিসেবে সেভ হবে",
+"Count corrected on the product page": "পণ্যের পেজ থেকে স্টক ঠিক করা হয়েছে"
 }
