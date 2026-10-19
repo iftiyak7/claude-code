@@ -78,7 +78,11 @@ if command -v clpctl >/dev/null; then
     say "CloudPanel সাইট $DOMAIN আগে থেকেই সংযুক্ত"
   else
     say "CloudPanel সাইট $DOMAIN কে অ্যাপের সাথে সংযুক্ত করা হচ্ছে"
-    clpctl list --raw 2>/dev/null | grep -q 'site:add:reverse-proxy' || { warn "এই CloudPanel সংস্করণে reverse-proxy কমান্ড নেই।"; exit 1; }
+    if ! { clpctl help site:add:reverse-proxy >/dev/null 2>&1 || clpctl list 2>&1 | grep -q 'site:add:reverse-proxy'; }; then
+      warn "CloudPanel-এ reverse-proxy কমান্ড পাওয়া যায়নি। কিছুই বদলানো হয়নি। নিচের তালিকার স্ক্রিনশট পাঠান:"
+      clpctl list 2>&1 | grep -i 'site\|lets' || clpctl 2>&1 | head -40
+      exit 1
+    fi
     HT=$(ls -d /home/*/htdocs/"$DOMAIN" 2>/dev/null | head -1 || true)
     SITEUSER=$( [ -n "$HT" ] && stat -c %U "$HT" || echo jashore360 )
     case "$SITEUSER" in root|clp|nginx|www-data|"$SVC_USER"|'') SITEUSER=jashore360 ;; esac
