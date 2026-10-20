@@ -32,6 +32,7 @@ final class ReportsController extends Controller {
 		$r       = $this->k->reports;
 		$reports = array(
 			'dashboard'      => fn() => $r->dashboard( $ctx, $args ),
+			'review'         => fn() => $r->review( $ctx, $args ),
 			'drilldown'      => fn() => $r->drilldown( $ctx, $args ),
 			'profit-loss'    => fn() => $r->profitLoss( $ctx, $args ),
 			'trial-balance'  => fn() => $r->trialBalance( $ctx, $args ),

@@ -508,6 +508,251 @@ final class ReportService extends Service {
 	}
 
 	/**
+	 * Business review for a period: the headline numbers, five health signals,
+	 * what went well and what did not (against the period before and the same
+	 * period last year), the most profitable products and the biggest costs.
+	 *
+	 * @param array<string,mixed> $args range | from, to, branch_id.
+	 * @return array<string,mixed>
+	 */
+	public function review( BusinessContext $ctx, array $args ): array {
+		$ctx->authorize( 'dashboard.view' );
+		list( $from, $to ) = $this->range( $ctx, $args );
+		$branch            = $this->branchFilter( $ctx, $args );
+		$profit_ok         = $ctx->can( 'reports.profit' );
+		$f                 = new \DateTimeImmutable( $from );
+		$t                 = new \DateTimeImmutable( $to );
+		$days              = (int) $f->diff( $t )->days + 1;
+		if ( '01' === $f->format( 'd' ) && $days <= 31 ) {
+			// Month so far → the same days of last month.
+			$pf = $f->modify( 'first day of last month' );
+			$pt = $pf->modify( '+' . ( $days - 1 ) . ' days' );
+			$pt = $pt > $f->modify( '-1 day' ) ? $f->modify( '-1 day' ) : $pt;
+		} else {
+			$pt = $f->modify( '-1 day' );
+			$pf = $pt->modify( '-' . ( $days - 1 ) . ' days' );
+		}
+		$yf = $f->modify( '-1 year' );
+		$yt = $t->modify( '-1 year' );
+
+		$cur  = $this->reviewMetrics( $ctx, $from, $to, $branch, $profit_ok );
+		$prev = $this->reviewMetrics( $ctx, $pf->format( 'Y-m-d' ), $pt->format( 'Y-m-d' ), $branch, $profit_ok );
+		$year = $this->reviewMetrics( $ctx, $yf->format( 'Y-m-d' ), $yt->format( 'Y-m-d' ), $branch, $profit_ok );
+
+		$chg = static function ( $a, $b ): ?float {
+			$a = (float) $a;
+			$b = (float) $b;
+			return 0.0 === $b ? null : round( ( $a - $b ) / abs( $b ) * 100, 1 );
+		};
+		$status = static fn( bool $good, bool $bad ): string => $bad ? 'bad' : ( $good ? 'good' : 'watch' );
+
+		// Five signals.
+		$signals = array();
+		if ( $profit_ok ) {
+			$signals[] = array(
+				'key'    => 'profit',
+				'status' => $status( $cur['margin'] >= 10 && $cur['margin'] >= $prev['margin'], $cur['net'] < 0 ),
+				'value'  => $cur['margin'],
+				'prev'   => $prev['margin'],
+				'net'    => Decimal::toString( $cur['net'] ),
+			);
+		}
+		$g_prev    = $chg( $cur['sales'], $prev['sales'] );
+		$g_year    = $chg( $cur['sales'], $year['sales'] );
+		$signals[] = array(
+			'key'    => 'growth',
+			'status' => $status( null !== $g_prev && $g_prev >= 5, null !== $g_prev && $g_prev <= -10 ),
+			'prev'   => $g_prev,
+			'year'   => $g_year,
+		);
+		$signals[] = array(
+			'key'       => 'cash',
+			'status'    => $status( $cur['collected_pct'] >= 85, $cur['collected_pct'] < 50 ),
+			'value'     => $cur['collected_pct'],
+			'collected' => Decimal::toString( $cur['collected'] ),
+			'due'       => Decimal::toString( $cur['due'] ),
+		);
+		$signals[] = array(
+			'key'    => 'retention',
+			'status' => $status( $cur['returning_pct'] >= 50, $cur['customer_orders'] > 0 && $cur['returning_pct'] < 20 ),
+			'value'  => $cur['returning_pct'],
+			'prev'   => $prev['returning_pct'],
+			'new'    => $cur['new_customers'],
+		);
+		$signals[] = array(
+			'key'    => 'returns',
+			'status' => $status( $cur['return_pct'] <= 2, $cur['return_pct'] > 5 ),
+			'value'  => $cur['return_pct'],
+			'prev'   => $prev['return_pct'],
+		);
+
+		// What went well / what did not (vs the period before).
+		$good = array();
+		$bad  = array();
+		$note = static function ( string $key, ?float $pct, bool $up_is_good, float $min = 5 ) use ( &$good, &$bad ): void {
+			if ( null === $pct || abs( $pct ) < $min ) {
+				return;
+			}
+			$item = array( 'key' => $key, 'pct' => abs( $pct ), 'dir' => $pct > 0 ? 'up' : 'down' );
+			if ( ( $pct > 0 ) === $up_is_good ) {
+				$good[] = $item;
+			} else {
+				$bad[] = $item;
+			}
+		};
+		$note( 'sales', $g_prev, true );
+		if ( $profit_ok ) {
+			$note( 'net', $chg( $cur['net'], $prev['net'] ), true );
+			$note( 'expenses', $chg( $cur['expenses'], $prev['expenses'] ), false );
+		}
+		$note( 'orders', $chg( $cur['count'], $prev['count'] ), true );
+		$note( 'aov', $chg( $cur['aov'], $prev['aov'] ), true );
+		$note( 'new_customers', $chg( $cur['new_customers'], $prev['new_customers'] ), true, 10 );
+		$note( 'collection', $chg( $cur['collected_pct'], $prev['collected_pct'] ), true );
+		if ( $cur['return_pct'] > 0 || $prev['return_pct'] > 0 ) {
+			$note( 'returns', $chg( $cur['return_pct'], $prev['return_pct'] ), false, 10 );
+		}
+
+		// Biggest costs, with the cost per order against last period.
+		$costs = array();
+		if ( $profit_ok ) {
+			$prev_by = array();
+			foreach ( $this->accountTotals( $ctx, $pf->format( 'Y-m-d' ), $pt->format( 'Y-m-d' ), $branch, array( 'expense' ) ) as $r ) {
+				$prev_by[ $r['id'] ] = $r['amount'];
+			}
+			$rows = array_filter( $this->accountTotals( $ctx, $from, $to, $branch, array( 'expense' ) ), static fn( $r ) => 'cogs' !== $r['subtype'] && $r['amount'] > 0 );
+			usort( $rows, static fn( $a, $b ) => $b['amount'] <=> $a['amount'] );
+			foreach ( array_slice( $rows, 0, 5 ) as $r ) {
+				$per_now  = $cur['count'] ? $r['amount'] / $cur['count'] : 0;
+				$per_prev = $prev['count'] && isset( $prev_by[ $r['id'] ] ) ? $prev_by[ $r['id'] ] / $prev['count'] : 0;
+				$per_chg  = $per_prev ? round( ( $per_now - $per_prev ) / $per_prev * 100, 1 ) : null;
+				$costs[]  = array(
+					'name'          => (string) $r['name'],
+					'amount'        => Decimal::toString( $r['amount'] ),
+					'pct_of_sales'  => $cur['sales'] ? round( $r['amount'] / $cur['sales'] * 100, 1 ) : null,
+					'per_order_chg' => $per_chg,
+				);
+				if ( null !== $per_chg && abs( $per_chg ) >= 15 ) {
+					$item = array( 'key' => 'cost_per_order', 'name' => (string) $r['name'], 'pct' => abs( $per_chg ), 'dir' => $per_chg > 0 ? 'up' : 'down' );
+					if ( $per_chg < 0 ) {
+						$good[] = $item;
+					} else {
+						$bad[] = $item;
+					}
+				}
+			}
+		}
+
+		// Most profitable products (or best sellers without profit access).
+		$si    = $this->db->table( 'sale_items' );
+		$st    = $this->db->table( 'sales' );
+		list( $bs, $bp ) = $this->branchSql( $branch, 's.branch_id' );
+		$order = $profit_ok ? 'profit DESC' : 'net DESC';
+		$prods = $this->db->rows(
+			"SELECT i.product_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit
+			FROM {$si} i JOIN {$st} s ON s.id = i.sale_id
+			WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}
+			GROUP BY i.product_id ORDER BY {$order} LIMIT 5",
+			array_merge( array( $ctx->business_id, $from, $to ), $bp )
+		);
+		$products = array_map(
+			static fn( $r ) => array(
+				'id'     => (int) $r['product_id'],
+				'name'   => (string) $r['name'],
+				'qty'    => Decimal::toString( Decimal::of( $r['qty'] ) ),
+				'sales'  => Decimal::toString( Decimal::of( $r['net'] ) ),
+				'profit' => $profit_ok ? Decimal::toString( Decimal::of( $r['profit'] ) ) : null,
+			),
+			$prods
+		);
+
+		$out = static fn( array $m ): array => array(
+			'sales'         => Decimal::toString( $m['sales'] ),
+			'count'         => $m['count'],
+			'gross'         => $profit_ok ? Decimal::toString( $m['gross'] ) : null,
+			'expenses'      => $profit_ok ? Decimal::toString( $m['expenses'] ) : null,
+			'net'           => $profit_ok ? Decimal::toString( $m['net'] ) : null,
+			'margin'        => $profit_ok ? $m['margin'] : null,
+			'aov'           => Decimal::toString( (int) round( $m['aov'] ) ),
+			'collected'     => Decimal::toString( $m['collected'] ),
+			'collected_pct' => $m['collected_pct'],
+			'new_customers' => $m['new_customers'],
+			'returning_pct' => $m['returning_pct'],
+			'return_pct'    => $m['return_pct'],
+		);
+		return array(
+			'from'       => $from,
+			'to'         => $to,
+			'days'       => $days,
+			'prev'       => array( 'from' => $pf->format( 'Y-m-d' ), 'to' => $pt->format( 'Y-m-d' ) ),
+			'last_year'  => array( 'from' => $yf->format( 'Y-m-d' ), 'to' => $yt->format( 'Y-m-d' ) ),
+			'current'    => $out( $cur ),
+			'previous'   => $out( $prev ),
+			'year_ago'   => $out( $year ),
+			'changes'    => array(
+				'sales'    => $g_prev,
+				'net'      => $profit_ok ? $chg( $cur['net'], $prev['net'] ) : null,
+				'gross'    => $profit_ok ? $chg( $cur['gross'], $prev['gross'] ) : null,
+				'expenses' => $profit_ok ? $chg( $cur['expenses'], $prev['expenses'] ) : null,
+				'count'    => $chg( $cur['count'], $prev['count'] ),
+			),
+			'signals'    => $signals,
+			'good'       => array_slice( $good, 0, 5 ),
+			'bad'        => array_slice( $bad, 0, 5 ),
+			'products'   => $products,
+			'costs'      => $costs,
+			'points'     => $this->series( $ctx, $from, $to, $branch, $profit_ok )['points'] ?? array(),
+			'profit_ok'  => $profit_ok,
+		);
+	}
+
+	/**
+	 * Raw numbers for one review period.
+	 *
+	 * @param array<int,int>|null $branch Branches.
+	 * @return array<string,mixed>
+	 */
+	private function reviewMetrics( BusinessContext $ctx, string $from, string $to, ?array $branch, bool $profit_ok ): array {
+		$m     = $this->periodMetrics( $ctx, $from, $to, $branch, false );
+		$pl    = $profit_ok ? $this->profitTotals( $ctx, $from, $to, $branch ) : array( 'gross' => 0, 'expenses' => 0, 'net' => 0, 'revenue' => 0 );
+		$sales = Decimal::of( $m['sales'] );
+		$count = (int) $m['sales_count'];
+		$s     = $this->db->table( 'sales' );
+		list( $bs, $bp ) = $this->branchSql( $branch, 'x.branch_id' );
+		// Orders from customers who had bought before this period.
+		$cust  = $this->db->row(
+			"SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM {$s} o WHERE o.business_id = x.business_id AND o.customer_id = x.customer_id AND o.status = 'completed' AND o.sale_date < %s) THEN 1 ELSE 0 END) AS repeat_orders
+			FROM {$s} x WHERE x.business_id = %d AND x.status = 'completed' AND x.customer_id > 0 AND x.sale_date BETWEEN %s AND %s{$bs}",
+			array_merge( array( $from, $ctx->business_id, $from, $to ), $bp )
+		);
+		$new   = (int) $this->db->value(
+			"SELECT COUNT(DISTINCT x.customer_id) FROM {$s} x WHERE x.business_id = %d AND x.status = 'completed' AND x.customer_id > 0 AND x.sale_date BETWEEN %s AND %s{$bs}
+			AND NOT EXISTS (SELECT 1 FROM {$s} o WHERE o.business_id = x.business_id AND o.customer_id = x.customer_id AND o.status = 'completed' AND o.sale_date < %s)",
+			array_merge( array( $ctx->business_id, $from, $to ), $bp, array( $from ) )
+		);
+		$orders    = (int) ( $cust['n'] ?? 0 );
+		$collected = Decimal::of( $m['collection'] );
+		$returns   = Decimal::of( $m['returns'] );
+		$revenue   = $profit_ok && $pl['revenue'] ? $pl['revenue'] : $sales;
+		return array(
+			'sales'           => $sales,
+			'count'           => $count,
+			'gross'           => $pl['gross'],
+			'expenses'        => $pl['expenses'],
+			'net'             => $pl['net'],
+			'margin'          => $revenue ? round( $pl['net'] / $revenue * 100, 1 ) : 0.0,
+			'aov'             => $count ? $sales / $count : 0,
+			'collected'       => $collected,
+			'collected_pct'   => $sales ? round( min( 100, $collected / $sales * 100 ), 1 ) : 0.0,
+			'due'             => Decimal::of( $m['sales_due'] ),
+			'customer_orders' => $orders,
+			'returning_pct'   => $orders ? round( (int) ( $cust['repeat_orders'] ?? 0 ) / $orders * 100, 1 ) : 0.0,
+			'new_customers'   => $new,
+			'return_pct'      => $sales ? round( $returns / $sales * 100, 1 ) : 0.0,
+		);
+	}
+
+	/**
 	 * Revenue/gross/net from the journal.
 	 *
 	 * @param array<int,int>|null $branch Branches.

@@ -218,6 +218,23 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertBooksBalanced( 'loss cancelled' );
 	}
 
+	public function testBusinessReview(): void {
+		$p = $this->product( 'Honey', '500', '300', '100' );
+		$c = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Rina', 'phone' => '01712000111' ) );
+		$this->k->sales->create( $this->ctx, array( 'customer_id' => $c['id'], 'items' => array( array( 'product_id' => $p, 'qty' => '4' ) ), 'payments' => array( array( 'amount' => '1000' ) ) ) );
+		$this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'qty' => '2' ) ), 'payments' => array( array( 'amount' => '1000' ) ) ) );
+		$r = $this->k->reports->review( $this->ctx, array( 'range' => 'this_month' ) );
+		$this->assertMoney( '3000', $r['current']['sales'] );
+		$this->assertSame( 2, $r['current']['count'] );
+		$this->assertMoney( '1200', $r['current']['gross'] );
+		$this->assertMoney( '1500', $r['current']['aov'] );
+		$this->assertSame( 1, $r['current']['new_customers'] );
+		$this->assertSame( 66.7, $r['current']['collected_pct'] );
+		$this->assertSame( 'Honey', $r['products'][0]['name'] );
+		$this->assertMoney( '1200', $r['products'][0]['profit'] );
+		$this->assertSame( array( 'profit', 'growth', 'cash', 'retention', 'returns' ), array_column( $r['signals'], 'key' ) );
+	}
+
 	public function testDashboardDrilldown(): void {
 		$p = $this->product( 'Honey', '300', '200', '20' );
 		$c = $this->customer( 'Karim' );

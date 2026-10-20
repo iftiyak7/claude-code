@@ -23,9 +23,11 @@ export default async function dashboard(el) {
   const content = h('div', {}, spinner());
 
   const customise = h('button', { class: 'btn btn-sm', type: 'button', onclick: openCustomise }, icon('settings', 16), t('Customise'));
+  // The full written review of the chosen period (print / PDF).
+  const reviewBtn = h('a', { class: 'btn btn-sm btn-primary', href: '#/review' }, icon('reports', 16), t('Business review'));
   const p = page(t('Dashboard'), {
     subtitle: state.business.name,
-    actions: [dateRange((r) => { range = r; if (r.range) prefs.set('dash.range', r.range); load(); }, range.range), customise],
+    actions: [dateRange((r) => { range = r; if (r.range) prefs.set('dash.range', r.range); load(); }, range.range), reviewBtn, customise],
   });
   // Big, thumb-friendly shortcuts for the most common daily jobs.
   const quick = [
@@ -62,6 +64,7 @@ export default async function dashboard(el) {
   async function load() {
     mount(content, spinner());
     const d = await api.get('reports/dashboard', range);
+    reviewBtn.href = `#/review?from=${d.from}&to=${d.to}`;
     const show = (k) => !hidden.has(k);
     const T = d.today;
     const O = d.overview;

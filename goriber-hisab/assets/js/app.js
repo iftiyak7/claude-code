@@ -88,6 +88,7 @@ route('/accounting/journal', v('accounting'));
 route('/accounting/journal/new', v('accounting'));
 route('/accounting/journal/:id', v('accounting'));
 route('/accounting/ledger/:id', v('accounting'));
+route('/review', v('review'));
 route('/reports', v('reports'));
 route('/reports/:name', v('reports'));
 route('/users', v('users'));
@@ -151,7 +152,7 @@ async function boot() {
   start(render);
   // Load every screen's code in the background so moving around is instant.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
-  idle(() => ['dashboard', 'pos', 'sales', 'products', 'contacts', 'orders', 'purchases', 'payments', 'finance', 'cash', 'reports', 'inventory', 'document-form', 'settings', 'labels', 'stock-status']
+  idle(() => ['dashboard', 'pos', 'sales', 'products', 'contacts', 'orders', 'purchases', 'payments', 'finance', 'cash', 'reports', 'inventory', 'document-form', 'settings', 'labels', 'stock-status', 'review']
     .forEach((n, i) => setTimeout(() => import(`./views/${n}.js?v=${window.BZL.version}`).catch(() => {}), i * 120)));
   if (state.ctx) {
     sync();
