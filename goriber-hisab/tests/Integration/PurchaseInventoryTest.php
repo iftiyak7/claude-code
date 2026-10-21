@@ -216,6 +216,24 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->k->stock->voidAdjustment( $this->ctx, $loss );
 		$this->assertSame( '5.0000', $this->qty( $p ) );
 		$this->assertBooksBalanced( 'loss cancelled' );
+
+		// Entered too much by mistake: taking it out is not a loss.
+		$before = $profit();
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'mistake', 'qty' => '2' ) );
+		$this->assertSame( '3.0000', $this->qty( $p ) );
+		$this->assertMoney( $before, $profit(), 'mistake is not a loss' );
+		$fix = (int) $this->db->value( "SELECT MAX(id) FROM {$e} WHERE business_id = %d AND source = 'stock_adjustment'", array( $this->ctx->business_id ) );
+		$this->assertSame( 'mistake', $this->k->stock->adjustmentInfo( $this->ctx, $fix )['kind'] );
+		$this->assertBooksBalanced( 'mistake removed' );
+		// A loss booked earlier can be turned into "never had it", and back.
+		$this->k->stock->adjust( $this->ctx, array( 'product_id' => $p, 'mode' => 'remove', 'qty' => '1', 'reason' => 'Wrong count' ) );
+		$wrong = (int) $this->db->value( "SELECT MAX(id) FROM {$e} WHERE business_id = %d AND source = 'stock_adjustment'", array( $this->ctx->business_id ) );
+		$this->assertMoney( (string) ( (float) $before - 300 ), $profit() );
+		$this->assertSame( 'mistake', $this->k->stock->reclassifyAdjustment( $this->ctx, $wrong, 'mistake' )['kind'] );
+		$this->assertMoney( $before, $profit() );
+		$this->k->stock->reclassifyAdjustment( $this->ctx, $wrong, 'loss' );
+		$this->assertMoney( (string) ( (float) $before - 300 ), $profit() );
+		$this->assertBooksBalanced( 'loss <-> mistake' );
 	}
 
 	public function testBusinessReview(): void {

@@ -142,7 +142,7 @@ async function entry(el, id) {
 async function adjustmentCard(id, reload) {
   let a;
   try { a = await api.get(`stock/adjustments/${id}`); } catch { return h('div'); }
-  const label = { gain: t('Counted as a stock gain (adds to profit)'), opening: t('Stock already in hand (not profit)'), loss: t('Stock loss (reduces profit)') }[a.kind];
+  const label = { gain: t('Counted as a stock gain (adds to profit)'), opening: t('Stock already in hand (not profit)'), loss: t('Stock loss (reduces profit)'), mistake: t('Entered by mistake — taken back out (not a loss)') }[a.kind];
   const m = can('inventory.adjust') && !a.voided;
   return card(t('Stock adjustment'),
     h('p', {}, h('strong', {}, label), a.qty !== null ? h('span', { class: 'muted' }, ` · ${t('Quantity')}: ${Number(a.qty)}`) : null, ' · ', money(a.amount)),
@@ -156,6 +156,14 @@ async function adjustmentCard(id, reload) {
         if (!(await confirmDialog(t('Count this extra stock as a gain? It will add to profit.'), { confirmText: t('Count as gain') }))) return;
         try { await api.post(`stock/adjustments/${id}/kind`, { kind: 'gain' }); toast(t('Saved')); reload(); } catch (err) { showError(err); }
       } }, t('Count as a gain (profit)')) : null,
+      a.kind === 'loss' ? h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+        if (!(await confirmDialog(t('The shop never had this stock (it was entered by mistake)? It will be removed from the loss.'), { confirmText: t('Yes, not a loss') }))) return;
+        try { await api.post(`stock/adjustments/${id}/kind`, { kind: 'mistake' }); toast(t('Removed from loss')); reload(); } catch (err) { showError(err); }
+      } }, t('It was entered by mistake — not a loss')) : null,
+      a.kind === 'mistake' ? h('button', { class: 'btn', type: 'button', onclick: async () => {
+        if (!(await confirmDialog(t('Count this as a real stock loss? It will reduce profit.'), { confirmText: t('Count as loss') }))) return;
+        try { await api.post(`stock/adjustments/${id}/kind`, { kind: 'loss' }); toast(t('Saved')); reload(); } catch (err) { showError(err); }
+      } }, t('Count as a loss')) : null,
       h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
         if (!(await confirmDialog(t('Cancel this stock adjustment? The stock goes back to what it was before and the entry is reversed.'), { danger: true, confirmText: t('Yes, continue') }))) return;
         if (!(await confirmDialog(t('Are you sure? This cannot be undone.'), { danger: true, title: t('Last warning'), confirmText: t('Cancel adjustment') }))) return;

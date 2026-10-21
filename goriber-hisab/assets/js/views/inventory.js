@@ -82,6 +82,7 @@ function refLink(m) {
 export function stockAdjust(product, variant, onDone) {
   const mode = select('mode', [
     ['opening', t('Add stock I already have (not profit)')],
+    ['mistake', t('Entered too much by mistake / never had it (not a loss)')],
     ['remove', t('Remove (damage, loss, own use)')],
     ['add', t('Add found / gift stock (counts as profit)')],
     ['set', t('Set counted quantity')],
@@ -92,7 +93,8 @@ export function stockAdjust(product, variant, onDone) {
     field(t('Quantity'), money_input('qty', '', { required: true, autofocus: true }), { required: true }),
     can('products.cost') ? field(t('Unit cost (for additions)'), money_input('unit_cost', ''), { hint: t('Defaults to the current average cost') }) : null,
     field(t('Reason'), input('reason', '', { placeholder: t('e.g. Damaged in transit') }), { wide: true })));
-  const sync = () => { hint.hidden = !['opening', 'add'].includes(mode.value); };
+  const costField = f.querySelector('[name=unit_cost]')?.closest('.field');
+  const sync = () => { hint.hidden = !['opening', 'add'].includes(mode.value); if (costField) costField.hidden = ['mistake', 'remove'].includes(mode.value); };
   mode.addEventListener('change', sync); sync();
   const m = modal({
     title: t('Adjust stock: {p}', { p: product.name + (variant ? ` - ${variant.name}` : '') }),

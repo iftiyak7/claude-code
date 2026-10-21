@@ -379,6 +379,9 @@ async function form(el, id = 0) {
   // More than before: was it already in the shop (forgot the opening stock — not profit) or really extra?
   const whySel = select('stock_why', [['opening', t('It was already in the shop (I forgot to enter it) — not profit')], ['gain', t('Found extra when counting — count as a gain')]], 'opening');
   const stockWhy = h('div', { class: 'field wide', hidden: true }, h('label', {}, t('Where did the extra stock come from?')), whySel);
+  // Less than before: entered too much by mistake (not a loss) or really lost/damaged?
+  const lessSel = select('stock_less', [['mistake', t('I entered too much by mistake — not a loss')], ['loss', t('Damaged / lost / used — count as a loss')]], 'mistake');
+  const stockLess = h('div', { class: 'field wide', hidden: true }, h('label', {}, t('Why is the stock less?')), lessSel);
   // Made in the shop from other products: the recipe is set right after saving.
   const madeBox = h('input', { type: 'checkbox', name: 'made_from_recipe' });
   const madeRow = !id ? h('div', { class: 'field wide loose-toggle' }, h('label', { class: 'check' }, madeBox, h('span', {}, h('strong', {}, t('Made from other products (recipe)')), h('small', { class: 'muted' }, ` — ${t('e.g. honey nuts from cashew, almond, walnut. Selling it takes the ingredients out of stock.')}`)))) : null;
@@ -401,6 +404,7 @@ async function form(el, id = 0) {
         !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
         editStock ? field(t('Stock now'), money_input('stock_now', String(Number(pr.stock_qty) || 0)), { hint: t('Change it to correct the count — saved as a stock adjustment') }) : null,
         editStock ? stockWhy : null,
+        editStock ? stockLess : null,
         madeRow,
         field(t('Alert when stock falls to'), money_input('min_stock', num(pr.min_stock), { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
     sizes.el,
@@ -414,14 +418,18 @@ async function form(el, id = 0) {
   sizes.onToggle(wholeStock);
   wholeStock();
   const stockIn = f.querySelector('[name=stock_now]');
-  stockIn?.addEventListener('input', () => { stockWhy.hidden = !(Number(stockIn.value) > Number(pr.stock_qty || 0)); });
+  stockIn?.addEventListener('input', () => {
+    stockWhy.hidden = !(Number(stockIn.value) > Number(pr.stock_qty || 0));
+    stockLess.hidden = !(stockIn.value !== '' && Number(stockIn.value) < Number(pr.stock_qty || 0));
+  });
   typeSel.addEventListener('change', () => { f.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => { x.closest('.field').hidden = typeSel.value === 'service'; }); });
 
   bindForm(f, async (v) => {
     try {
       const stockNow = v.stock_now;
       const why = v.stock_why;
-      delete v.stock_now; delete v.stock_why;
+      const less = v.stock_less;
+      delete v.stock_now; delete v.stock_why; delete v.stock_less;
       const made = !!v.made_from_recipe;
       delete v.made_from_recipe;
       if (made) delete v.opening_qty;
@@ -432,7 +440,9 @@ async function form(el, id = 0) {
         const extra = Number(stockNow) - Number(pr.stock_qty || 0);
         await api.post('stock/adjust', extra > 0 && why === 'opening'
           ? { product_id: id, mode: 'opening', qty: String(extra), reason: t('Stock already in hand (entered later)') }
-          : { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
+          : extra < 0 && less === 'mistake'
+            ? { product_id: id, mode: 'mistake', qty: String(-extra), reason: t('Entered too much by mistake') }
+            : { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
       }
       if (made) { toast(t('Saved — now set what goes into it')); navigate(`/products/${saved.id}?recipe=1`); return; }
       if (again) { toast(t('{n} added — add the next one', { n: saved.name })); form(el); return; }

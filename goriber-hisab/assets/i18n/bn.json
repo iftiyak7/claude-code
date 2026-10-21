@@ -1938,5 +1938,19 @@
 "A product cannot be made from itself.": "পণ্য নিজেকে দিয়েই তৈরি হতে পারে না।",
 "This product is itself made from a recipe. Use its ingredients instead.": "এই পণ্য নিজেই রেসিপি দিয়ে তৈরি। এর বদলে এর উপকরণগুলো দিন।",
 "This product does not keep stock, so it cannot be an ingredient.": "এই পণ্যের স্টক রাখা হয় না, তাই এটা উপকরণ হতে পারে না।",
-"This product still has its own stock. Set its stock to zero first, then add the recipe.": "এই পণ্যের এখনো নিজের স্টক আছে। আগে স্টক ০ করুন, তারপর রেসিপি দিন।"
+"This product still has its own stock. Set its stock to zero first, then add the recipe.": "এই পণ্যের এখনো নিজের স্টক আছে। আগে স্টক ০ করুন, তারপর রেসিপি দিন।",
+"Entered too much by mistake / never had it (not a loss)": "ভুল করে বেশি দিয়েছিলাম / পণ্যটা ছিলই না (ক্ষতি নয়)",
+"Entered by mistake — taken back out (not a loss)": "ভুল করে দেওয়া — বাদ দেওয়া হয়েছে (ক্ষতি নয়)",
+"The shop never had this stock (it was entered by mistake)? It will be removed from the loss.": "এই স্টক কি আসলে দোকানে ছিলই না (ভুল করে এন্ট্রি হয়েছিল)? তাহলে এটা ক্ষতি থেকে বাদ যাবে।",
+"Yes, not a loss": "হ্যাঁ, ক্ষতি নয়",
+"Removed from loss": "ক্ষতি থেকে বাদ দেওয়া হয়েছে",
+"It was entered by mistake — not a loss": "ভুল করে এন্ট্রি হয়েছিল — ক্ষতি নয়",
+"Count this as a real stock loss? It will reduce profit.": "এটাকে আসল স্টক ক্ষতি ধরবেন? লাভ কমে যাবে।",
+"Count as loss": "ক্ষতি ধরুন",
+"Count as a loss": "ক্ষতি হিসেবে ধরুন",
+"I entered too much by mistake — not a loss": "ভুল করে বেশি দিয়েছিলাম — ক্ষতি নয়",
+"Damaged / lost / used — count as a loss": "নষ্ট / হারানো / নিজে ব্যবহার — ক্ষতি ধরুন",
+"Why is the stock less?": "স্টক কম কেন?",
+"Entered too much by mistake": "ভুল করে বেশি দেওয়া হয়েছিল",
+"Entered by mistake": "ভুল করে এন্ট্রি"
 }

@@ -374,6 +374,8 @@ final class StockService extends Service {
 				$kind = 'opening';
 			} elseif ( Decimal::of( $l['credit'] ) > 0 && 'inventory_adjustment' === $l['system_key'] ) {
 				$kind = 'gain';
+			} elseif ( Decimal::of( $l['debit'] ) > 0 && 'opening_balance' === $l['system_key'] ) {
+				$kind = 'mistake';
 			}
 		}
 		$mv = $this->movementFor( $ctx, $entry );
@@ -401,20 +403,31 @@ final class StockService extends Service {
 		if ( $info['voided'] ) {
 			throw new ConflictException( 'This adjustment was cancelled.' );
 		}
-		if ( 'loss' === $info['kind'] ) {
-			throw new ConflictException( 'Only a stock increase can be changed this way.' );
-		}
 		$this->assertOpenPeriod( $ctx, $info['date'] );
-		$to = 'opening' === $to ? 'opening' : 'gain';
+		// Increases: opening (already in hand) <-> gain. Decreases: mistake (never had it) <-> loss.
+		$increase = in_array( $info['kind'], array( 'opening', 'gain' ), true );
+		if ( $increase ) {
+			$to = 'opening' === $to ? 'opening' : 'gain';
+		} else {
+			$to = 'mistake' === $to ? 'mistake' : 'loss';
+		}
 		if ( $to === $info['kind'] ) {
 			return $info;
 		}
-		$at   = $this->db->table( 'accounts' );
-		$lt   = $this->db->table( 'journal_lines' );
-		$from = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, 'opening' === $to ? 'inventory_adjustment' : 'opening_balance' ) );
-		$into = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, 'opening' === $to ? 'opening_balance' : 'inventory_adjustment' ) );
-		$this->db->execute( "UPDATE {$lt} SET account_id = %d WHERE entry_id = %d AND business_id = %d AND account_id = %d AND credit > 0", array( $into, $entry_id, $ctx->business_id, $from ) );
-		$this->audit->log( $ctx, 'update', 'stock', $info['product_id'], 'opening' === $to ? 'Stock adjustment #' . $entry_id . ' booked as stock already in hand (not profit)' : 'Stock adjustment #' . $entry_id . ' booked as a stock gain' );
+		$neutral = in_array( $to, array( 'opening', 'mistake' ), true );
+		$at      = $this->db->table( 'accounts' );
+		$lt      = $this->db->table( 'journal_lines' );
+		$from    = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, $neutral ? 'inventory_adjustment' : 'opening_balance' ) );
+		$into    = (int) $this->db->value( "SELECT id FROM {$at} WHERE business_id = %d AND system_key = %s", array( $ctx->business_id, $neutral ? 'opening_balance' : 'inventory_adjustment' ) );
+		$side    = $increase ? 'credit' : 'debit';
+		$this->db->execute( "UPDATE {$lt} SET account_id = %d WHERE entry_id = %d AND business_id = %d AND account_id = %d AND {$side} > 0", array( $into, $entry_id, $ctx->business_id, $from ) );
+		$notes = array(
+			'opening' => 'booked as stock already in hand (not profit)',
+			'gain'    => 'booked as a stock gain',
+			'mistake' => 'booked as a correction of stock entered by mistake (not a loss)',
+			'loss'    => 'booked as a stock loss',
+		);
+		$this->audit->log( $ctx, 'update', 'stock', $info['product_id'], 'Stock adjustment #' . $entry_id . ' ' . $notes[ $to ] );
 		return $this->adjustmentInfo( $ctx, $entry_id );
 	}
 
@@ -580,7 +593,13 @@ final class StockService extends Service {
 		if ( ! (int) $product['track_stock'] ) {
 			throw ValidationException::field( 'product_id', 'Stock is not tracked for this product.' );
 		}
-		$mode = in_array( $data['mode'] ?? '', array( 'set', 'add', 'remove', 'opening' ), true ) ? $data['mode'] : 'add';
+		$mode = in_array( $data['mode'] ?? '', array( 'set', 'add', 'remove', 'opening', 'mistake' ), true ) ? $data['mode'] : 'add';
+		// "mistake": stock entered by mistake (the shop never had it) — taken back out of
+		// opening balance, so it never shows up as a loss.
+		$mistake = 'mistake' === $mode;
+		if ( $mistake ) {
+			$mode = 'remove';
+		}
 		// "opening": stock the shop already had (not bought now, not a gain) — booked to opening
 		// balance equity like a product's opening stock, so it never shows up as profit.
 		$opening = 'opening' === $mode;
@@ -600,12 +619,15 @@ final class StockService extends Service {
 		if ( '' === $reason && $opening ) {
 			$reason = 'Stock already in hand';
 		}
+		if ( '' === $reason && $mistake ) {
+			$reason = 'Entered by mistake';
+		}
 		if ( '' === $reason ) {
 			throw ValidationException::field( 'reason', 'Please give a reason for the adjustment.' );
 		}
 
 		return $this->db->transaction(
-			function () use ( $ctx, $product, $product_id, $variant_id, $mode, $qty, $data, $date, $reason, $opening ) {
+			function () use ( $ctx, $product, $product_id, $variant_id, $mode, $qty, $data, $date, $reason, $opening, $mistake ) {
 				$current = $this->onHand( $ctx, $product_id, $variant_id );
 				$delta   = 'set' === $mode ? $qty - $current : ( 'add' === $mode ? $qty : -$qty );
 				if ( 0 === $delta ) {
@@ -636,7 +658,7 @@ final class StockService extends Service {
 					$res   = $this->out( $ctx, array( 'product_id' => $product_id, 'variant_id' => $variant_id, 'qty' => -$delta ), $meta );
 					$value = $res['cost'];
 					$lines = array(
-						array( 'account' => 'inventory_adjustment', 'debit' => $value ),
+						array( 'account' => $mistake ? 'opening_balance' : 'inventory_adjustment', 'debit' => $value ),
 						array( 'account' => 'inventory', 'credit' => $value ),
 					);
 				}
