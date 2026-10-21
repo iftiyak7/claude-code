@@ -68,7 +68,7 @@ export default async function pos(el) {
       oncontextmenu: (e) => { e.preventDefault(); pickAndEdit(p); },
     },
     isLoose(p) ? h('span', { class: 'tile-weigh' }, `⚖ ${t('By weight')}`) : null,
-    S['pos.show_images'] && p.image_url ? h('img', { src: p.image_url, alt: '', loading: 'lazy' }) : h('span', { class: 'tile-initial', 'aria-hidden': 'true' }, p.name.slice(0, 2)),
+    S['pos.show_images'] && p.image_url ? h('img', { src: p.image_url, alt: '', loading: 'lazy' }) : h('span', { class: 'tile-initial', 'aria-hidden': 'true' }, initials(p.name)),
     h('span', { class: 'tile-name' }, p.name),
     h('span', { class: 'tile-price' }, money(p.selling_price), isLoose(p) && p.unit_name ? h('small', {}, ` /${p.unit_name}`) : null),
     p.track_stock ? h('small', { class: 'tile-stock' }, fmtQty(p.stock_qty)) : p.has_recipe && p.make_qty !== null ? h('small', { class: 'tile-stock', title: t('Can be made from the ingredients in stock') }, `≈${fmtQty(p.make_qty)}`) : null)) : empty(t('No products. Add products first.'), can('products.create') ? h('a', { class: 'btn', href: '#/products/new' }, t('Add product')) : null));
@@ -699,4 +699,14 @@ export default async function pos(el) {
   document.addEventListener('keydown', keys);
   window.addEventListener('hashchange', () => { offScan(); document.removeEventListener('keydown', keys); }, { once: true });
   void navigate; // reserved for deep links (e.g. #/pos?customer=)
+}
+
+/** First letter of the first two words, without breaking Bangla letters (কা, ক্র…). */
+function initials(name) {
+  const first = (w) => {
+    if (!w) return '';
+    try { return [...new Intl.Segmenter('bn', { granularity: 'grapheme' }).segment(w)][0]?.segment || ''; } catch { return [...w][0] || ''; }
+  };
+  const words = String(name || '').trim().split(/\s+/);
+  return (first(words[0]) + first(words[1])).toUpperCase();
 }

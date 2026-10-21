@@ -269,6 +269,7 @@ function buildShell() {
     h('ul', {}, navItems().map(([path, ic, label]) => h('li', {}, h('a', { href: `#${path}`, dataset: { path } }, icon(ic), h('span', {}, t(label)))))),
     h('div', { class: 'sidebar-foot' },
       window.BZL.appOnly ? null : h('a', { href: window.BZL.adminUrl }, icon('back', 16), t('WordPress admin')),
+      themePicker(),
       h('a', { href: window.BZL.logoutUrl }, icon('logout', 16), t('Log out')),
       h('span', { class: 'side-credit' }, h('img', { src: `${window.BZL.assetsUrl}img/nooriyah.jpg`, alt: '', width: 20, height: 20 }), t('A product of'), ' ', h('b', {}, 'NOORIYAH Group'))));
 
@@ -340,6 +341,22 @@ function themeToggle() {
   });
   paint();
   return btn;
+}
+/* The same choice as three plain buttons in the menu (the top-bar button is hidden on small phones). */
+function themePicker() {
+  const opts = [['light', '☀', t('Light')], ['dark', '☾', t('Dark')], ['auto', '◐', t('Auto')]];
+  const box = h('div', { class: 'theme-pick', role: 'radiogroup', 'aria-label': t('Theme') });
+  const paint = () => mount(box, h('span', { class: 'theme-pick-label' }, t('Theme')), opts.map(([m, ic, label]) => h('button', {
+    type: 'button', role: 'radio', 'aria-checked': String(themeMode() === m), class: themeMode() === m ? 'on' : '',
+    onclick: () => {
+      try { localStorage.setItem('gh.theme', m); } catch { /* ignore */ }
+      document.cookie = `gh_theme=${m}; path=/; max-age=31536000; SameSite=Lax`;
+      applyThemeMode(m); paint();
+      document.querySelectorAll('.theme-btn').forEach((b) => { b.textContent = ic; });
+    },
+  }, ic, ' ', label)));
+  paint();
+  return box;
 }
 applyThemeMode(themeMode());
 

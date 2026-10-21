@@ -374,13 +374,15 @@ input[type="color"].input { padding: 4px; height: var(--tap); }
 .pos-left, .pos-right { min-width: 0; }
 .pos-left { display: flex; flex-direction: column; gap: 8px; padding: 10px; min-height: 0; overflow: hidden; }
 .pos-search { display: flex; gap: 6px; align-items: center; }
-.pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; overflow-y: auto; align-content: start; padding-bottom: 8px; }
+.pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); grid-auto-rows: max-content; gap: 8px; overflow-y: auto; align-content: start; padding-bottom: 8px; }
 .tile { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 10px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font: inherit; color: inherit; min-height: 112px; position: relative; }
 .tile:hover { border-color: var(--brand); }
 .tile:active { transform: scale(.97); }
 .tile img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
-.tile-initial { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); font-weight: 700; text-transform: uppercase; }
-.tile-name { font-size: .85rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-initial { width: 44px; height: 44px; font-size: 1.05rem; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); font-weight: 700; text-transform: uppercase; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: auto; }
+.tile > * { flex-shrink: 0; }
+.tile-name { display: block; width: 100%; font-size: .88rem; font-weight: 600; line-height: 1.3; min-height: 1.3em; max-height: 2.6em; overflow: hidden; overflow-wrap: anywhere; }
 .tile-price { font-weight: 700; color: var(--brand); }
 .tile-stock { position: absolute; top: 6px; right: 8px; color: var(--muted); font-size: .72rem; }
 .tile.out { opacity: .55; }
@@ -1066,3 +1068,14 @@ button.kpi:active { transform: scale(.98); }
 .recipe-qty .input { width: 100%; text-align: right; }
 .recipe-used { display: block; margin-top: 2px; }
 @media (max-width: 560px) { .recipe-row { grid-template-columns: 1fr auto; } .recipe-qty { grid-column: 1 / -1; grid-row: 2; } }
+
+/* Theme switch in the menu */
+.theme-pick { display: flex; align-items: center; gap: 4px; padding: 6px 10px; flex-wrap: wrap; }
+.theme-pick-label { flex-basis: 100%; font-size: .8rem; opacity: .75; padding: 0 2px 2px; }
+.theme-pick button { flex: 1; min-height: 34px; padding: 0 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: transparent; color: inherit; font: inherit; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+.theme-pick button.on { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+
+/* POS: keep the search and category chips full height (only the product grid scrolls/shrinks). */
+.pos-left > :not(.pos-grid) { flex-shrink: 0; }
+.pos-left .chips .chip { flex-shrink: 0; white-space: nowrap; }
+.tile.loose { padding-top: 30px; }
