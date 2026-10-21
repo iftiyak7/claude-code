@@ -94,7 +94,7 @@ final class ProductService extends Service {
 			WHERE {$w} ORDER BY {$order} LIMIT %d OFFSET %d",
 			array_merge( array( $ctx->branch_id ), $params, array( $per_page, $offset ) )
 		);
-		$items = array_map( fn( array $r ) => $this->present( $ctx, $r ), $rows );
+		$items = $this->withRecipes( $ctx, array_map( fn( array $r ) => $this->present( $ctx, $r ), $rows ) );
 		return $this->paged( $items, $total, $page, $per_page );
 	}
 
@@ -112,7 +112,7 @@ final class ProductService extends Service {
 		$product['stock'] = $this->stockByBranch( $ctx, $id );
 		$product['stock_qty'] = Decimal::toString( Decimal::sum( array_map( static fn( $s ) => Decimal::of( $s['qty'] ), array_filter( $product['stock'], static fn( $s ) => (int) $s['branch_id'] === $ctx->branch_id ) ) ) );
 		$product['variants']  = $this->variants( $ctx, $id );
-		return $product;
+		return $this->withRecipes( $ctx, array( $product ) )[0];
 	}
 
 	/**
@@ -233,6 +233,177 @@ final class ProductService extends Service {
 				$this->audit->log( $ctx, 'delete', 'product', $id, 'Product deleted: ' . $row['name'] );
 			}
 		);
+	}
+
+	/* ------------------------------------------------------------------ Recipes */
+
+	/**
+	 * Recipe(s) of a product: what goes into 1 unit, per size (variant_id 0 = all sizes).
+	 *
+	 * @return array{product_id:int,recipes:array<int,array<string,mixed>>,make_qty:?string}
+	 */
+	public function recipe( BusinessContext $ctx, int $product_id ): array {
+		$ctx->authorize( 'products.view' );
+		$product = $this->findScoped( $ctx, 'products', $product_id, 'Product' );
+		$rt      = $this->db->table( 'product_recipes' );
+		$pt      = $this->db->table( 'products' );
+		$vt      = $this->db->table( 'product_variants' );
+		$st      = $this->db->table( 'stock_levels' );
+		$ut      = $this->db->table( 'units' );
+		$rows    = $this->db->rows(
+			"SELECT r.variant_id, r.component_id, r.component_variant_id, r.qty, p.name, p.purchase_price, v.name AS variant_name, v.purchase_price AS variant_price, u.short_name AS unit,
+				(SELECT s.avg_cost FROM {$st} s WHERE s.business_id = r.business_id AND s.product_id = r.component_id AND s.variant_id = r.component_variant_id AND s.branch_id = %d) AS avg_cost,
+				(SELECT COALESCE(SUM(s.qty),0) FROM {$st} s WHERE s.business_id = r.business_id AND s.product_id = r.component_id AND s.variant_id = r.component_variant_id AND s.branch_id = %d) AS stock_qty
+			FROM {$rt} r LEFT JOIN {$pt} p ON p.id = r.component_id LEFT JOIN {$vt} v ON v.id = r.component_variant_id LEFT JOIN {$ut} u ON u.id = p.unit_id
+			WHERE r.business_id = %d AND r.product_id = %d ORDER BY r.variant_id, r.sort_order, r.id",
+			array( $ctx->branch_id, $ctx->branch_id, $ctx->business_id, $product_id )
+		);
+		$see_cost = $ctx->can( 'products.cost' );
+		$recipes  = array();
+		foreach ( $rows as $r ) {
+			$qty  = Decimal::of( $r['qty'] );
+			$avg  = Decimal::of( $r['avg_cost'] ?? 0 );
+			$unit = $avg > 0 ? $avg : Decimal::of( (int) $r['component_variant_id'] && null !== $r['variant_price'] ? $r['variant_price'] : $r['purchase_price'] );
+			$vid  = (int) $r['variant_id'];
+			if ( ! isset( $recipes[ $vid ] ) ) {
+				$recipes[ $vid ] = array( 'variant_id' => $vid, 'items' => array(), 'cost' => 0 );
+			}
+			$cost                       = Decimal::mul( $qty, $unit );
+			$recipes[ $vid ]['cost']   += $cost;
+			$recipes[ $vid ]['items'][] = array(
+				'product_id' => (int) $r['component_id'],
+				'variant_id' => (int) $r['component_variant_id'],
+				'name'       => trim( (string) $r['name'] . ( $r['variant_name'] ? ' - ' . $r['variant_name'] : '' ) ),
+				'unit'       => (string) ( $r['unit'] ?? '' ),
+				'qty'        => Decimal::toString( $qty ),
+				'stock_qty'  => Decimal::toString( Decimal::of( $r['stock_qty'] ) ),
+				'unit_cost'  => $see_cost ? Decimal::toString( $unit ) : null,
+				'cost'       => $see_cost ? Decimal::toString( $cost ) : null,
+			);
+		}
+		foreach ( $recipes as &$rec ) {
+			$rec['cost'] = $see_cost ? Decimal::toString( $rec['cost'] ) : null;
+		}
+		unset( $rec );
+		$make = $this->stock->makeable( $ctx, array( $product_id ) );
+		return array(
+			'product_id' => $product_id,
+			'name'       => (string) $product['name'],
+			'recipes'    => array_values( $recipes ),
+			'make_qty'   => $make[ $product_id ] ?? null,
+		);
+	}
+
+	/**
+	 * Replace the recipe of a product (or one of its sizes).
+	 * A product with a recipe keeps no stock of its own: it is made when sold.
+	 *
+	 * @param array<string,mixed> $data variant_id, items[{product_id,variant_id,qty}].
+	 * @return array<string,mixed> See recipe().
+	 */
+	public function saveRecipe( BusinessContext $ctx, int $product_id, array $data ): array {
+		$ctx->authorize( 'products.edit' );
+		$product    = $this->findScoped( $ctx, 'products', $product_id, 'Product' );
+		$variant_id = (int) ( $data['variant_id'] ?? 0 );
+		if ( 'service' === $product['type'] ) {
+			throw ValidationException::field( 'items', 'A service cannot have a recipe.' );
+		}
+		if ( $variant_id > 0 ) {
+			$vt = $this->db->table( 'product_variants' );
+			if ( ! $this->db->value( "SELECT id FROM {$vt} WHERE id = %d AND product_id = %d AND business_id = %d AND deleted_at IS NULL", array( $variant_id, $product_id, $ctx->business_id ) ) ) {
+				throw ValidationException::field( 'variant_id', 'Select a valid variant.' );
+			}
+		}
+		$rt     = $this->db->table( 'product_recipes' );
+		$pt     = $this->db->table( 'products' );
+		$items  = array();
+		$errors = array();
+		$seen   = array();
+		foreach ( array_values( (array) ( $data['items'] ?? array() ) ) as $i => $c ) {
+			$cid = (int) ( $c['product_id'] ?? 0 );
+			$cvid = (int) ( $c['variant_id'] ?? 0 );
+			if ( $cid <= 0 ) {
+				continue;
+			}
+			try {
+				$qty = Decimal::of( $c['qty'] ?? 0 );
+			} catch ( \InvalidArgumentException $e ) {
+				$qty = 0;
+			}
+			if ( $qty <= 0 ) {
+				$errors[ "items.{$i}.qty" ] = 'Enter how much is used.';
+				continue;
+			}
+			if ( $cid === $product_id ) {
+				$errors[ "items.{$i}.product_id" ] = 'A product cannot be made from itself.';
+				continue;
+			}
+			$comp = $this->db->row( "SELECT id, name, type, track_stock, has_variants FROM {$pt} WHERE id = %d AND business_id = %d AND deleted_at IS NULL", array( $cid, $ctx->business_id ) );
+			if ( null === $comp ) {
+				$errors[ "items.{$i}.product_id" ] = 'Select a valid product.';
+				continue;
+			}
+			if ( (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND product_id = %d", array( $ctx->business_id, $cid ) ) > 0 ) {
+				$errors[ "items.{$i}.product_id" ] = 'This product is itself made from a recipe. Use its ingredients instead.';
+				continue;
+			}
+			if ( ! (int) $comp['track_stock'] ) {
+				$errors[ "items.{$i}.product_id" ] = 'This product does not keep stock, so it cannot be an ingredient.';
+				continue;
+			}
+			try {
+				$this->requireForTransaction( $ctx, $cid, $cvid, "items.{$i}.product_id" );
+			} catch ( ValidationException $e ) {
+				$errors = array_merge( $errors, $e->errors() );
+				continue;
+			}
+			$key = $cid . ':' . $cvid;
+			if ( isset( $seen[ $key ] ) ) {
+				$items[ $seen[ $key ] ]['qty'] += $qty;
+				continue;
+			}
+			$seen[ $key ] = count( $items );
+			$items[]      = array( 'component_id' => $cid, 'component_variant_id' => $cvid, 'qty' => $qty );
+		}
+		if ( $errors ) {
+			throw new ValidationException( $errors );
+		}
+		if ( $items && (int) $product['track_stock'] && 0 !== $this->totalQty( $ctx, $product_id ) ) {
+			throw ValidationException::field( 'items', 'This product still has its own stock. Set its stock to zero first, then add the recipe.' );
+		}
+		$this->db->transaction(
+			function () use ( $ctx, $product_id, $variant_id, $items, $rt, $product ) {
+				$this->db->execute( "DELETE FROM {$rt} WHERE business_id = %d AND product_id = %d AND variant_id = %d", array( $ctx->business_id, $product_id, $variant_id ) );
+				foreach ( $items as $n => $c ) {
+					$this->db->insert(
+						$rt,
+						array(
+							'business_id'          => $ctx->business_id,
+							'product_id'           => $product_id,
+							'variant_id'           => $variant_id,
+							'component_id'         => $c['component_id'],
+							'component_variant_id' => $c['component_variant_id'],
+							'qty'                  => Decimal::toString( $c['qty'] ),
+							'sort_order'           => $n,
+						)
+					);
+				}
+				if ( $items && (int) $product['track_stock'] ) {
+					$this->db->update( $this->db->table( 'products' ), array( 'track_stock' => 0, 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => $product_id, 'business_id' => $ctx->business_id ) );
+				}
+				$this->audit->log( $ctx, 'update', 'product', $product_id, ( $items ? 'Recipe saved: ' : 'Recipe removed: ' ) . $product['name'] );
+			}
+		);
+		$saved = $this->recipe( $ctx, $product_id );
+		// Keep the reference purchase price in line with what the ingredients cost today.
+		foreach ( $saved['recipes'] as $r ) {
+			if ( (int) $r['variant_id'] === $variant_id && null !== $r['cost'] ) {
+				$table = $variant_id ? 'product_variants' : 'products';
+				$id    = $variant_id ? $variant_id : $product_id;
+				$this->db->update( $this->db->table( $table ), array( 'purchase_price' => $r['cost'] ), array( 'id' => $id, 'business_id' => $ctx->business_id ) );
+			}
+		}
+		return $saved;
 	}
 
 	/* ------------------------------------------------------------------ Variants */
@@ -585,6 +756,28 @@ final class ProductService extends Service {
 		} catch ( \InvalidArgumentException $e ) {
 			throw ValidationException::field( $field, 'Enter a valid number.' );
 		}
+	}
+
+	/**
+	 * Mark recipe products and how many the ingredients in stock can make.
+	 *
+	 * @param array<int,array<string,mixed>> $items Presented products.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function withRecipes( BusinessContext $ctx, array $items ): array {
+		$ids = array_map( static fn( $p ) => (int) $p['id'], $items );
+		$has = array();
+		if ( $ids ) {
+			$rt  = $this->db->table( 'product_recipes' );
+			$has = array_flip( array_map( 'intval', $this->db->column( "SELECT DISTINCT product_id FROM {$rt} WHERE business_id = %d AND product_id IN (" . implode( ',', $ids ) . ')', array( $ctx->business_id ) ) ) );
+		}
+		$make = $has ? $this->stock->makeable( $ctx, array_keys( $has ) ) : array();
+		foreach ( $items as &$p ) {
+			$p['has_recipe'] = isset( $has[ (int) $p['id'] ] );
+			$p['make_qty']   = $make[ (int) $p['id'] ] ?? null;
+		}
+		unset( $p );
+		return $items;
 	}
 
 	private function totalQty( BusinessContext $ctx, int $product_id ): int {

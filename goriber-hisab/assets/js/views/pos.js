@@ -63,7 +63,7 @@ export default async function pos(el) {
   function paintGrid() {
     const list = catalogue.filter((p) => p.status === 'active' && (!category || p.category_id === category)).slice(0, 120);
     mount(grid, list.length ? list.map((p) => h('button', {
-      class: `tile ${p.track_stock && dec(p.stock_qty) <= 0 ? 'out' : ''} ${isLoose(p) ? 'loose' : ''}`, type: 'button', onclick: () => pick(p),
+      class: `tile ${(p.track_stock && dec(p.stock_qty) <= 0) || (p.has_recipe && p.make_qty !== null && dec(p.make_qty) <= 0) ? 'out' : ''} ${isLoose(p) ? 'loose' : ''}`, type: 'button', onclick: () => pick(p),
       title: t('Long-press to change quantity or price'),
       oncontextmenu: (e) => { e.preventDefault(); pickAndEdit(p); },
     },
@@ -71,7 +71,7 @@ export default async function pos(el) {
     S['pos.show_images'] && p.image_url ? h('img', { src: p.image_url, alt: '', loading: 'lazy' }) : h('span', { class: 'tile-initial', 'aria-hidden': 'true' }, p.name.slice(0, 2)),
     h('span', { class: 'tile-name' }, p.name),
     h('span', { class: 'tile-price' }, money(p.selling_price), isLoose(p) && p.unit_name ? h('small', {}, ` /${p.unit_name}`) : null),
-    p.track_stock ? h('small', { class: 'tile-stock' }, fmtQty(p.stock_qty)) : null)) : empty(t('No products. Add products first.'), can('products.create') ? h('a', { class: 'btn', href: '#/products/new' }, t('Add product')) : null));
+    p.track_stock ? h('small', { class: 'tile-stock' }, fmtQty(p.stock_qty)) : p.has_recipe && p.make_qty !== null ? h('small', { class: 'tile-stock', title: t('Can be made from the ingredients in stock') }, `≈${fmtQty(p.make_qty)}`) : null)) : empty(t('No products. Add products first.'), can('products.create') ? h('a', { class: 'btn', href: '#/products/new' }, t('Add product')) : null));
   }
 
   const search = combobox({

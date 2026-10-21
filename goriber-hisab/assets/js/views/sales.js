@@ -88,7 +88,8 @@ async function detail(el, id) {
       h('div', { class: `stat ${Number(s.due_amount) ? 'warn' : ''}` }, h('span', { class: 'stat-label' }, t('Due')), h('strong', { class: 'stat-value' }, money(s.due_amount))),
       profit ? h('div', { class: 'stat ok' }, h('span', { class: 'stat-label' }, t('Gross profit')), h('strong', { class: 'stat-value' }, money(s.gross_profit))) : null),
     card(t('Items'), simpleTable([
-      { label: t('Item'), render: (i) => h('span', {}, i.name, Number(i.returned_qty) ? h('small', { class: 'warn-text' }, ` (${t('returned')} ${qty(i.returned_qty)})`) : null) },
+      { label: t('Item'), render: (i) => h('span', {}, i.name, Number(i.returned_qty) ? h('small', { class: 'warn-text' }, ` (${t('returned')} ${qty(i.returned_qty)})`) : null,
+        (i.components || []).length ? h('small', { class: 'muted recipe-used' }, `${t('Made from')}: ${i.components.map((c) => `${c.name} ${qty(c.qty)}${c.cost !== undefined ? ' (' + money(c.cost) + ')' : ''}`).join(', ')}`) : null) },
       { label: t('Qty'), align: 'right', render: (i) => qty(i.qty) },
       { label: t('Price'), align: 'right', render: (i) => money(i.unit_price) },
       { label: t('Discount'), align: 'right', render: (i) => (Number(i.discount_amount) + Number(i.doc_discount) ? money(String(Number(i.discount_amount) + Number(i.doc_discount))) : '—') },

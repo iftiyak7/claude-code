@@ -19,6 +19,7 @@ use GoriberHisab\Settings\SettingsService;
 use GoriberHisab\Support\Clock;
 use GoriberHisab\Support\ConflictException;
 use GoriberHisab\Support\Decimal;
+use GoriberHisab\Support\Json;
 use GoriberHisab\Support\Events;
 use GoriberHisab\Support\Service;
 use GoriberHisab\Support\Text;
@@ -218,7 +219,13 @@ final class ReturnService extends Service {
 						'reference_no'   => $number,
 						'product_name'   => $item['name'],
 					);
-					if ( $track ) {
+					$used = 'sale' === $type ? Json::decode( $item['components'] ?? null ) : array();
+					$back = array();
+					if ( $used ) {
+						// Made from a recipe: its share of the ingredients goes back on the shelf.
+						$back = StockService::shareComponents( $used, $line['qty'], Decimal::of( $item['qty'] ), $cost );
+						$this->stock->moveComponents( $ctx, $back, 'in', $meta );
+					} elseif ( $track ) {
 						if ( 'sale' === $type ) {
 							$this->stock->in( $ctx, array( 'product_id' => (int) $item['product_id'], 'variant_id' => (int) $item['variant_id'], 'qty' => $line['qty'], 'value' => $cost ), $meta );
 						} else {
@@ -245,6 +252,7 @@ final class ReturnService extends Service {
 							'total'            => Decimal::toString( $line['net'] + $line['tax'] ),
 							'unit_cost'        => Decimal::toString( Decimal::div( $cost, $line['qty'] ) ),
 							'cost_amount'      => Decimal::toString( $cost ),
+							'components'       => $back ? Json::encode( $back ) : null,
 						)
 					);
 					$this->db->execute( "UPDATE {$it} SET returned_qty = returned_qty + %s WHERE id = %d", array( Decimal::toString( $line['qty'] ), (int) $item['id'] ) );
@@ -347,7 +355,10 @@ final class ReturnService extends Service {
 						'product_name'   => $item['name'],
 						'branch_id'      => (int) $ret['branch_id'],
 					);
-					if ( (int) $item['track_stock'] ) {
+					$used = Json::decode( $item['components'] ?? null );
+					if ( $used ) {
+						$variance += $this->stock->moveComponents( $ctx, $used, 'out', $meta );
+					} elseif ( (int) $item['track_stock'] ) {
 						if ( 'sale' === $type ) {
 							$res       = $this->stock->out( $ctx, array( 'product_id' => (int) $item['product_id'], 'variant_id' => (int) $item['variant_id'], 'qty' => $qty, 'value' => $cost ), $meta );
 							$variance += $res['variance'];

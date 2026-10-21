@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.12.0';
+	public const VERSION = '1.13.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -470,6 +470,7 @@ final class Schema {
 					'cost_amount'     => 'money',
 					'returned_qty'    => 'qty',
 					'sort_order'      => 'int',
+					'components'      => 'text',
 				),
 				'indexes' => array(
 					'sale'    => array( 'sale_id' ),
@@ -607,6 +608,7 @@ final class Schema {
 					'total'            => 'money',
 					'unit_cost'        => 'money',
 					'cost_amount'      => 'money',
+					'components'       => 'text',
 				),
 				'indexes' => array(
 					'return'  => array( 'return_id' ),
@@ -898,6 +900,23 @@ final class Schema {
 				'indexes' => array(
 					'unique:uuid' => array( 'uuid' ),
 					'date'        => array( 'business_id', 'move_date' ),
+				),
+			),
+
+			/* Recipes: a product made from other products at the moment of sale. */
+			'product_recipes'     => array(
+				'columns' => array(
+					'id'                   => 'id',
+					'business_id'          => 'fk',
+					'product_id'           => 'fk',
+					'variant_id'           => 'fk',
+					'component_id'         => 'fk',
+					'component_variant_id' => 'fk',
+					'qty'                  => 'qty',
+					'sort_order'           => 'int',
+				),
+				'indexes' => array(
+					'product' => array( 'business_id', 'product_id', 'variant_id' ),
 				),
 			),
 

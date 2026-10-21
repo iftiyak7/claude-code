@@ -11,13 +11,14 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { barcodeSvg } from '../core/barcode.js';
 import { stockAdjust } from './inventory.js';
+import { recipeCard } from './recipe.js';
 
 export default async function products(el, params, query) {
   const path = location.hash.split('?')[0];
   if (path.endsWith('/catalog')) return catalogue(el);
   if (path.endsWith('/new')) return form(el);
   if (path.endsWith('/edit')) return form(el, Number(params.id));
-  if (params.id) return detail(el, Number(params.id));
+  if (params.id) return detail(el, Number(params.id), query);
 
   const cats = state.me.categories || [];
   const p = page(t('Products'), {
@@ -44,7 +45,7 @@ export default async function products(el, params, query) {
       { label: t('Category'), hide: 'sm', key: 'category_name' },
       { label: t('Price'), align: 'right', render: (r) => money(r.selling_price) },
       { label: t('Cost'), align: 'right', hide: 'sm', render: (r) => (r.purchase_price === null ? '—' : money(r.purchase_price)) },
-      { label: t('Stock'), align: 'right', render: (r) => (r.track_stock ? h('span', { class: r.is_low ? 'bad-text' : '' }, `${qty(r.stock_qty)} ${r.unit_name || ''}`) : t('Service')) },
+      { label: t('Stock'), align: 'right', render: (r) => (r.has_recipe ? h('span', { class: 'muted', title: t('Made from a recipe') }, r.make_qty !== null ? t('Can make {n}', { n: qty(r.make_qty) }) : t('Recipe')) : r.track_stock ? h('span', { class: r.is_low ? 'bad-text' : '' }, `${qty(r.stock_qty)} ${r.unit_name || ''}`) : t('Service')) },
       { label: t('Status'), hide: 'sm', render: (r) => badge(r.status) },
     ],
   });
@@ -52,7 +53,7 @@ export default async function products(el, params, query) {
   mount(el, p.el);
 }
 
-async function detail(el, id) {
+async function detail(el, id, query = {}) {
   const pr = await api.get(`products/${id}`);
   const reload = () => detail(el, id);
   const p = page(pr.name, {
@@ -71,6 +72,7 @@ async function detail(el, id) {
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Selling price')), h('strong', { class: 'stat-value' }, money(pr.selling_price))),
       pr.purchase_price !== null ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Purchase price')), h('strong', { class: 'stat-value' }, money(pr.purchase_price))) : null,
       Number(pr.wholesale_price) ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Wholesale')), h('strong', { class: 'stat-value' }, money(pr.wholesale_price))) : null,
+      pr.has_recipe && pr.make_qty !== null ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Can be made now')), h('strong', { class: 'stat-value' }, qty(pr.make_qty)), h('span', { class: 'stat-hint' }, t('from the ingredients in stock'))) : null,
       pr.track_stock ? h('div', { class: `stat ${pr.is_low ? 'bad' : ''}` }, h('span', { class: 'stat-label' }, t('In stock (this branch)')), h('strong', { class: 'stat-value' }, qty(pr.stock_qty)), h('span', { class: 'stat-hint' }, t('Minimum {n}', { n: qty(pr.min_stock) }))) : null),
     h('div', { class: 'grid-2' },
       pr.track_stock ? card(t('Stock by branch'), pr.stock.length ? simpleTable([
@@ -82,6 +84,7 @@ async function detail(el, id) {
       ], pr.stock) : h('p', { class: 'muted' }, t('No stock yet.'))) : null,
       card(t('Barcode'), pr.barcode || pr.sku ? h('div', { class: 'barcode-box' }, barcodeSvg(pr.barcode || pr.sku), h('code', {}, pr.barcode || pr.sku)) : h('p', { class: 'muted' }, t('No barcode. Edit the product to add one, or let Goriber Hisab generate it.')), !pr.barcode && can('products.edit') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { await api.post('products/barcodes', { ids: String(pr.id) }); toast(t('Barcode created')); reload(); } catch (err) { showError(err); } } }, icon('barcode', 16), t('Create barcode')) : null)),
     variantsCard(pr, reload),
+    recipeCard(pr, reload, { open: query.recipe === '1' }),
     pr.description ? card(t('Description'), h('p', { class: 'pre' }, pr.description)) : null,
     can('products.delete') ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
       if (!(await confirmDialog(t('Delete {n}? Past sales keep their records.', { n: pr.name }), { danger: true, confirmText: t('Delete') }))) return;
@@ -376,6 +379,9 @@ async function form(el, id = 0) {
   // More than before: was it already in the shop (forgot the opening stock — not profit) or really extra?
   const whySel = select('stock_why', [['opening', t('It was already in the shop (I forgot to enter it) — not profit')], ['gain', t('Found extra when counting — count as a gain')]], 'opening');
   const stockWhy = h('div', { class: 'field wide', hidden: true }, h('label', {}, t('Where did the extra stock come from?')), whySel);
+  // Made in the shop from other products: the recipe is set right after saving.
+  const madeBox = h('input', { type: 'checkbox', name: 'made_from_recipe' });
+  const madeRow = !id ? h('div', { class: 'field wide loose-toggle' }, h('label', { class: 'check' }, madeBox, h('span', {}, h('strong', {}, t('Made from other products (recipe)')), h('small', { class: 'muted' }, ` — ${t('e.g. honey nuts from cashew, almond, walnut. Selling it takes the ingredients out of stock.')}`)))) : null;
   let again = false;
   const saveBtn = h('button', { class: 'btn btn-primary btn-lg', type: 'submit', onclick: () => { again = false; } }, icon('check', 18), t('Save product'));
   const againBtn = !id ? h('button', { class: 'btn btn-lg', type: 'submit', onclick: () => { again = true; } }, icon('plus', 18), t('Save & add another')) : null;
@@ -395,6 +401,7 @@ async function form(el, id = 0) {
         !id ? field(t('Stock now'), money_input('opening_qty', '', { placeholder: '0' }), { hint: t('How many you have in the shop right now') }) : null,
         editStock ? field(t('Stock now'), money_input('stock_now', String(Number(pr.stock_qty) || 0)), { hint: t('Change it to correct the count — saved as a stock adjustment') }) : null,
         editStock ? stockWhy : null,
+        madeRow,
         field(t('Alert when stock falls to'), money_input('min_stock', num(pr.min_stock), { placeholder: t('optional') }), { hint: t('Low stock alert + red light') }))),
     sizes.el,
     more,
@@ -402,7 +409,8 @@ async function form(el, id = 0) {
     h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: id ? `#/products/${id}` : '#/products' }, t('Cancel')), againBtn, saveBtn));
   // Opening stock and alert level now live up top; keep their old copies out of the form.
   stockFields.querySelectorAll('[name=opening_qty], [name=min_stock]').forEach((x) => x.closest('.field')?.remove());
-  const wholeStock = () => f.querySelectorAll('[name=opening_qty], [name=stock_now]').forEach((x) => { x.closest('.field').hidden = sizes.on(); });
+  const wholeStock = () => f.querySelectorAll('[name=opening_qty], [name=stock_now]').forEach((x) => { x.closest('.field').hidden = sizes.on() || madeBox.checked; });
+  madeBox.addEventListener('change', wholeStock);
   sizes.onToggle(wholeStock);
   wholeStock();
   const stockIn = f.querySelector('[name=stock_now]');
@@ -414,6 +422,9 @@ async function form(el, id = 0) {
       const stockNow = v.stock_now;
       const why = v.stock_why;
       delete v.stock_now; delete v.stock_why;
+      const made = !!v.made_from_recipe;
+      delete v.made_from_recipe;
+      if (made) delete v.opening_qty;
       if (sizes.on()) { const bad = sizes.check(); if (bad) throw new Error(bad); }
       const saved = id ? await api.put(`products/${id}`, v) : await api.post('products', v);
       await sizes.save(saved.id, v);
@@ -423,6 +434,7 @@ async function form(el, id = 0) {
           ? { product_id: id, mode: 'opening', qty: String(extra), reason: t('Stock already in hand (entered later)') }
           : { product_id: id, mode: 'set', qty: String(stockNow), reason: t('Count corrected on the product page') });
       }
+      if (made) { toast(t('Saved — now set what goes into it')); navigate(`/products/${saved.id}?recipe=1`); return; }
       if (again) { toast(t('{n} added — add the next one', { n: saved.name })); form(el); return; }
       toast(t('Saved'));
       navigate(`/products/${saved.id}`);

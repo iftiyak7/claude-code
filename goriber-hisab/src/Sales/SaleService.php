@@ -260,6 +260,14 @@ final class SaleService extends Service {
 		$rt   = $this->db->table( 'returns' );
 		$bt   = $this->db->table( 'branches' );
 		$sale['items']    = $this->db->rows( "SELECT * FROM {$it} WHERE sale_id = %d AND business_id = %d ORDER BY sort_order, id", array( $id, $ctx->business_id ) );
+		$see_cost         = $ctx->can( 'products.cost' );
+		foreach ( $sale['items'] as &$row ) {
+			$row['components'] = array_map(
+				static fn( $c ) => $see_cost ? $c : array_diff_key( $c, array( 'cost' => 1 ) ),
+				Json::decode( $row['components'] ?? null )
+			);
+		}
+		unset( $row );
 		$sale['payments'] = $this->payments->forDocument( $ctx, 'sale', $id );
 		$sale['returns']  = $this->db->rows( "SELECT id, number, return_date, total, refund_amount, status FROM {$rt} WHERE business_id = %d AND return_type = 'sale' AND document_id = %d ORDER BY id", array( $ctx->business_id, $id ) );
 		$ct               = $this->db->table( 'contacts' );
@@ -768,7 +776,36 @@ final class SaleService extends Service {
 		$items = $this->db->rows( "SELECT * FROM {$it} WHERE sale_id = %d ORDER BY sort_order, id", array( $id ) );
 		$cogs  = 0;
 		foreach ( $items as $i => $item ) {
-			$line = $doc['lines'][ array_keys( $doc['lines'] )[ $i ] ];
+			$line   = $doc['lines'][ array_keys( $doc['lines'] )[ $i ] ];
+			$recipe = $this->stock->recipe( $ctx, (int) $item['product_id'], (int) $item['variant_id'] );
+			if ( $recipe ) {
+				// Made at sale time: the ingredients leave stock at their real cost.
+				$made = $this->stock->consumeRecipe(
+					$ctx,
+					$recipe,
+					Decimal::of( $item['qty'] ),
+					array(
+						'type'           => 'sale',
+						'date'           => $doc['sale_date'],
+						'reference_type' => 'sale',
+						'reference_id'   => $id,
+						'reference_no'   => $number,
+						'product_name'   => $item['name'],
+						'field'          => "items.{$i}.qty",
+					)
+				);
+				$cogs += $made['cost'];
+				$this->db->update(
+					$it,
+					array(
+						'unit_cost'   => Decimal::toString( Decimal::div( $made['cost'], max( 1, Decimal::of( $item['qty'] ) ) ) ),
+						'cost_amount' => Decimal::toString( $made['cost'] ),
+						'components'  => Json::encode( $made['components'] ),
+					),
+					array( 'id' => (int) $item['id'] )
+				);
+				continue;
+			}
 			if ( ! $line['track_stock'] ) {
 				continue;
 			}
@@ -876,6 +913,24 @@ final class SaleService extends Service {
 		foreach ( $items as $item ) {
 			$cost = Decimal::of( $item['cost_amount'] );
 			$qty  = Decimal::of( $item['qty'] );
+			$used = Json::decode( $item['components'] ?? null );
+			if ( $used ) {
+				$this->stock->moveComponents(
+					$ctx,
+					$used,
+					'in',
+					array(
+						'type'           => 'sale_void',
+						'date'           => $this->today( $ctx ),
+						'reference_type' => 'sale',
+						'reference_id'   => $id,
+						'reference_no'   => (string) $sale['number'],
+						'note'           => $why . ' of sale',
+						'branch_id'      => (int) $sale['branch_id'],
+					)
+				);
+				continue;
+			}
 			$pt   = $this->db->table( 'products' );
 			$trk  = (int) $this->db->value( "SELECT track_stock FROM {$pt} WHERE id = %d", array( (int) $item['product_id'] ) );
 			if ( ! $trk || $qty <= 0 ) {

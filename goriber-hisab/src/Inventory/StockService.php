@@ -146,6 +146,147 @@ final class StockService extends Service {
 		);
 	}
 
+	/* ------------------------------------------------------------------ Recipes */
+
+	/**
+	 * Recipe of a product made at the moment of sale: the size's own recipe,
+	 * else the product's general one. Quantities are per 1 unit sold.
+	 *
+	 * @return array<int,array{product_id:int,variant_id:int,qty:int,name:string}>
+	 */
+	public function recipe( BusinessContext $ctx, int $product_id, int $variant_id = 0 ): array {
+		$rt   = $this->db->table( 'product_recipes' );
+		$pt   = $this->db->table( 'products' );
+		$vt   = $this->db->table( 'product_variants' );
+		$rows = $this->db->rows(
+			"SELECT r.variant_id AS for_variant, r.component_id, r.component_variant_id, r.qty, p.name, v.name AS variant_name
+			FROM {$rt} r LEFT JOIN {$pt} p ON p.id = r.component_id LEFT JOIN {$vt} v ON v.id = r.component_variant_id
+			WHERE r.business_id = %d AND r.product_id = %d AND r.variant_id IN (0, %d) ORDER BY r.sort_order, r.id",
+			array( $ctx->business_id, $product_id, $variant_id )
+		);
+		$own = array_filter( $rows, static fn( $r ) => $variant_id > 0 && (int) $r['for_variant'] === $variant_id );
+		$use = $own ? $own : array_filter( $rows, static fn( $r ) => 0 === (int) $r['for_variant'] );
+		$out = array();
+		foreach ( $use as $r ) {
+			$out[] = array(
+				'product_id' => (int) $r['component_id'],
+				'variant_id' => (int) $r['component_variant_id'],
+				'qty'        => Decimal::of( $r['qty'] ),
+				'name'       => trim( (string) $r['name'] . ( $r['variant_name'] ? ' - ' . $r['variant_name'] : '' ) ),
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * Take the ingredients of $qty units of a recipe product out of stock.
+	 * Their real (average purchase) cost becomes the cost of the sale line.
+	 *
+	 * @param array<int,array<string,mixed>> $recipe From recipe().
+	 * @param array<string,mixed>            $meta   See out(); product_name is the sold product.
+	 * @return array{cost:int,components:array<int,array<string,mixed>>}
+	 */
+	public function consumeRecipe( BusinessContext $ctx, array $recipe, int $qty, array $meta ): array {
+		$cost       = 0;
+		$components = array();
+		foreach ( $recipe as $c ) {
+			$need = Decimal::mul( $c['qty'], $qty );
+			if ( $need <= 0 ) {
+				continue;
+			}
+			$res = $this->out(
+				$ctx,
+				array( 'product_id' => $c['product_id'], 'variant_id' => $c['variant_id'], 'qty' => $need ),
+				array_merge( $meta, array( 'product_name' => $c['name'], 'note' => trim( 'Used in ' . ( $meta['product_name'] ?? '' ) ) ) )
+			);
+			$cost        += $res['cost'];
+			$components[] = array(
+				'product_id' => $c['product_id'],
+				'variant_id' => $c['variant_id'],
+				'name'       => $c['name'],
+				'qty'        => Decimal::toString( $need ),
+				'cost'       => Decimal::toString( $res['cost'] ),
+			);
+		}
+		return array( 'cost' => $cost, 'components' => $components );
+	}
+
+	/**
+	 * Share of used ingredients for part of a line (returns): qty and cost
+	 * scaled by $part / $whole, with the cost shares adding up to $cost.
+	 *
+	 * @param array<int,array<string,mixed>> $components Stored components.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function shareComponents( array $components, int $part, int $whole, int $cost ): array {
+		$out  = array();
+		$left = $cost;
+		$n    = count( $components );
+		foreach ( array_values( $components ) as $i => $c ) {
+			$qty  = $whole > 0 ? (int) round( Decimal::of( $c['qty'] ) * $part / $whole ) : 0;
+			$val  = $i === $n - 1 ? $left : ( $whole > 0 ? (int) round( Decimal::of( $c['cost'] ) * $part / $whole ) : 0 );
+			$left -= $val;
+			$out[] = array_merge( $c, array( 'qty' => Decimal::toString( $qty ), 'cost' => Decimal::toString( $val ) ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Move stored ingredients back in (void/return) or out again (undoing that).
+	 *
+	 * @param array<int,array<string,mixed>> $components Stored components.
+	 * @param string                         $direction  in|out.
+	 * @return int Variance (out only): stored value − value taken off.
+	 */
+	public function moveComponents( BusinessContext $ctx, array $components, string $direction, array $meta ): int {
+		$variance = 0;
+		foreach ( $components as $c ) {
+			$qty = Decimal::of( $c['qty'] );
+			if ( $qty <= 0 ) {
+				continue;
+			}
+			$item = array( 'product_id' => (int) $c['product_id'], 'variant_id' => (int) $c['variant_id'], 'qty' => $qty, 'value' => Decimal::of( $c['cost'] ) );
+			$m    = array_merge( $meta, array( 'product_name' => (string) $c['name'] ) );
+			if ( 'in' === $direction ) {
+				$this->in( $ctx, $item, $m );
+			} else {
+				$variance += $this->out( $ctx, $item, $m )['variance'];
+			}
+		}
+		return $variance;
+	}
+
+	/**
+	 * How many units of each recipe product the ingredients in stock can make.
+	 *
+	 * @param int[] $product_ids Products to check.
+	 * @return array<int,string> product_id => qty (only products with a recipe).
+	 */
+	public function makeable( BusinessContext $ctx, array $product_ids, int $branch_id = 0 ): array {
+		$product_ids = array_values( array_filter( array_map( 'intval', $product_ids ) ) );
+		if ( ! $product_ids ) {
+			return array();
+		}
+		$branch = $branch_id ?: $ctx->branch_id;
+		$rt     = $this->db->table( 'product_recipes' );
+		$st     = $this->db->table( 'stock_levels' );
+		$in     = implode( ',', $product_ids );
+		$rows   = $this->db->rows(
+			"SELECT r.product_id, r.qty, COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = r.business_id AND s.product_id = r.component_id AND s.variant_id = r.component_variant_id AND s.branch_id = %d),0) AS have
+			FROM {$rt} r WHERE r.business_id = %d AND r.variant_id = 0 AND r.product_id IN ({$in})",
+			array( $branch, $ctx->business_id )
+		);
+		$can = array();
+		foreach ( $rows as $r ) {
+			$need = Decimal::of( $r['qty'] );
+			$have = max( 0, Decimal::of( $r['have'] ) );
+			$n    = $need > 0 ? intdiv( $have, $need ) : 0;
+			$pid  = (int) $r['product_id'];
+			$can[ $pid ] = isset( $can[ $pid ] ) ? min( $can[ $pid ], $n ) : $n;
+		}
+		return array_map( static fn( $n ) => (string) $n, $can );
+	}
+
 	/**
 	 * Stock lights: red (about to run out), yellow (getting low), green (fine).
 	 * Red = at or below the shop's red mark or the product's own minimum;
