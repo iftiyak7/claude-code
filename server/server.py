@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS aliases (old TEXT PRIMARY KEY, new TEXT NOT NULL);
 
 MIGRATIONS = [('listings', 'owner_id', 'INTEGER'), ('listings', 'plan', 'TEXT'), ('listings', 'paid_until', 'TEXT'),
               ('reviews', 'user_id', 'INTEGER'), ('admins', 'role', "TEXT NOT NULL DEFAULT 'owner'"),
-              ('users', 'terms_v', 'INTEGER'), ('users', 'terms_at', 'INTEGER')]
+              ('users', 'terms_v', 'INTEGER'), ('users', 'terms_at', 'INTEGER'), ('listings', 'imps', 'INTEGER NOT NULL DEFAULT 0')]
 
 
 def init_db():
@@ -177,7 +177,8 @@ def init_db():
             upgrade_seed(c, seed)
 
 
-SEED_VERSION = 3
+SEED_VERSION = 4
+MOVED_KEYS = {4: {'place': ('মসজিদ', 'mosque', 'মন্দির', 'temple')}}   # search words that now belong to another category
 NEW_SUBS = {3: {'hospital': ('doctor', 'homeo')}}     # sub-types added to existing categories, by seed version
 FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
 
@@ -202,6 +203,11 @@ def upgrade_seed(c, seed):
                     x.setdefault('subsEn', {})[sub] = sc.get('subsEn', {}).get(sub, sub)
             if sc:
                 x['keys'] = list(dict.fromkeys((x.get('keys') or []) + [k for k in sc.get('keys', []) if k not in (x.get('keys') or [])]))
+    for ver, by_cat in MOVED_KEYS.items():
+        if v < ver:
+            for x in cats:
+                if x['id'] in by_cat and x.get('keys'):
+                    x['keys'] = [k for k in x['keys'] if k not in by_cat[x['id']]]
     c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
     c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
 
@@ -296,6 +302,8 @@ def bootstrap_payload():
             if d.get('hidden') or (r['paid_until'] and r['paid_until'] < t):
                 continue
             d['id'] = r['id']
+            if d.get('sponsored') and d.get('sponsoredUntil') and d['sponsoredUntil'] < t:
+                d.pop('sponsored')                    # paid promotion ended
             if r['id'] in ratings:
                 d['rating'], d['reviews'] = ratings[r['id']]
             listings.append(d)
@@ -524,6 +532,7 @@ def clean_listing(d, admin):
         out.update(clean_media(d))
         out['status'] = d.get('status') if d.get('status') in STATUSES else 'pending'
         out['verifiedAt'] = s(d.get('verifiedAt'), 10)
+        out['sponsoredUntil'] = s(d.get('sponsoredUntil'), 10) if re.match(r'^\d{4}-\d\d-\d\d$', str(d.get('sponsoredUntil') or '')) else None
         if out['status'] == 'verified' and not out['verifiedAt']:
             out['verifiedAt'] = today()
         for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'halal'):
@@ -958,6 +967,18 @@ def api_track(h):
     h.send(204)
 
 
+@route('POST', '/impressions')
+def api_impressions(h):
+    """How often promoted listings were actually shown on screen — proof for the businesses that pay for it."""
+    ids = [str(x)[:60] for x in (h.body().get('ids') or [])[:30]]
+    who = h.who()
+    with db() as c:
+        for lid in ids:
+            if rate_ok(f'imp:{who}:{lid}', 1, 1800):
+                c.execute('UPDATE listings SET imps=imps+1 WHERE id=?', (resolve_lid(c, lid),))
+    h.send(204)
+
+
 @route('POST', '/adtrack')
 def api_adtrack(h):
     b = h.body()
@@ -1099,7 +1120,7 @@ def my_overview(h):
             d = json.loads(r['doc'])
             pay = latest.get(r['id'])
             listings.append({'id': r['id'], 'name': d.get('name'), 'cat': d.get('cat'), 'sub': d.get('sub'), 'images': d.get('images'),
-                             'plan': r['plan'], 'paidUntil': r['paid_until'], 'review': r['review'], 'views': r['views'], 'calls': r['calls'],
+                             'plan': r['plan'], 'paidUntil': r['paid_until'], 'review': r['review'], 'views': r['views'], 'calls': r['calls'], 'imps': r['imps'], 'sponsored': d.get('sponsored'), 'sponsoredUntil': d.get('sponsoredUntil'),
                              'state': listing_state(r['review'], r['paid_until'], pay),
                              'payment': {k: pay[k] for k in ('status', 'amount', 'method', 'trx', 'note')} if pay else None})
         classifieds = [classified_out(r, True) for r in c.execute('SELECT * FROM classifieds WHERE user_id=? ORDER BY created_at DESC', (uid,))]
@@ -1398,7 +1419,7 @@ def adm_summary(h):
 def listing_out(r, pay=None, owner=None):
     d = json.loads(r['doc'])
     d.update(id=r['id'], _review=r['review'], _source=r['source'], _contact=r['contact'], _created=r['created_at'],
-             _updated=r['updated_at'], _views=r['views'], _calls=r['calls'], _maps=r['maps'], _plan=r['plan'],
+             _updated=r['updated_at'], _views=r['views'], _calls=r['calls'], _maps=r['maps'], _imps=r['imps'], _plan=r['plan'],
              _paidUntil=r['paid_until'], _owner=owner, _payment=pay)
     return d
 
@@ -1562,6 +1583,9 @@ def adm_payment_decide(h, pid):
             doc = json.loads(l['doc'])
             if plan.get('featured'):
                 doc['featured'] = True
+            if plan.get('sponsored'):                 # promoted plans: on top of lists and search until the plan ends
+                doc['sponsored'] = True
+                doc['sponsoredUntil'] = max(doc.get('sponsoredUntil') or '', until)
             review = 'approved' if b.get('publish') else ('pending' if l['review'] == 'unpaid' else l['review'])
             c.execute('UPDATE listings SET paid_until=?, plan=?, review=?, doc=?, updated_at=? WHERE id=?',
                       (until, p['plan_id'], review, json.dumps(doc, ensure_ascii=False), now, l['id']))

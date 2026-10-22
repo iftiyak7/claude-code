@@ -274,3 +274,4 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 .slidecfg { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .slidecfg > div { flex: 1; min-width: 220px; display: grid; gap: 2px; }
 .slidecfg select { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 10px; font: inherit; }
+.bprev.full { height: 62px; padding: 0; background-color: var(--surface-2); }

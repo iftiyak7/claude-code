@@ -197,21 +197,48 @@
   const heart = id => `<button class="heartbtn ${isSaved(id) ? 'on' : ''}" data-save="${esc(id)}" aria-label="${T('সেভ')}">${icon('heart', 17)}</button>`;
 
   function gcard(it) {
-    return `<a class="gcard" href="#/p/${esc(it.id)}">${media(it)}${heart(it.id)}
+    return `<a class="gcard${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${heart(it.id)}
       ${it.sponsored ? '<span class="flag tag glass">Sponsored</span>' : it.demo ? `<span class="flag tag dark">${T('নমুনা')}</span>` : it.halal ? `<span class="flag tag halal">${icon('halal', 12)}${T('হালাল')}</span>` : ''}
       <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b>${esc(nameOf(it))}</b>
         <div class="meta"><span>${it.price ? money(it.price) : isOpen(it) === true ? T('এখন খোলা') : ''}</span>${it.rating ? `<span class="rate">${icon('star', 12)}${num(it.rating.toFixed(1))}</span>` : ''}</div></div></a>`;
+  }
+  /* Paid promotion: sponsored listings take the first slots of every list and search, in an order that rotates
+     per visit so every sponsor gets a fair share of the top spot. */
+  const SEED = Math.floor(Math.random() * 1e9);
+  const rot = id => { let h = SEED; for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 2654435761) >>> 0; return h; };
+  function promote(list, slots = 3) {
+    const sp = list.filter(i => i.sponsored).sort((a, b) => rot(a.id) - rot(b.id)).slice(0, slots);
+    return sp.length ? [...sp, ...list.filter(i => !sp.includes(i))] : list;
+  }
+  // Distance-first list: nearest highlighted, distance + walking time in a badge, one-tap directions.
+  const walkText = k => k < 2 ? T('হেঁটে {n} মিনিট', { n: num(Math.max(1, Math.round(k / 4.5 * 60))) }) : T('রিকশা/গাড়িতে ~{n} মিনিট', { n: num(Math.max(5, Math.round(k / 15 * 60))) });
+  function nearRow(it, first) {
+    const d = km(it);
+    return `<div class="nrow${first ? ' nearest' : ''}${it.sponsored ? ' spons' : ''}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>
+      <a class="nmain" href="#/p/${esc(it.id)}">${media(it)}<div class="body">${first ? `<span class="tag ok">${icon('nav', 12)}${T('সবচেয়ে কাছে')}</span>` : ''}
+        <b>${esc(nameOf(it))}</b><div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</div>
+        <div class="meta">${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${halalTag(it)}${openTag(it)}</div></div></a>
+      <a class="ndist" href="${esc(dirUrl(it))}" target="_blank" rel="noopener" data-map="${esc(it.id)}" aria-label="${T('দিকনির্দেশ')}">
+        <b>${kmText(d)}</b><small>${walkText(d)}</small><span>${icon('nav', 13)}${T('পথ দেখুন')}</span></a></div>`;
+  }
+  function nearList(list) {
+    const known = list.filter(i => km(i) != null), unknown = list.filter(i => km(i) == null);
+    const firstPlain = known.find(i => !i.sponsored);
+    return `${known.length ? `<div class="nlist">${known.map(i => nearRow(i, i === firstPlain)).join('')}</div>` : ''}
+      ${unknown.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:14px">${T('দূরত্ব জানা নেই')}</h2><small class="muted">${T('ম্যাপ লোকেশন যোগ হয়নি')}</small></div>
+        <div class="rows">${unknown.map(row).join('')}</div>` : ''}
+      ${!list.length ? empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।')) : ''}`;
   }
   const halalTag = it => it.halal ? `<span class="tag halal">${icon('halal', 13)}${T('হালাল')}</span>` : '';
   function row(it) {
     const d = km(it);
     const act = it.phone ? `<span class="act ${it.cat === 'emergency' ? 'red' : ''}" data-call="${esc(it.phone)}" data-id="${esc(it.id)}" role="button" aria-label="${T('কল')}">${icon('phone', 18)}</span>`
       : `<span class="act">${icon('chevR', 18)}</span>`;
-    return `<a class="row" href="#/p/${esc(it.id)}">${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
+    return `<a class="row${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
       <div class="meta">${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
   }
-  const wcard = it => `<a class="wcard" href="#/p/${esc(it.id)}">${media(it)}<div class="t"><b>${esc(nameOf(it))}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
+  const wcard = (it, sp) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${esc(nameOf(it))}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
   function crow(a) {
     const k = KINDS[a.kind];
     const meta = a.kind === 'job' ? [a.company, optLabel('jobType', a.jobType)] : a.kind === 'rent' ? [optLabel('propertyType', a.propertyType), a.rooms && T('{n} রুম', { n: num(a.rooms) })]
@@ -233,6 +260,12 @@
   }
   function adCard(a, cls = 'banner') {
     const ext = /^https?:/.test(a.link || '');
+    const tgt = `data-ad="${esc(a.id)}" href="${esc(a.link || '#/')}" ${ext ? 'target="_blank" rel="noopener sponsored"' : ''}`;
+    if (a.image && (a.layout === 'full' || a.layout === 'fulltext')) {
+      return `<a class="${cls} full ${a.layout}" ${tgt}><img src="${esc(a.image)}" alt="${esc(loc(a, 'title'))}" loading="lazy">
+        ${a.layout === 'fulltext' ? `<div class="btext">${loc(a, 'kicker') ? `<small>${esc(loc(a, 'kicker'))}</small>` : ''}<h3>${esc(loc(a, 'title'))}</h3>${loc(a, 'subtitle') ? `<p>${esc(loc(a, 'subtitle'))}</p>` : ''}</div>
+        ${loc(a, 'cta') ? `<span class="bcta">${esc(loc(a, 'cta'))}</span>` : ''}` : ''}</a>`;
+    }
     return `<a class="${cls} ${esc(a.theme || 'dark')}" data-ad="${esc(a.id)}" href="${esc(a.link || '#/')}" ${ext ? 'target="_blank" rel="noopener sponsored"' : ''}>
       ${a.image ? `<img class="bimg" src="${esc(a.image)}" alt="" loading="lazy">` : `<span class="deco">${icon(a.link?.startsWith('tel:') ? 'phone' : a.link === '#/add' ? 'store' : 'sparkle', 150)}</span>`}
       <div class="btext">${loc(a, 'kicker') ? `<small>${esc(loc(a, 'kicker'))}</small>` : ''}<h3>${esc(loc(a, 'title'))}</h3>${loc(a, 'subtitle') ? `<p>${esc(loc(a, 'subtitle'))}</p>` : ''}</div>
@@ -403,7 +436,7 @@
   const ctxbar = (shown, total, nearMode) => {
     const a = ls.get('area', '');
     return `<div class="ctxbar"><span class="ib">${icon(here ? 'nav' : 'pin', 17)}</span><div><b>${esc(here && nearMode ? T('আপনার লোকেশন') : a ? areaName(a) : T('পুরো যশোর'))}</b>
-      <small>${nearMode ? T('কাছেরগুলো আগে, দূরত্বসহ') : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
+      <small>${nearMode ? (here ? T('আপনার লোকেশন থেকে দূরত্ব — কাছেরগুলো আগে') : T('{a} থেকে দূরত্ব — কাছেরগুলো আগে', { a: areaName(a) })) : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
       ${a ? `<button class="linkbtn" data-clrarea>${T('সব এলাকা')}</button>` : ''}<button class="chipbtn" data-areasheet>${T(a ? 'বদলান' : 'এলাকা বাছুন')}</button></div>`;
   };
 
@@ -473,7 +506,8 @@
     const unseen = (D.notices || []).some(n => !ls.get('seenNotices', []).includes(n.id));
     const pop = pages.home.pop || '';
     const pool = items().filter(i => i.cat !== 'emergency' && (!pop || i.cat === pop));
-    const ranked = pool.slice().sort((a, b) => (!!b.featured - !!a.featured) || ((b.rating || 0) - (a.rating || 0)) || ((a.area === area) ? -1 : 0) || (!!a.demo - !!b.demo)).slice(0, 6);
+    const ranked = promote(pool.slice().sort((a, b) => (!!b.featured - !!a.featured) || ((b.rating || 0) - (a.rating || 0)) || ((a.area === area) ? -1 : 0) || (!!a.demo - !!b.demo)), 2).slice(0, 6);
+    const spons = promote(items().filter(i => i.sponsored && i.cat !== 'emergency'), 12);
     const o = origin();
     const near = o ? items().filter(i => i.lat != null && i.cat !== 'emergency').sort((a, b) => km(a) - km(b)).slice(0, 4) : [];
     const nearChips = [CAT.religious && ['religious', 'mosque', 'mosque', 'মসজিদ'], ['hospital', 'pharmacy', 'pill', 'ফার্মেসি'], ['hospital', '', 'hospital', 'হাসপাতাল'],
@@ -511,6 +545,9 @@
 
     <section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div>
       <div class="ktiles">${Object.entries(KINDS).map(([k, v]) => `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(counts[k] || 0) })}</small></a>`).join('')}</div></section>
+
+    ${spons.length ? `<section class="sec"><div class="sechead"><h2>${T('প্রচারিত')}</h2><span class="tag ad">Sponsored</span></div>
+      <div class="wcards">${spons.map(it => wcard(it, true)).join('')}</div></section>` : ''}
 
     <section class="sec"><div class="sechead"><h2>${T('জনপ্রিয়')}</h2><a href="#/${pop ? 'c/' + pop : 'search'}">${T('সব দেখুন')}${icon('chevR', 14)}</a></div>
       <div class="pills">${[{ id: '' }, ...cats].map(c => `<button class="pill ${pop === c.id ? 'on' : ''}" data-pop="${c.id}">${esc(c.id ? short(c) : T('সব'))}</button>`).join('')}</div>
@@ -564,13 +601,18 @@
     if (halal) list = list.filter(i => i.halal);
     const area = ls.get('area', ''), total = list.length;
     // For "nearby" categories (mosques, hospitals) the chosen area is where distances start, not a filter.
-    const nearMode = !!(c?.near && !qtext && origin() && (!sort || sort === 'near'));
+    // Nearby views (mosques, hospitals, or any "near me" search): the area/location is where distances start, not a filter.
+    const nearMode = !!(origin() && (sort === 'near' || (intent?.near && !sort) || (c?.near && !qtext && !sort)));
+    const beforeArea = list;
     if (area && !nearMode) list = list.filter(i => inArea(i, area));
+    // Paid promotion is not limited by the chosen area: up to two sponsored matches from elsewhere still lead the list.
+    const extraSpons = area && !nearMode ? beforeArea.filter(i => i.sponsored && !list.includes(i)).sort((a, b) => rot(a.id) - rot(b.id)).slice(0, 2) : [];
     const nearSort = sort === 'near' || intent?.near || nearMode;
     if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     else if (nearSort) list.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
     else if (!qtext) list.sort((a, b) => (!!b.sponsored - !!a.sponsored) || (!!b.featured - !!a.featured) || ((b.area === area) - (a.area === area)) ||
       ((a.status === 'closed') - (b.status === 'closed')) || (!!a.demo - !!b.demo) || (b.rating || 0) - (a.rating || 0));
+    if (cat !== 'emergency') list = promote([...extraSpons, ...list]);
     const active = !!(open || budget || sort || halal || cat && qtext);
     const link = o => { const np = new URLSearchParams(p); Object.entries(o).forEach(([k, v]) => v ? np.set(k, v) : np.delete(k)); return (c && !qtext ? `#/c/${cat}` : '#/search') + (np.toString() ? '?' + np : ''); };
     const title = qtext ? T('খুঁজুন') : c ? catName(c) : T('সব তথ্য');
@@ -600,7 +642,7 @@
       ${halal ? `<a class="pill sm on" style="margin:0 0 10px" href="${link({ halal: '' })}">${icon('halal', 14)}${T('শুধু হালাল')} ${icon('x', 12)}</a>` : ''}
       <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${[['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']]
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
-      <div class="rows">${list.map(row).join('') || (kindHit ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>` : ''}`;
+      ${nearMode ? nearList(list) : `<div class="rows">${list.map(row).join('') || (kindHit ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>`}` : ''}`;
   };
 
   pages.item = ([id]) => {
@@ -627,7 +669,7 @@
       <div class="sheet-body">
         <div class="dtitle"><h1>${esc(nameOf(it))}</h1>${it.price ? `<div class="price"><b>${money(it.price)}</b><small>${T(PRICE_UNIT[it.cat] || 'আনুমানিক')}</small></div>` : ''}</div>
         <div class="dsub">${icon(subIcon(it), 15)}${esc(subLabel(it))}${it.area ? ` · ${esc(areaName(it.area))}` : ''}${it.rating ? ` · ${rateTag(it)}` : ''}</div>
-        <div class="dtags">${statusTag(it)}${openTag(it)}${halalTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
+        <div class="dtags">${d != null ? `<a class="tag dist" href="${esc(dirUrl(it))}" target="_blank" rel="noopener" data-map="${esc(id)}">${icon('nav', 12)}${kmText(d)} ${T('দূরে')} · ${walkText(d)}</a>` : ''}${statusTag(it)}${openTag(it)}${halalTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
         ${it.demo ? `<div class="note warn">${icon('info', 16)}<span>${T('এটি নমুনা তথ্য, বাস্তব প্রতিষ্ঠান নয়।')}</span></div>` : ''}
         ${!it.phone && it.cat === 'emergency' ? `<div class="note red">${icon('alert', 16)}<span>${T('স্থানীয় নম্বর যাচাই চলছে। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।')}</span></div>` : ''}
         <div class="tabs">${[['about', T('বিবরণ')], ['info', T('তথ্য')], ['reviews', T('রিভিউ') + (it.reviews ? ` (${num(it.reviews)})` : '')]].map(([k, v]) =>
@@ -778,6 +820,7 @@
     if (my && tab === 'biz') body = my.listings.length ? `<div class="rows">${my.listings.map(l => { const [t, k] = STATE[l.state] || STATE.pending;
       return `<div class="row" style="align-items:flex-start">${media(l)}<div class="body"><b>${esc(l.name)}</b><div class="sub">${esc(subLabel(l))}${l.paidUntil ? ' · ' + T('মেয়াদ {d} পর্যন্ত', { d: fmtDate(l.paidUntil) }) : ''}</div>
         <div class="meta"><span class="tag ${k}">${T(t)}</span>${l.state === 'approved' ? `<span class="muted">${T('{v} ভিউ · {c} কল', { v: num(l.views), c: num(l.calls) })}</span>` : ''}</div>
+        ${l.sponsored && l.state === 'approved' ? `<div class="sponsbox">${icon('sparkle', 15)}<span>${T('Sponsored — {n} বার মানুষের সামনে দেখানো হয়েছে', { n: num(l.imps || 0) })}${l.sponsoredUntil ? ' · ' + T('{d} পর্যন্ত', { d: fmtDate(l.sponsoredUntil) }) : ''}</span></div>` : ''}
         ${l.payment?.status === 'rejected' && l.payment.note ? `<div class="muted" style="font-size:12px;margin-top:4px">${esc(l.payment.note)}</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           ${['unpaid', 'payment_rejected', 'expired'].includes(l.state) || (l.state === 'approved' && soon(l)) ? `<a class="btn sm" href="#/pay/${l.id}">${icon('wallet', 16)}${T(l.state === 'unpaid' || l.state === 'payment_rejected' ? 'পেমেন্ট করুন' : 'নবায়ন করুন')}</a>` : ''}
@@ -1045,6 +1088,7 @@
       ${site.contactPhone ? `<a class="li" href="tel:${esc(site.contactPhone)}"><span class="ib">${icon('phone', 18)}</span><div>${T('যোগাযোগ')}<small>${num(site.contactPhone)}</small></div>${icon('chevR', 18)}</a>` : ''}
       ${site.facebook ? `<a class="li" href="${esc(site.facebook)}" target="_blank" rel="noopener"><span class="ib">${icon('facebook', 18)}</span><div>${T('ফেসবুক পেজ')}</div>${icon('external', 16)}</a>` : ''}
       <button class="li" data-notices><span class="ib">${icon('bell', 18)}</span><div>${T('ঘোষণা ও আপডেট')}</div>${icon('chevR', 18)}</button>
+      <button class="li" data-hardrefresh><span class="ib">${icon('refresh', 18)}</span><div>${T('রিফ্রেশ করুন')}<small>${T('নতুন তথ্য আনুন — যেকোনো পেজের উপরে টেনে নামালেও হয়')}</small></div>${icon('chevR', 18)}</button>
       <a class="li" href="#/terms"><span class="ib">${icon('doc', 18)}</span><div>${T('শর্তাবলি')}</div>${icon('chevR', 18)}</a>
       <a class="li" href="/"><span class="ib">${icon('info', 18)}</span><div>${T('Jashore360 সম্পর্কে')}<small>${esc(loc(site, 'about'))}</small></div>${icon('chevR', 18)}</a>
     </div>
@@ -1148,10 +1192,24 @@
     const ef = app.querySelector('form[data-edit]'); if (ef && cache.edit) fillForm(ef, cache.edit.doc);
     const h1 = app.querySelector('h1')?.textContent;
     document.title = name === 'home' ? `Jashore360 — ${loc(D.site, 'tagline')}` : `${h1 || ''} · Jashore360`;
-    carousel(); adImpressions();
+    carousel(); adImpressions(); listingImpressions();
     const af = app.querySelector('[autofocus]'); if (af && !matchMedia('(pointer:coarse)').matches) af.focus();
   }
   window.addEventListener('hashchange', () => { closeSheet(true); render(); });
+
+  const impSent = new Set(), impQueue = [];
+  let impObs, impFlush;
+  function listingImpressions() {
+    if (!('IntersectionObserver' in window)) return;
+    impObs?.disconnect();
+    impObs = new IntersectionObserver(es => es.forEach(e => {
+      const id = e.target.dataset.imp;
+      if (!e.isIntersecting || impSent.has(id)) return;
+      impSent.add(id); impQueue.push(id);
+      clearTimeout(impFlush); impFlush = setTimeout(() => beacon('/impressions', { ids: impQueue.splice(0) }), 1500);
+    }), { threshold: .6 });
+    app.querySelectorAll('[data-imp]').forEach(el => impObs.observe(el));
+  }
 
   let slideTimer;
   function carousel() {
@@ -1198,6 +1256,7 @@
     if ('back' in ds) return history.length > 1 ? history.back() : go('#/');
     if ('filter' in ds) { const [, q = ''] = location.hash.split('?'); const p = new URLSearchParams(q); const m = location.hash.match(/#\/c\/([\w-]+)/); if (m) p.set('cat', m[1]); return filterSheet(p); }
     if ('notices' in ds) return noticesSheet();
+    if ('hardrefresh' in ds) return hardRefresh();
     if ('areasheet' in ds) return areaSheet();
     if ('clrarea' in ds) { ls.set('area', ''); originCache = null; cache.ads = {}; return render(); }
     if ('locate' in ds) return doLocate();
@@ -1336,6 +1395,30 @@
       }
     } catch (er) { toast(er.message); } finally { busy(false); }
   });
+
+  /* ---------------- refresh: pull down at the top of any page, or Profile → Refresh ---------------- */
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr'; ptr.innerHTML = icon('refresh', 20); document.body.appendChild(ptr);
+  const setPtr = d => { ptr.style.transform = `translate(-50%, ${Math.min(d, 90) - 64}px) rotate(${d * 4}deg)`; ptr.style.opacity = Math.min(1, d / 60); ptr.classList.toggle('ready', d > 64); };
+  let refreshing = false;
+  async function hardRefresh() {
+    if (refreshing) return;
+    refreshing = true; ptr.classList.add('spin'); setPtr(80);
+    try {
+      await refresh();
+      ME = await api('/auth/me').catch(() => null);
+      cache.ads = {}; cache.my = null; cache.ad = null; originCache = null;
+      render(); toast(T('আপডেট হয়েছে'));
+      navigator.serviceWorker?.getRegistration().then(r => r?.update()).catch(() => {});
+    } catch { toast(T('সংযোগ নেই — একটু পরে আবার চেষ্টা করুন')); }
+    finally { refreshing = false; ptr.classList.remove('spin'); setPtr(0); }
+  }
+  let y0 = null, dy = 0;
+  document.addEventListener('touchstart', e => {
+    y0 = window.scrollY <= 0 && e.touches.length === 1 && !document.querySelector('.sheet, .popup-bg, .welcome') ? e.touches[0].clientY : null; dy = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', e => { if (y0 == null) return; dy = (e.touches[0].clientY - y0) * .5; if (dy > 0) setPtr(dy); else { y0 = null; setPtr(0); } }, { passive: true });
+  document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; if (dy > 64) hardRefresh(); else setPtr(0); }, { passive: true });
 
   /* ---------------- boot ---------------- */
   function setData(d) { D = d; CAT = Object.fromEntries(d.categories.map(c => [c.id, c])); buildKeys(); }

@@ -276,15 +276,17 @@
         <div class="card"><h3>${T('প্রকাশ ও অবস্থা')}</h3><div class="cbody form">
           <label class="field"><span>${T('তথ্যের অবস্থা')}</span><select name="status">${Object.entries(STATUS).map(([k, [v]]) => `<option value="${k}" ${k === l.status ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></label>
           ${f('verifiedAt', 'সর্বশেষ যাচাইয়ের তারিখ', 'type="date"', '"যাচাইকৃত" বাছলে খালি থাকলে আজকের তারিখ বসবে')}
+          ${f('sponsoredUntil', 'Sponsored কবে পর্যন্ত', 'type="date"', 'এই তারিখের পর নিজে থেকে সাধারণ তালিকা হয়ে যাবে। খালি রাখলে বন্ধ না করা পর্যন্ত চলবে।')}
           ${owner() && l._plan ? f('_paidUntil', 'পেইড মেয়াদ শেষ', 'type="date"', 'এই তারিখের পর তালিকাটি অ্যাপে দেখাবে না') : ''}
-          ${[['featured', 'হোমপেজে "জনপ্রিয়" অংশে দেখান'], ['sponsored', 'Sponsored (পেইড প্রচার)', 'তালিকার উপরে, "Sponsored" লেবেলসহ'], ['pin', 'জরুরি তালিকায় সবার উপরে'],
+          ${[['featured', 'হোমপেজে "জনপ্রিয়" অংশে দেখান'], ['sponsored', 'Sponsored (পেইড প্রচার)', 'সব তালিকা ও সার্চের উপরে, হোমপেজের "প্রচারিত" অংশে, "Sponsored" লেবেলসহ'], ['pin', 'জরুরি তালিকায় সবার উপরে'],
             ['halal', 'হালাল', 'খাবারের দোকান/রেস্টুরেন্টে "হালাল" চিহ্ন ও হালাল ফিল্টারে দেখাবে'], ['demo', 'নমুনা তথ্য', 'অ্যাপে "নমুনা" লেবেল দেখাবে'], ['hidden', 'লুকিয়ে রাখুন', 'অ্যাপে দেখাবে না']].map(([k, t, s]) =>
             `<label class="check"><input type="checkbox" name="${k}" ${l[k] ? 'checked' : ''}><span>${T(t)}${s ? `<small>${T(s)}</small>` : ''}</span></label>`).join('')}
         </div></div>
         <div class="card"><h3>${T('ছবি')} <small class="muted" style="font-weight:400">${T('প্রথম ছবিটি কভার')}</small></h3><div class="cbody"><div class="imgs" data-imgs></div></div></div>
         ${l.videos?.length ? `<div class="card"><h3>${T('ভিডিও')}</h3><div class="cbody"><div class="vvideos" data-vids></div></div></div>` : ''}
         ${!isNew ? `<div class="card"><h3>${T('পরিসংখ্যান')}</h3><div class="cbody stat3">
-          <div><b>${num(l._views)}</b><small>${T('ভিউ')}</small></div><div><b>${num(l._calls)}</b><small>${T('কল')}</small></div><div><b>${num(l._maps)}</b><small>${T('ম্যাপ')}</small></div></div></div>` : ''}
+          <div><b>${num(l._views)}</b><small>${T('ভিউ')}</small></div><div><b>${num(l._calls)}</b><small>${T('কল')}</small></div><div><b>${num(l._maps)}</b><small>${T('ম্যাপ')}</small></div></div>
+          ${l.sponsored || l._imps ? `<p class="muted" style="margin:0;padding:0 20px 18px;font-size:13px">${icon('sparkle', 14)} ${T('Sponsored হিসেবে {n} বার স্ক্রিনে দেখানো হয়েছে', { n: num(l._imps || 0) })}</p>` : ''}</div>` : ''}
       </div>
       <div class="savebar" style="grid-column:1/-1">${!isNew ? `<button type="button" class="btn red" data-dellisting="${esc(id)}" style="margin-right:auto">${icon('trash', 18)}${T('মুছুন')}</button>` : ''}
         ${l._review === 'pending' ? `<button type="submit" class="btn" name="approve" value="1">${icon('check', 18)}${T('সংরক্ষণ ও প্রকাশ')}</button>` : `<button type="submit" class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button>`}</div>
@@ -323,7 +325,7 @@
     const fd = new FormData(form), v = Object.fromEntries(fd);
     const out = { name: v.name, nameEn: v.nameEn, cat: v.cat, sub: v.sub, about: v.about, aboutEn: v.aboutEn, note: v.note, features: v.features, tags: v.tags, phone: v.phone, phone2: v.phone2,
       web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, mapUrl: v.mapUrl, price: (v.price || '').replace(/[^\d]/g, ''),
-      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, images: form._images, videos: form._videos || [] };
+      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, sponsoredUntil: v.sponsoredUntil, images: form._images, videos: form._videos || [] };
     if ('_paidUntil' in v) out._paidUntil = v._paidUntil;
     ['featured', 'sponsored', 'pin', 'demo', 'hidden', 'halal'].forEach(k => out[k] = !!v[k]);
     return out;
@@ -507,7 +509,8 @@
   const COLS = {
     ads: {
       addLabel: 'নতুন বিজ্ঞাপন', intro: 'অ্যাপের বিজ্ঞাপনের জায়গাগুলো শুধু মূল অ্যাডমিন নিয়ন্ত্রণ করেন। বিজ্ঞাপনদাতার নাম, মেয়াদ ও কোথায় দেখাবে ঠিক করুন — ভিউ ও ক্লিক নিজে থেকেই গোনা হয়। পেইড প্রচারে উপরের ছোট লেখায় "Sponsored" দিন।',
-      preview: b => `<span class="bprev ${esc(b.theme || 'dark')}" style="${b.image ? `background-image:linear-gradient(90deg,rgba(15,27,45,.85),rgba(15,27,45,.2)),url('${esc(b.image)}')` : ''}">${esc(b.title)}</span>`,
+      preview: b => b.image && b.layout === 'full' ? `<span class="bprev full" style="background-image:url('${esc(b.image)}')"></span>`
+        : `<span class="bprev ${esc(b.theme || 'dark')}" style="${b.image ? `background-image:linear-gradient(90deg,rgba(15,27,45,.85),rgba(15,27,45,.2)),url('${esc(b.image)}')` : ''}">${esc(b.title)}</span>`,
       title: b => b.title, sub: (b, st) => {
         const s = st?.[b.id] || { imps: 0, clicks: 0 }, ctr = s.imps ? (s.clicks / s.imps * 100).toFixed(1) : 0, t = new Date().toISOString().slice(0, 10);
         const expired = b.end && b.end < t, notyet = b.start && b.start > t;
@@ -530,8 +533,11 @@
         ['advertiser', 'text', 'বিজ্ঞাপনদাতা', 'প্রতিষ্ঠানের নাম ও ফোন — শুধু আপনার রেকর্ডের জন্য'], ['kicker', 'text', 'উপরের ছোট লেখা', 'যেমন: Sponsored, সীমিত অফার'],
         ['title', 'text', 'শিরোনাম *'], ['titleEn', 'text', 'শিরোনাম (English)'], ['subtitle', 'text', 'বিবরণ'], ['subtitleEn', 'text', 'বিবরণ (English)'],
         ['cta', 'text', 'বাটনের লেখা', 'যেমন: দেখুন'], ['ctaEn', 'text', 'বাটনের লেখা (English)'],
-        ['link', 'text', 'লিংক', '#/p/আইডি, #/c/restaurant, tel:01XXXXXXXXX বা https://…'], ['theme', 'select', 'রং', '', [['dark', 'গাঢ় নীল'], ['brand', 'সবুজ'], ['accent', 'কমলা'], ['danger', 'লাল']]],
-        ['start', 'date0', 'শুরুর তারিখ'], ['end', 'date0', 'শেষের তারিখ', 'খালি রাখলে মেয়াদ নেই'], ['image', 'image', 'ছবি (ঐচ্ছিক)', 'ডান পাশে দেখাবে']]
+        ['link', 'text', 'লিংক', '#/p/আইডি, #/c/restaurant, tel:01XXXXXXXXX বা https://…'],
+        ['layout', 'select', 'ধরন', '', [['card', 'রং + লেখা (ছবি থাকলে ডান পাশে)'], ['full', 'পুরো ব্যানার জুড়ে শুধু ছবি'], ['fulltext', 'পুরো ব্যানার জুড়ে ছবি, উপরে লেখা']]],
+        ['image', 'image', 'ছবি', 'পুরো ব্যানারের জন্য চওড়া ছবি দিন — ১২০০×৫০০ পিক্সেল (১২:৫) সবচেয়ে ভালো দেখায়। লেখা ছবিতেই থাকলে "শুধু ছবি" বাছুন।'],
+        ['theme', 'select', 'রং (ছবি ছাড়া ব্যানারে)', '', [['dark', 'গাঢ় নীল'], ['brand', 'সবুজ'], ['accent', 'কমলা'], ['danger', 'লাল']]],
+        ['start', 'date0', 'শুরুর তারিখ'], ['end', 'date0', 'শেষের তারিখ', 'খালি রাখলে মেয়াদ নেই']]
     },
     notices: {
       addLabel: 'নতুন ঘোষণা', intro: 'অ্যাপের বেল আইকনে দেখায়। ট্রাফিক, বিদ্যুৎ বিভ্রাট, ক্যাম্প বা জরুরি সতর্কতা জানাতে ব্যবহার করুন — শুধু যাচাইকৃত তথ্য দিন।',
@@ -557,6 +563,7 @@
       title: p => `${p.bn} · ${money(p.price)}`, sub: p => `${T('{n} দিন', { n: num(p.days) })} · ${esc((p.perks || []).join(', '))}${p.featured ? ` · <span class="tag ad">${T('হোমে জনপ্রিয়')}</span>` : ''}`,
       fields: () => [['id', 'text', 'আইডি *', 'ইংরেজি ছোট হাতের, যেমন: basic'], ['bn', 'text', 'নাম (বাংলা) *'], ['en', 'text', 'নাম (English)'],
         ['price', 'number', 'দাম (৳) *'], ['days', 'number', 'মেয়াদ (দিন)', 'যেমন ৩৬৫ = এক বছর'], ['featured', 'check', 'এই প্যাকেজের তালিকা হোমপেজে "জনপ্রিয়" অংশে দেখাবে'],
+        ['sponsored', 'check', 'Sponsored — প্যাকেজের মেয়াদ পর্যন্ত সব তালিকা ও সার্চের সবার উপরে, হোমপেজের "প্রচারিত" অংশে'],
         ['perks', 'list', 'সুবিধাগুলো (কমা দিয়ে)'], ['perksEn', 'list', 'সুবিধাগুলো (English)']],
       after: () => paymentForm()
     }
