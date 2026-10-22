@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS classifieds (
 CREATE TABLE IF NOT EXISTS daily (day TEXT NOT NULL, metric TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, metric));
 CREATE TABLE IF NOT EXISTS adstats (id TEXT PRIMARY KEY, imps INTEGER NOT NULL DEFAULT 0, clicks INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS media (name TEXT PRIMARY KEY, user_id INTEGER, kind TEXT NOT NULL, size INTEGER, created_at INTEGER);
+CREATE TABLE IF NOT EXISTS aliases (old TEXT PRIMARY KEY, new TEXT NOT NULL);
 """
 
 MIGRATIONS = [('listings', 'owner_id', 'INTEGER'), ('listings', 'plan', 'TEXT'), ('listings', 'paid_until', 'TEXT'),
@@ -225,6 +226,12 @@ def get_setting(c, key):
     return json.loads(row[0]) if row else None
 
 
+def resolve_lid(c, lid):
+    """A listing's current id, following renamed links (old ids stay valid)."""
+    r = c.execute('SELECT new FROM aliases WHERE old=?', (lid,)).fetchone()
+    return r[0] if r else lid
+
+
 def new_id(prefix=''):
     return prefix + secrets.token_hex(6)
 
@@ -274,6 +281,7 @@ def bootstrap_payload():
                 d['rating'], d['reviews'] = ratings[r['id']]
             listings.append(d)
         out = {k: get_setting(c, k) for k in SETTING_KEYS}
+        aliases = {r['old']: r['new'] for r in c.execute('SELECT old, new FROM aliases')}
         counts = {k: 0 for k in CLASS_KINDS}
         for r in c.execute("SELECT kind, COUNT(*) FROM classifieds WHERE review='approved' AND expires_at>? GROUP BY kind", (int(time.time()),)):
             counts[r[0]] = r[1]
@@ -285,6 +293,7 @@ def bootstrap_payload():
     out['categories'] = [x for x in out['categories'] or [] if x.get('active', True)]
     out['listings'] = listings
     out['classifiedCounts'] = counts
+    out['aliases'] = aliases
     out['v'] = v
     raw = json.dumps(out, ensure_ascii=False, separators=(',', ':')).encode()
     entry = (raw, gzip.compress(raw, 6), '"b%d-%s"' % (v, t))
@@ -857,6 +866,7 @@ def review_row(r, include_private=False):
 def api_reviews(h, lid):
     me = h.user()
     with db() as c:
+        lid = resolve_lid(c, lid)
         rows = c.execute('SELECT * FROM reviews WHERE listing_id=? AND hidden=0 ORDER BY created_at DESC LIMIT 200', (lid,)).fetchall()
         mine = me and c.execute('SELECT 1 FROM reviews WHERE listing_id=? AND user_id=?', (lid, me['id'])).fetchone()
     h.json({'reviews': [review_row(r) for r in rows], 'mine': bool(mine)})
@@ -867,7 +877,8 @@ def api_add_review(h):
     b, me = h.body(), h.me
     if not rate_ok('rv:%d' % me['id'], 15, 86400):
         raise ApiError(429, 'আজ অনেক রিভিউ দেওয়া হয়েছে, পরে চেষ্টা করুন')
-    lid = str(b.get('listing') or '')
+    with db() as c:
+        lid = resolve_lid(c, str(b.get('listing') or ''))
     stars = to_int(b.get('stars')) or 0
     if not 1 <= stars <= 5:
         raise ApiError(400, 'স্টার রেটিং দিন')
@@ -923,7 +934,7 @@ def api_track(h):
     col = {'view': 'views', 'call': 'calls', 'map': 'maps'}.get(b.get('type'))
     if col and rate_ok(f'tr:{h.who()}:{b.get("id")}:{col}', 3, 3600):
         with db() as c:
-            c.execute(f'UPDATE listings SET {col}={col}+1 WHERE id=?', (str(b.get('id')),))
+            c.execute(f'UPDATE listings SET {col}={col}+1 WHERE id=?', (resolve_lid(c, str(b.get('id'))),))
             inc(c, col)
     h.send(204)
 
@@ -1446,6 +1457,43 @@ def adm_review_listing(h, lid):
     bump()
     h.audit('listing.' + decision, doc.get('name'))
     h.json({'ok': True})
+
+
+SLUG_RE = re.compile(r'^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$')
+
+
+@route('POST', r'/admin/listings/([\w-]+)/rename', auth='admin')
+def adm_rename_listing(h, lid):
+    """Change a listing's link (/app/#/p/<id>). Reviews, payments and reports move with it; the old link keeps working."""
+    new = str(h.body().get('id') or '').strip().lower()
+    if not SLUG_RE.match(new):
+        raise ApiError(400, 'লিংকে শুধু ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও - দিন (যেমন: shahi-khana)')
+    if new == lid:
+        return h.json({'ok': True, 'id': lid})
+    with db() as c:
+        r = c.execute('SELECT doc FROM listings WHERE id=?', (lid,)).fetchone()
+        if not r:
+            raise ApiError(404, 'পাওয়া যায়নি')
+        if c.execute('SELECT 1 FROM listings WHERE id=?', (new,)).fetchone():
+            raise ApiError(409, 'এই লিংক আরেকটি তালিকায় আছে, অন্যটি দিন')
+        doc = json.loads(r['doc'])
+        if 'id' in doc:
+            doc['id'] = new
+        c.execute('UPDATE listings SET id=?, doc=? WHERE id=?', (new, json.dumps(doc, ensure_ascii=False), lid))
+        for table in ('reviews', 'reports', 'payments'):
+            c.execute(f'UPDATE {table} SET listing_id=? WHERE listing_id=?', (new, lid))
+        c.execute('DELETE FROM aliases WHERE old=?', (new,))                 # the new id is a real id again
+        c.execute('UPDATE aliases SET new=? WHERE new=?', (new, lid))        # links that pointed to the old id
+        c.execute('INSERT OR REPLACE INTO aliases VALUES (?,?)', (lid, new))
+        ads = get_setting(c, 'ads') or []
+        if any(a.get('link') == '#/p/' + lid for a in ads):
+            for a in ads:
+                if a.get('link') == '#/p/' + lid:
+                    a['link'] = '#/p/' + new
+            c.execute("UPDATE settings SET value=? WHERE key='ads'", (json.dumps(ads, ensure_ascii=False),))
+    bump()
+    h.audit('listing.rename', f'{lid} → {new}')
+    h.json({'ok': True, 'id': new})
 
 
 @route('DELETE', r'/admin/listings/([\w-]+)', auth='admin')

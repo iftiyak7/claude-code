@@ -211,6 +211,8 @@
     const demo = S.listings.filter(l => l.demo).length;
     const today = new Date().toISOString().slice(0, 10);
     shell('listings', T('সব তালিকা'), `${flag === 'demo' && demo ? `<button class="btn red" data-deldemo>${icon('trash', 18)}${T('সব নমুনা মুছুন')}</button>` : ''}<a class="btn" href="#/listings/new">${icon('plus', 18)}<span class="hide-sm">${T('নতুন তালিকা')}</span></a>`, `
+      ${demoIdFix().length ? `<div class="note warn" style="align-items:center">${icon('alert', 20)}<div style="flex:1">${T('{n}টি আসল তালিকার লিংকে এখনো "demo" লেখা আছে (যেমন /p/{id}), কারণ সেগুলো নমুনা তথ্য বদলে বানানো।', { n: num(demoIdFix().length), id: esc(demoIdFix()[0].id) })}</div>
+        <button class="btn sm" data-fixdemoids>${T('এক ক্লিকে ঠিক করুন')}</button></div>` : ''}
       <form class="toolbar" data-filter><label class="search">${icon('search', 18)}<input name="q" value="${esc(p.get('q') || '')}" placeholder="${T('নাম, এলাকা বা ফোন দিয়ে খুঁজুন')}"></label>
         <select name="cat"><option value="">${T('সব ক্যাটাগরি')}</option>${cats().map(c => `<option value="${c.id}" ${c.id === cat ? 'selected' : ''}>${esc(catName(c))}</option>`).join('')}</select>
         <select name="status"><option value="">${T('সব অবস্থা')}</option>${Object.entries(STATUS).map(([k, [v]]) => `<option value="${k}" ${k === st ? 'selected' : ''}>${T(v)}</option>`).join('')}</select>
@@ -239,11 +241,16 @@
     shell(back, isNew ? T('নতুন তালিকা') : l.name, `<a class="btn ghost" href="#/${back}">${T('বাতিল')}</a>`, `
       <form class="split" data-edit="${isNew ? '' : esc(id)}">
       <div class="grid">
+        ${!isNew && /(^|-)demo(-|$)/.test(id) && !l.demo ? `<div class="note warn">${icon('alert', 20)}<div>${T('এই তালিকার লিংকে "demo" লেখা আছে, কারণ এটি নমুনা তথ্য থেকে বানানো। নিচে "লিংক (URL)" বদলে দিন — যেমন ইংরেজি নাম থেকে।')}</div></div>` : ''}
         ${l._owner ? `<div class="note info">${icon('user', 20)}<div><b>${T('মালিক')}:</b> ${esc(l._owner.name)} · ${esc(l._owner.phone)}${l._plan ? ` · ${T('প্যাকেজ')}: ${esc(l._plan)}` : ''}${l._payment ? ` · ${T('পেমেন্ট')}: ${esc(T(PAYSTATE[l._payment.status]?.[0] || l._payment.status))}` : ''}</div></div>` : ''}
         <div class="card"><h3>${T('মৌলিক তথ্য')}</h3><div class="cbody form">
           <div class="two">${f('name', 'নাম (বাংলা) *', 'required maxlength="120"')}${f('nameEn', 'নাম (English)', 'maxlength="120"', 'ইংরেজি ভাষার অ্যাপে ও ম্যাপে খোঁজায় দেখায়')}</div>
           <div class="two"><label class="field"><span>${T('ক্যাটাগরি *')}</span><select name="cat" data-catsel>${cats().map(x => `<option value="${x.id}" ${x.id === l.cat ? 'selected' : ''}>${esc(catName(x))}</option>`).join('')}</select></label>
             <label class="field"><span>${T('ধরন')}</span><select name="sub" data-subsel data-val="${esc(l.sub || '')}"></select></label></div>
+          ${!isNew ? `<div class="field"><span>${T('লিংক (URL)')}</span>
+            <div class="slugrow"><em>${esc(location.host)}/app/#/p/</em><input name="_slug" value="${esc(id)}" maxlength="60" autocapitalize="off" spellcheck="false" pattern="[a-z0-9][a-z0-9\-]*">
+              <button type="button" class="btn sm ghost" data-genslug>${T('ইংরেজি নাম থেকে')}</button></div>
+            <em>${T('শুধু ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও -। বদলালে পুরনো লিংকও নতুনটিতে নিয়ে যাবে।')}</em></div>` : ''}
           <label class="field"><span>${T('বিবরণ')}</span><textarea name="about" rows="5" maxlength="3000">${esc(l.about || '')}</textarea></label>
           <label class="field"><span>${T('বিবরণ (English)')}</span><textarea name="aboutEn" rows="3" maxlength="3000">${esc(l.aboutEn || '')}</textarea></label>
           <label class="field"><span>${T('ছোট নোট')}</span><input name="note" value="${esc(l.note || '')}" maxlength="400"><em>${T('তালিকা ও জরুরি পেজে নামের নিচে দেখায়')}</em></label>
@@ -287,6 +294,15 @@
     form._videos = [...(l.videos || [])];
     fillSubs(form); drawImgs(form); drawVids(form);
   };
+
+  const slugify = (l, taken) => {
+    let base = String(l.nameEn || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '');
+    if (!base) base = (l.cat || 'place') + '-' + Math.random().toString(36).slice(2, 6);
+    let id = base, n = 2;
+    while (taken.has(id)) id = `${base}-${n++}`;
+    return id;
+  };
+  const demoIdFix = () => (S.listings || []).filter(l => /(^|-)demo(-|$)/.test(l.id) && !l.demo);
 
   function fillSubs(form) {
     const cs = form.querySelector('[data-catsel]'), ss = form.querySelector('[data-subsel]'), c = catOf(cs.value);
@@ -851,6 +867,18 @@
     }
     if (d.pickicon) { const box = b.closest('.field'); box.querySelector('input').value = d.pickicon; box.querySelectorAll('[data-pickicon]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if ('clearimg' in d) { const box = b.closest('.imgupload'); box.querySelector('input[type=hidden]').value = ''; box.querySelector('.pv').style.backgroundImage = ''; box.closest('form')?.dispatchEvent(new Event('change')); return; }
+    if ('genslug' in d) {
+      const f = b.closest('form'), taken = new Set((S.listings || []).map(x => x.id).filter(x => x !== f.dataset.edit));
+      f._slug.value = slugify({ nameEn: f.nameEn.value, cat: f.cat.value }, taken);
+      if (!f.nameEn.value) toast(T('আগে "নাম (English)" লিখুন, তাহলে সুন্দর লিংক হবে'), true);
+      return;
+    }
+    if ('fixdemoids' in d) {
+      const list = demoIdFix(), taken = new Set(S.listings.map(x => x.id));
+      if (!list.length || !confirm(T('{n}টি তালিকার লিংক থেকে "demo" সরানো হবে। পুরনো লিংকও কাজ করবে। চালিয়ে যাবেন?', { n: num(list.length) }))) return;
+      for (const l of list) { const nid = slugify(l, taken); taken.add(nid); try { await api(`/admin/listings/${l.id}/rename`, { id: nid }); } catch (er) { toast(er.message, true); } }
+      toast(T('লিংক ঠিক করা হয়েছে')); await refreshList(); return route();
+    }
     if (d.viddel != null) { const f = b.closest('form'); f._videos.splice(+d.viddel, 1); return drawVids(f); }
     if (d.imgdel != null) { const f = b.closest('form'); f._images.splice(+d.imgdel, 1); return drawImgs(f); }
     if (d.imgfirst != null) { const f = b.closest('form'); f._images.unshift(...f._images.splice(+d.imgfirst, 1)); return drawImgs(f); }
@@ -937,6 +965,8 @@
     if (btn) btn.disabled = true;
     try {
       if (id) await api('/admin/listings/' + id, body, 'PUT'); else await api('/admin/listings', body);
+      const slug = f._slug?.value.trim().toLowerCase();
+      if (id && slug && slug !== id) await api(`/admin/listings/${id}/rename`, { id: slug });
       toast(T('সংরক্ষণ হয়েছে')); await refreshList(); location.hash = '#/listings';
     } catch (er) { toast(er.message, true); if (btn) btn.disabled = false; }
   });

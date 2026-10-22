@@ -432,5 +432,16 @@ Object.assign(window.I18N_EN, {
   'মসজিদ ও উপাসনালয়': 'Mosques & worship',
   'লিংক থেকে লোকেশন পাওয়া যায়নি। Google Maps-এ জায়গাটি খুলে "Share" থেকে লিংক কপি করুন।': 'Could not find a location in that link. Open the place in Google Maps and copy the link from "Share".',
   'লিংকটি খোলা যায়নি, আবার চেষ্টা করুন': 'Could not open the link, please try again',
-  'আপনার লোকেশন': 'Your location', 'কাছেরগুলো আগে, দূরত্বসহ': 'Nearest first, with distance'
+  'আপনার লোকেশন': 'Your location', 'কাছেরগুলো আগে, দূরত্বসহ': 'Nearest first, with distance',
+  'লিংক (URL)': 'Link (URL)',
+  'ইংরেজি নাম থেকে': 'From English name',
+  'শুধু ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও -। বদলালে পুরনো লিংকও নতুনটিতে নিয়ে যাবে।': 'Only lowercase English letters, numbers and -. The old link will keep redirecting to the new one.',
+  'এই তালিকার লিংকে "demo" লেখা আছে, কারণ এটি নমুনা তথ্য থেকে বানানো। নিচে "লিংক (URL)" বদলে দিন — যেমন ইংরেজি নাম থেকে।': 'This listing\'s link still says "demo" because it was made from sample data. Change the "Link (URL)" below — e.g. from the English name.',
+  'আগে "নাম (English)" লিখুন, তাহলে সুন্দর লিংক হবে': 'Fill in "Name (English)" first for a nicer link',
+  '{n}টি তালিকার লিংক থেকে "demo" সরানো হবে। পুরনো লিংকও কাজ করবে। চালিয়ে যাবেন?': '"demo" will be removed from the links of {n} listings. Old links keep working. Continue?',
+  'লিংক ঠিক করা হয়েছে': 'Links fixed',
+  '{n}টি আসল তালিকার লিংকে এখনো "demo" লেখা আছে (যেমন /p/{id}), কারণ সেগুলো নমুনা তথ্য বদলে বানানো।': '{n} real listings still have "demo" in their link (e.g. /p/{id}) because they were made by editing sample data.',
+  'এক ক্লিকে ঠিক করুন': 'Fix in one click',
+  'লিংকে শুধু ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও - দিন (যেমন: shahi-khana)': 'Use only lowercase English letters, numbers and - in the link (e.g. shahi-khana)',
+  'এই লিংক আরেকটি তালিকায় আছে, অন্যটি দিন': 'Another listing already uses this link, choose a different one'
 });

@@ -80,7 +80,7 @@
 
   /* ---------------- data helpers ---------------- */
   const items = () => D.listings;
-  const getItem = id => D.listings.find(i => i.id === id);
+  const getItem = id => D.listings.find(i => i.id === id) || (D.aliases?.[id] ? D.listings.find(i => i.id === D.aliases[id]) : undefined);   // renamed links keep working
   const catOf = it => CAT[it.cat] || { bn: '', icon: 'info', color: '#0e9f6e', subs: {} };
   const catName = c => (LANG() === 'en' ? c.en || c.bn : c.bn) || '';
   const subName = (c, sub) => (LANG() === 'en' && c.subsEn?.[sub]) || c.subs?.[sub] || '';
@@ -604,6 +604,7 @@
 
   pages.item = ([id]) => {
     const it = getItem(id);
+    if (it && it.id !== id) { location.replace('#/p/' + it.id); return ''; }
     if (!it) return `${topbar('')}${empty(T('পাওয়া যায়নি'), T('তথ্যটি সরানো হয়েছে বা লিংক ভুল।'), `<a class="btn sm" href="#/">${T('হোমে ফিরুন')}</a>`)}`;
     if (pages.item.last !== id) { track(id, 'view'); pages.item.last = id; pages.item.tab = 'about'; }
     const c = catOf(it), d = km(it), tab = pages.item.tab || 'about', imgs = it.images || [];

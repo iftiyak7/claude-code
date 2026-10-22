@@ -267,3 +267,7 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 .pp-b p { margin: 8px 0 0; color: var(--ink-2); white-space: pre-wrap; font-size: 14.5px; }
 .pp-acts { display: flex; gap: 8px; margin-top: 16px; }
 .pp-acts .btn { flex: 1; justify-content: center; }
+.slugrow { display: flex; align-items: center; gap: 8px; }
+.slugrow em { font-style: normal; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.slugrow input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+@media (max-width: 640px) { .slugrow { flex-wrap: wrap; } .slugrow em { width: 100%; } }
