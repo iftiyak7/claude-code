@@ -500,14 +500,8 @@ export default async function pos(el) {
     }));
 
     const quick = h('div', { class: 'quick-cash' });
+    // Only split / full due here; the ready-made cash amounts (Exact, ৳50, ৳100…) got in the way.
     const paintQuick = () => mount(quick,
-      [['exact', t('Exact')], ...[50, 100, 500, 1000].map((n) => [n, money(String(n))])].map(([n, label]) => h('button', {
-        class: 'chip', type: 'button', onclick: () => {
-          if (n === 'exact') { tenders.splice(0, tenders.length, { account_id: defaultAcc, amount: total, reference: '' }); given = 0; givenInput.value = ''; }
-          else { given = Math.ceil(total / (n * 10000)) * n * 10000; givenInput.value = str(given, places()); }
-          paintTenders(); paintSummary();
-        },
-      }, label)),
       h('button', { class: 'chip', type: 'button', onclick: () => { tenders.push({ account_id: accounts.find((a) => a.subtype !== 'cash')?.id || defaultAcc, amount: Math.max(0, total - tenders.reduce((a, x) => a + x.amount, 0)), reference: '' }); paintTenders(); paintSummary(); } }, icon('plus', 14), t('Split payment')),
       cart.customer ? h('button', { class: 'chip', type: 'button', onclick: () => { tenders.splice(0, tenders.length, { account_id: defaultAcc, amount: 0, reference: '' }); paintTenders(); paintSummary(); } }, t('Full due')) : null);
 
