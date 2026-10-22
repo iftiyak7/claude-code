@@ -266,7 +266,10 @@ final class ProductService extends Service {
 			$unit = $avg > 0 ? $avg : Decimal::of( (int) $r['component_variant_id'] && null !== $r['variant_price'] ? $r['variant_price'] : $r['purchase_price'] );
 			$vid  = (int) $r['variant_id'];
 			if ( ! isset( $recipes[ $vid ] ) ) {
-				$recipes[ $vid ] = array( 'variant_id' => $vid, 'items' => array(), 'cost' => 0 );
+				$recipes[ $vid ] = array( 'variant_id' => $vid, 'items' => array(), 'cost' => 0, 'cost_source' => 'ingredients' );
+			}
+			if ( $unit <= 0 ) {
+				$recipes[ $vid ]['cost_source'] = 'unknown'; // No stock bought yet and no purchase price.
 			}
 			$cost                       = Decimal::mul( $qty, $unit );
 			$recipes[ $vid ]['cost']   += $cost;
@@ -282,7 +285,18 @@ final class ProductService extends Service {
 			);
 		}
 		foreach ( $recipes as &$rec ) {
-			$rec['cost'] = $see_cost ? Decimal::toString( $rec['cost'] ) : null;
+			if ( 'unknown' === $rec['cost_source'] && $rec['variant_id'] > 0 ) {
+				// Until the loose stock has a cost, the packed bottles' own average shows what one costs.
+				$packed = Decimal::of( $this->db->value( "SELECT avg_cost FROM {$st} WHERE business_id = %d AND product_id = %d AND variant_id = %d AND branch_id = %d", array( $ctx->business_id, $product_id, $rec['variant_id'], $ctx->branch_id ) ) ?? 0 );
+				if ( $packed <= 0 ) {
+					$packed = Decimal::of( $this->db->value( "SELECT purchase_price FROM {$vt} WHERE id = %d", array( $rec['variant_id'] ) ) ?? 0 );
+				}
+				if ( $packed > 0 ) {
+					$rec['cost']        = $packed;
+					$rec['cost_source'] = 'packed';
+				}
+			}
+			$rec['cost'] = $see_cost && 'unknown' !== $rec['cost_source'] ? Decimal::toString( $rec['cost'] ) : null;
 		}
 		unset( $rec );
 		$make = $this->stock->makeable( $ctx, array( $product_id ) );
@@ -413,7 +427,7 @@ final class ProductService extends Service {
 		$saved = $this->recipe( $ctx, $product_id );
 		// Keep the reference purchase price in line with what the ingredients cost today.
 		foreach ( $saved['recipes'] as $r ) {
-			if ( (int) $r['variant_id'] === $variant_id && null !== $r['cost'] ) {
+			if ( (int) $r['variant_id'] === $variant_id && 'ingredients' === $r['cost_source'] && Decimal::of( $r['cost'] ?? 0 ) > 0 ) {
 				$table = $variant_id ? 'product_variants' : 'products';
 				$id    = $variant_id ? $variant_id : $product_id;
 				$this->db->update( $this->db->table( $table ), array( 'purchase_price' => $r['cost'] ), array( 'id' => $id, 'business_id' => $ctx->business_id ) );
