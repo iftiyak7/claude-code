@@ -1987,5 +1987,9 @@
 "Loose": "খোলা",
 "From this product's loose stock": "এই পণ্যের খোলা স্টক থেকে",
 "Cost not known yet: the loose stock has no purchase price. Enter the loose stock in Purchases (or set its purchase price) to see the real cost and profit.": "খরচ এখনো জানা নেই: খোলা স্টকের কোনো কেনা দাম নেই। খোলা মধু ক্রয়ে এন্ট্রি দিলে (বা পণ্যের ক্রয় মূল্য দিলে) আসল খরচ আর লাভ দেখাবে।",
-"The loose stock has no cost yet, so this uses the average cost of the bottles already packed.": "খোলা স্টকের এখনো কেনা দাম নেই, তাই আগে থেকে প্যাক করা বোতলের গড় কেনা দাম ধরে দেখানো হলো।"
+"The loose stock has no cost yet, so this uses the average cost of the bottles already packed.": "খোলা স্টকের এখনো কেনা দাম নেই, তাই আগে থেকে প্যাক করা বোতলের গড় কেনা দাম ধরে দেখানো হলো।",
+"They log in with this email.": "এই ইমেইল দিয়ে লগইন করবে।",
+"Another account already uses this email.": "এই ইমেইল অন্য একটা অ্যাকাউন্টে ব্যবহার হচ্ছে।",
+"This person also uses other shops or this website, so only they can change their details.": "এই ব্যক্তি অন্য দোকান বা এই ওয়েবসাইটও ব্যবহার করেন, তাই তার তথ্য শুধু তিনি নিজেই বদলাতে পারবেন।",
+"e.g. 5": "যেমন ৫"
 }

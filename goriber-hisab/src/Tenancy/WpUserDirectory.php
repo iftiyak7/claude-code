@@ -27,6 +27,7 @@ final class WpUserDirectory implements UserDirectory {
 			'name'  => (string) $user->display_name,
 			'email' => (string) $user->user_email,
 			'login' => (string) $user->user_login,
+			'phone' => (string) get_user_meta( (int) $user->ID, 'billing_phone', true ),
 		);
 	}
 
@@ -94,6 +95,26 @@ final class WpUserDirectory implements UserDirectory {
 
 	public function setPassword( int $id, string $password ): void {
 		wp_set_password( $password, $id );
+	}
+
+	public function updateProfile( int $id, array $data ): void {
+		$fields = array( 'ID' => $id );
+		if ( isset( $data['name'] ) ) {
+			$fields['display_name'] = $data['name'];
+			$fields['first_name']   = $data['name'];
+		}
+		if ( isset( $data['email'] ) ) {
+			$fields['user_email'] = $data['email'];
+		}
+		if ( count( $fields ) > 1 ) {
+			$res = wp_update_user( $fields );
+			if ( is_wp_error( $res ) ) {
+				throw ValidationException::field( 'email', $res->get_error_message() );
+			}
+		}
+		if ( isset( $data['phone'] ) ) {
+			update_user_meta( $id, 'billing_phone', $data['phone'] );
+		}
 	}
 
 	public function isPrivileged( int $id ): bool {

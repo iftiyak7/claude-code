@@ -70,6 +70,14 @@ final class MemoryUsers implements UserDirectory {
 		$this->passwords[ $id ] = $password;
 	}
 
+	public function updateProfile( int $id, array $data ): void {
+		foreach ( array( 'name', 'email', 'phone' ) as $k ) {
+			if ( isset( $data[ $k ] ) ) {
+				$this->users[ $id ][ $k ] = $data[ $k ];
+			}
+		}
+	}
+
 	/**
 	 * @var array<int,bool>
 	 */

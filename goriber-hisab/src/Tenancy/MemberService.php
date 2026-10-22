@@ -139,6 +139,7 @@ final class MemberService extends Service {
 		if ( '' !== (string) ( $data['password'] ?? '' ) ) {
 			$this->resetPassword( $ctx, $before, (string) $data['password'] );
 		}
+		$this->updateProfile( $ctx, $before, $data );
 		$clean['updated_by'] = $ctx->user_id;
 		$clean['updated_at'] = $this->now();
 		$this->db->update( $t, $clean, array( 'id' => $member_id ) );
@@ -181,6 +182,60 @@ final class MemberService extends Service {
 		self::checkPassword( $password );
 		$this->users->setPassword( $user_id, $password );
 		$this->audit->log( $ctx, 'update', 'member', (int) $member['id'], sprintf( 'Password reset for user #%d', $user_id ) );
+	}
+
+	/**
+	 * Name, email and phone of a staff login. Same rule as the password: only
+	 * for people who belong to this shop alone and are not site staff
+	 * (your own name and phone are always yours to change).
+	 *
+	 * @param array<string,mixed> $member Membership row.
+	 * @param array<string,mixed> $data   name, email, phone.
+	 */
+	private function updateProfile( BusinessContext $ctx, array $member, array $data ): void {
+		$user_id = (int) $member['user_id'];
+		$current = $this->users->get( $user_id ) ?? array();
+		$change  = array();
+		if ( isset( $data['name'] ) ) {
+			$name = Text::line( (string) $data['name'], 100 );
+			if ( '' === $name ) {
+				throw ValidationException::field( 'name', 'Enter a name.' );
+			}
+			if ( $name !== ( $current['name'] ?? '' ) ) {
+				$change['name'] = $name;
+			}
+		}
+		if ( isset( $data['email'] ) ) {
+			$email = strtolower( trim( (string) $data['email'] ) );
+			if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+				throw ValidationException::field( 'email', 'Enter a valid email address.' );
+			}
+			if ( $email !== strtolower( (string) ( $current['email'] ?? '' ) ) ) {
+				$taken = $this->users->findByEmail( $email );
+				if ( $taken && $taken !== $user_id ) {
+					throw ValidationException::field( 'email', 'Another account already uses this email.' );
+				}
+				$change['email'] = $email;
+			}
+		}
+		if ( isset( $data['phone'] ) ) {
+			$phone = Text::phone( (string) $data['phone'] );
+			if ( $phone !== (string) ( $current['phone'] ?? '' ) ) {
+				$change['phone'] = $phone;
+			}
+		}
+		if ( ! $change ) {
+			return;
+		}
+		if ( $user_id !== $ctx->user_id ) {
+			$t     = $this->db->table( 'business_users' );
+			$other = (int) $this->db->value( "SELECT COUNT(*) FROM {$t} WHERE user_id = %d AND business_id <> %d AND status <> 'removed'", array( $user_id, $ctx->business_id ) );
+			if ( $other > 0 || $this->users->isPrivileged( $user_id ) ) {
+				throw ValidationException::field( isset( $change['email'] ) ? 'email' : 'name', 'This person also uses other shops or this website, so only they can change their details.' );
+			}
+		}
+		$this->users->updateProfile( $user_id, $change );
+		$this->audit->log( $ctx, 'update', 'member', (int) $member['id'], sprintf( 'Details changed for user #%d: %s', $user_id, implode( ', ', array_keys( $change ) ) ) );
 	}
 
 	private static function checkPassword( string $password ): void {
@@ -255,6 +310,7 @@ final class MemberService extends Service {
 			'user_id'           => (int) $row['user_id'],
 			'name'              => $user['name'] ?? '',
 			'email'             => $user['email'] ?? '',
+			'phone'             => $user['phone'] ?? '',
 			'role'              => $row['role'],
 			'grants'            => Json::decode( $row['grants'] ?? null ),
 			'denies'            => Json::decode( $row['denies'] ?? null ),

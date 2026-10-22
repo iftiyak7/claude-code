@@ -403,18 +403,18 @@ export default async function pos(el) {
 
   function docDiscount() {
     const tt = estimate();
-    const amount = money_input('amount', str(cart.discount, places()));
-    const pct = money_input('pct', '');
+    const amount = money_input('amount', cart.discount ? str(cart.discount, places()) : '', { placeholder: t('e.g. 50'), autofocus: true });
+    const pct = money_input('pct', '', { placeholder: t('e.g. 5') });
     pct.addEventListener('input', () => { amount.value = str(Math.round((tt.subtotal * dec(pct.value)) / 1000000), places()); });
     const m = modal({
       title: t('Invoice discount'), size: 'sm',
-      body: h('div', { class: 'form' }, field(t('Percent'), pct, { hint: t('Fills the amount for you') }), field(t('Amount'), amount)),
+      body: h('div', { class: 'form' }, field(t('Amount'), amount), field(t('Percent'), pct, { hint: t('Fills the amount for you') })),
       actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { cart.discount = dec(amount.value); m.close(); paintCart(); } }, t('Apply'))],
     });
   }
 
   function shipping() {
-    const amount = money_input('amount', str(cart.shipping, places()));
+    const amount = money_input('amount', cart.shipping ? str(cart.shipping, places()) : '', { placeholder: '0', autofocus: true });
     const m = modal({
       title: t('Shipping charge'), size: 'sm', body: field(t('Amount'), amount),
       actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { cart.shipping = dec(amount.value); m.close(); paintCart(); } }, t('Apply'))],

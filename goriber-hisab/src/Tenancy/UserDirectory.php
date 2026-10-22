@@ -39,6 +39,13 @@ interface UserDirectory {
 	public function setPassword( int $id, string $password ): void;
 
 	/**
+	 * Change name, email and/or phone (only the keys given).
+	 *
+	 * @param array{name?:string,email?:string,phone?:string} $data
+	 */
+	public function updateProfile( int $id, array $data ): void;
+
+	/**
 	 * Site staff (can edit content or administer WordPress). Shop owners may
 	 * never reset these accounts' passwords.
 	 */
