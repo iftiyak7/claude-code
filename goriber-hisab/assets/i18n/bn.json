@@ -1976,5 +1976,14 @@
 "Packed. Packed now: {n}": "প্যাক হয়েছে। এখন প্যাক করা আছে: {n}",
 "Unpacked": "প্যাক খোলা",
 "This product is made when sold, so it is not packed ahead.": "এই পণ্য বিক্রির সময় বানানো হয়, তাই আগে থেকে প্যাক করা যায় না।",
-"This product still has packed stock. Choose \"I pack some ahead\", or set its stock to zero first.": "এই পণ্যের এখনো প্যাক করা স্টক আছে। \"কিছু আগে থেকে প্যাক করে রাখি\" বেছে নিন, অথবা আগে স্টক ০ করুন।"
+"This product still has packed stock. Choose \"I pack some ahead\", or set its stock to zero first.": "এই পণ্যের এখনো প্যাক করা স্টক আছে। \"কিছু আগে থেকে প্যাক করে রাখি\" বেছে নিন, অথবা আগে স্টক ০ করুন।",
+"Are the sizes filled from this product's loose stock?": "সাইজগুলো কি এই পণ্যের খোলা স্টক থেকে বোতলে ভরা হয়?",
+"e.g. honey bought in 5 / 20 kg jars and filled into bottles. The stock without a size is the loose stock.": "যেমন মধু ৫ / ২০ কেজির জারে কিনে বোতলে ভরা হয়। সাইজ ছাড়া যে স্টক (—), সেটাই খোলা স্টক।",
+"{s} bottle ← {q} {u} loose": "{s} বোতল ← খোলা {q} {u}",
+"{s}: set by hand": "{s}: নিজে সেট করুন",
+"Done. Use \"Pack now\" when you fill bottles.": "হয়ে গেছে। বোতল ভরলে উপরের \"প্যাক করুন\" চাপুন।",
+"Yes, set it up": "হ্যাঁ, সেট করে দিন",
+"loose": "খোলা",
+"Loose": "খোলা",
+"From this product's loose stock": "এই পণ্যের খোলা স্টক থেকে"
 }

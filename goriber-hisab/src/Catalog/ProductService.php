@@ -321,6 +321,7 @@ final class ProductService extends Service {
 		$items  = array();
 		$errors = array();
 		$seen   = array();
+		$self   = false;
 		foreach ( array_values( (array) ( $data['items'] ?? array() ) ) as $i => $c ) {
 			$cid = (int) ( $c['product_id'] ?? 0 );
 			$cvid = (int) ( $c['variant_id'] ?? 0 );
@@ -337,6 +338,15 @@ final class ProductService extends Service {
 				continue;
 			}
 			if ( $cid === $product_id ) {
+				// A size packed from the product's own loose stock (honey 500 g from the loose kg).
+				if ( $variant_id > 0 && 0 === $cvid ) {
+					$self = true;
+					if ( ! isset( $seen[ $cid . ':0' ] ) ) {
+						$seen[ $cid . ':0' ] = count( $items );
+						$items[]             = array( 'component_id' => $cid, 'component_variant_id' => 0, 'qty' => $qty );
+					}
+					continue;
+				}
 				$errors[ "items.{$i}.product_id" ] = 'A product cannot be made from itself.';
 				continue;
 			}
@@ -345,10 +355,7 @@ final class ProductService extends Service {
 				$errors[ "items.{$i}.product_id" ] = 'Select a valid product.';
 				continue;
 			}
-			if ( (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND product_id = %d", array( $ctx->business_id, $cid ) ) > 0 ) {
-				$errors[ "items.{$i}.product_id" ] = 'This product is itself made from a recipe. Use its ingredients instead.';
-				continue;
-			}
+			// Products made when sold keep no stock and are refused below; packed-ahead ones are plain stock.
 			if ( ! (int) $comp['track_stock'] ) {
 				$errors[ "items.{$i}.product_id" ] = 'This product does not keep stock, so it cannot be an ingredient.';
 				continue;
@@ -373,6 +380,9 @@ final class ProductService extends Service {
 		$had  = (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND product_id = %d", array( $ctx->business_id, $product_id ) ) > 0;
 		$mode = (string) ( $data['mode'] ?? ( $had && (int) $product['track_stock'] ? 'pack' : 'sale' ) );
 		$mode = 'pack' === $mode ? 'pack' : 'sale';
+		if ( $self ) {
+			$mode = 'pack'; // Packed from its own loose stock: that stock has to stay counted.
+		}
 		if ( $items && 'sale' === $mode && (int) $product['track_stock'] && 0 !== $this->totalQty( $ctx, $product_id ) ) {
 			throw ValidationException::field( 'mode', 'This product still has packed stock. Choose "I pack some ahead", or set its stock to zero first.' );
 		}
@@ -532,7 +542,7 @@ final class ProductService extends Service {
 			if ( null === $variant ) {
 				throw ValidationException::field( $field, 'Select a valid variant.' );
 			}
-		} elseif ( (int) $product['has_variants'] ) {
+		} elseif ( (int) $product['has_variants'] && ! $this->packsFromOwnLoose( $ctx, $product_id ) ) {
 			$vt    = $this->db->table( 'product_variants' );
 			$count = (int) $this->db->value( "SELECT COUNT(*) FROM {$vt} WHERE product_id = %d AND business_id = %d AND deleted_at IS NULL", array( $product_id, $ctx->business_id ) );
 			if ( $count > 0 ) {
@@ -765,6 +775,14 @@ final class ProductService extends Service {
 	}
 
 	/**
+	 * Sizes of this product are packed from its own loose (size-less) stock.
+	 */
+	private function packsFromOwnLoose( BusinessContext $ctx, int $product_id ): bool {
+		$rt = $this->db->table( 'product_recipes' );
+		return (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND product_id = %d AND component_id = %d AND component_variant_id = 0", array( $ctx->business_id, $product_id, $product_id ) ) > 0;
+	}
+
+	/**
 	 * Mark recipe products and how many the ingredients in stock can make.
 	 *
 	 * @param array<int,array<string,mixed>> $items Presented products.
@@ -777,10 +795,14 @@ final class ProductService extends Service {
 			$rt  = $this->db->table( 'product_recipes' );
 			$has = array_flip( array_map( 'intval', $this->db->column( "SELECT DISTINCT product_id FROM {$rt} WHERE business_id = %d AND product_id IN (" . implode( ',', $ids ) . ')', array( $ctx->business_id ) ) ) );
 		}
-		$make = $has ? $this->stock->makeable( $ctx, array_keys( $has ) ) : array();
+		$make  = $has ? $this->stock->makeable( $ctx, array_keys( $has ) ) : array();
+		$loose = $has ? array_flip( array_map( 'intval', $this->db->column( "SELECT DISTINCT product_id FROM {$rt} WHERE business_id = %d AND component_id = product_id AND product_id IN (" . implode( ',', array_keys( $has ) ) . ')', array( $ctx->business_id ) ) ) ) : array();
 		foreach ( $items as &$p ) {
 			$p['has_recipe'] = isset( $has[ (int) $p['id'] ] );
 			$p['make_qty']   = $make[ (int) $p['id'] ] ?? null;
+			// Sizes packed from the product's own loose stock: that loose stock can be sold too.
+			$p['loose_base'] = isset( $loose[ (int) $p['id'] ] );
+			$p['loose_qty']  = $p['loose_base'] ? Decimal::toString( $this->stock->onHand( $ctx, (int) $p['id'], 0 ) ) : null;
 		}
 		unset( $p );
 		return $items;

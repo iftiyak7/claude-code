@@ -128,4 +128,30 @@ final class RecipeTest extends IntegrationTestCase {
 		$this->assertSame( '17.0000', $this->qty( $bulk ) );
 		$this->assertBooksBalanced( 'unpacked' );
 	}
+
+	public function testSizesPackedFromTheProductsOwnLooseStock(): void {
+		// Litchi honey: 4 kg loose (no size) at 440, plus 500 g bottles already packed.
+		$honey = $this->product( 'Litchi honey', '600', '440', '4' );
+		$v500  = $this->k->products->saveVariant( $this->ctx, $honey, array( 'name' => '500 g', 'selling_price' => '300', 'purchase_price' => '245', 'opening_qty' => '7' ) )['id'];
+		$this->assertBooksBalanced( 'start' );
+		$this->k->products->saveRecipe( $this->ctx, $honey, array( 'variant_id' => $v500, 'items' => array( array( 'product_id' => $honey, 'variant_id' => 0, 'qty' => '0.5' ) ) ) );
+		$this->assertSame( 'pack', $this->k->products->recipe( $this->ctx, $honey )['mode'] );
+		$this->assertSame( '7.0000', $this->qty( $honey, $v500 ), 'packed bottles stay' );
+
+		$this->k->stock->pack( $this->ctx, $honey, $v500, \GoriberHisab\Support\Decimal::of( '2' ) );
+		$this->assertSame( '9.0000', $this->qty( $honey, $v500 ) );
+		$this->assertSame( '3.0000', $this->qty( $honey, 0 ) );
+		$this->assertBooksBalanced( 'packed from own loose stock' );
+
+		// Sell 10 with 9 packed: 1 more packed from the loose kg.
+		$this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $honey, 'variant_id' => $v500, 'qty' => '10' ) ), 'payments' => array( array( 'amount' => '3000' ) ) ) );
+		$this->assertSame( '0.0000', $this->qty( $honey, $v500 ) );
+		$this->assertSame( '2.5000', $this->qty( $honey, 0 ) );
+		// Loose honey can still be sold by itself.
+		$this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $honey, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '600' ) ) ) );
+		$this->assertSame( '1.5000', $this->qty( $honey, 0 ) );
+		$this->assertBooksBalanced( 'sales' );
+		// The loose stock itself has no recipe.
+		$this->assertThrows( ValidationException::class, fn() => $this->k->products->saveRecipe( $this->ctx, $honey, array( 'items' => array( array( 'product_id' => $honey, 'qty' => '1' ) ) ) ) );
+	}
 }

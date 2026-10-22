@@ -23,6 +23,36 @@ export function smallUnit(text, unit) {
   return big ? String(Number(m[1]) / 1000) : m[1];
 }
 
+/** "500 g" / "1 kg" / "250gm" / "1 L" → how much loose stock one of this size takes (in kg / L). */
+export function sizeAmount(v) {
+  const text = `${v.attributes?.size || ''} ${v.attributes?.weight || ''} ${v.name || ''}`;
+  const m = text.match(/([\d.]+)\s*(kg|কেজি|g|gm|gram|গ্রাম|l|ltr|লিটার|ml|মিলি)\b/i) || text.match(/([\d.]+)\s*(কেজি|গ্রাম|লিটার|মিলি)/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!n) return null;
+  return /^(g|gm|gram|গ্রাম|ml|মিলি)$/i.test(m[2]) ? n / 1000 : n;
+}
+
+/** Sizes filled from the product's own loose stock: set every size's recipe in one go. */
+function looseSetup(pr, reload) {
+  const plan = (pr.variants || []).map((v) => ({ v, amount: sizeAmount(v) }));
+  const ok = plan.filter((x) => x.amount);
+  if (!ok.length) return null;
+  const unit = pr.unit_name || t('unit');
+  return h('div', { class: 'loose-setup' },
+    h('strong', {}, t('Are the sizes filled from this product\'s loose stock?')),
+    h('p', { class: 'muted small' }, t('e.g. honey bought in 5 / 20 kg jars and filled into bottles. The stock without a size is the loose stock.')),
+    h('ul', {}, plan.map(({ v, amount }) => h('li', {}, amount ? t('{s} bottle ← {q} {u} loose', { s: v.name, q: String(amount), u: unit }) : t('{s}: set by hand', { s: v.name })))),
+    can('products.edit') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        for (const { v, amount } of ok) await api.put(`products/${pr.id}/recipe`, { variant_id: v.id, mode: 'pack', items: [{ product_id: pr.id, variant_id: 0, qty: String(amount) }] });
+        toast(t('Done. Use "Pack now" when you fill bottles.'));
+        reload();
+      } catch (err) { showError(err); e.currentTarget.disabled = false; }
+    } }, icon('check', 14), t('Yes, set it up')) : null);
+}
+
 /** Product page card: what it is made of, cost and profit per unit, how many can be made. */
 export function recipeCard(pr, reload, { open = false } = {}) {
   if (pr.type === 'service') return null;
@@ -33,6 +63,7 @@ export function recipeCard(pr, reload, { open = false } = {}) {
   api.get(`products/${pr.id}/recipe`).then((data) => {
     if (!data.recipes.length) {
       mount(box,
+        (pr.variants || []).length ? looseSetup(pr, reload) : null,
         h('p', { class: 'muted' }, t('Made in the shop from other products (e.g. honey nuts from cashew, almond, walnut)? Write once how much of each goes into 1 unit. Every sale then takes those ingredients out of stock at their real cost, so the profit is always right.')),
         can('products.edit') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => edit(data) }, icon('plus', 14), t('Set recipe')) : null);
       if (open && can('products.edit')) edit(data);
@@ -52,7 +83,7 @@ export function recipeCard(pr, reload, { open = false } = {}) {
           (pr.variants || []).length ? h('h4', {}, sizeName(pr, r.variant_id)) : null,
           h('p', { class: 'muted small' }, t('For 1 {u}:', { u: pr.unit_name || t('unit') })),
           simpleTable([
-            { label: t('Ingredient'), render: (i) => i.name },
+            { label: t('Ingredient'), render: (i) => (i.product_id === pr.id ? `${i.name} (${t('loose')})` : i.name) },
             { label: t('Qty'), align: 'right', render: (i) => `${qty(i.qty)} ${i.unit}` },
             { label: t('In stock'), align: 'right', hide: 'sm', render: (i) => h('span', { class: num(i.stock_qty) < num(i.qty) ? 'bad-text' : '' }, `${qty(i.stock_qty)} ${i.unit}`) },
             cost === null ? null : { label: t('Cost'), align: 'right', render: (i) => money(i.cost) },
@@ -85,13 +116,20 @@ export function recipeEditor(pr, data, onSaved) {
   ].map(([m, title, sub]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(mode === m), class: `recipe-mode-opt ${mode === m ? 'on' : ''}`, onclick: () => { mode = m; paintMode(); } }, h('strong', {}, title), h('small', {}, sub))));
   paintMode();
   const list = h('div', { class: 'recipe-rows' });
+  // A size can be filled from this product's own loose stock (honey jars → bottles).
+  const looseBtn = h('button', { class: 'btn btn-sm', type: 'button', hidden: true, onclick: () => {
+    const v = variants.find((x) => x.id === scope);
+    const amount = v ? sizeAmount(v) : null;
+    rows[scope].push({ product_id: pr.id, variant_id: 0, name: pr.name, unit: pr.unit_name || '', qty: amount ? String(amount) : '', unit_cost: pr.purchase_price === null ? null : num(pr.purchase_price), options: null });
+    mode = 'pack'; paintMode(); paint();
+  } }, icon('plus', 14), t('From this product\'s loose stock'));
   const sum = h('div', { class: 'recipe-sum' });
   const scopeSel = variants.length ? select('scope', scopes.map((vid) => [String(vid), vid ? sizeName(pr, vid) : t('All sizes (unless a size has its own)')]), '0') : null;
   scopeSel?.addEventListener('change', () => { scope = Number(scopeSel.value); paint(); });
 
   const picker = combobox({
     placeholder: t('Add ingredient — search product'),
-    search: async (q) => (await api.get('products', { search: q, per_page: 12, type: 'standard' })).items.filter((p) => p.id !== pr.id && !p.has_recipe),
+    search: async (q) => (await api.get('products', { search: q, per_page: 12, type: 'standard' })).items.filter((p) => p.id !== pr.id && !(p.has_recipe && !p.track_stock)),
     label: (p) => p.name,
     sub: (p) => `${t('Stock')} ${qty(p.stock_qty)} ${p.unit_name || ''}${p.purchase_price !== null ? ' · ' + money(p.purchase_price) : ''}`,
     onPick: async (p) => {
@@ -120,6 +158,7 @@ export function recipeEditor(pr, data, onSaved) {
 
   function paint() {
     const items = rows[scope];
+    looseBtn.hidden = !scope || items.some((i) => i.product_id === pr.id);
     mount(list, items.length ? items.map((i, n) => {
       const q = h('input', { class: 'input', inputmode: 'decimal', value: i.qty, placeholder: '0', 'data-qty': '1', 'aria-label': t('Qty') });
       q.addEventListener('input', () => { i.qty = q.value; paintSum(); });
@@ -127,7 +166,7 @@ export function recipeEditor(pr, data, onSaved) {
       const vsel = i.options && i.options.length ? select('v', i.options.map((o) => [String(o.id), o.name]), String(i.variant_id)) : null;
       vsel?.addEventListener('change', () => { i.variant_id = Number(vsel.value); const o = i.options.find((x) => x.id === i.variant_id); if (o && o.purchase_price !== null) i.unit_cost = num(o.purchase_price); paintSum(); });
       return h('div', { class: 'recipe-row' },
-        h('div', { class: 'recipe-name' }, h('strong', {}, i.name), vsel),
+        h('div', { class: 'recipe-name' }, h('strong', {}, i.product_id === pr.id ? `${i.name} (${t('loose')})` : i.name), vsel),
         h('div', { class: 'recipe-qty' }, q, h('span', { class: 'muted' }, i.unit || '')),
         h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { items.splice(n, 1); paint(); } }, icon('trash', 16)));
     }) : h('p', { class: 'muted' }, scope ? t('No own recipe — this size uses the general one.') : t('No ingredients yet. Search and add them below.')));
@@ -140,6 +179,7 @@ export function recipeEditor(pr, data, onSaved) {
     modeBox,
     scopeSel ? h('div', { class: 'field' }, h('label', {}, t('Size')), scopeSel) : null,
     list,
+    looseBtn,
     picker.el,
     sum);
 

@@ -108,7 +108,10 @@ export default async function pos(el) {
             title: p.name,
             body: h('div', { class: 'variant-list' }, full.variants.map((v) => h('button', {
               class: 'tile', type: 'button', onclick: () => { m.close(); add(full, v); },
-            }, h('span', { class: 'tile-name' }, v.name), h('span', { class: 'tile-price' }, money(v.selling_price)), h('small', {}, fmtQty(v.stock_qty))))),
+            }, h('span', { class: 'tile-name' }, v.name), h('span', { class: 'tile-price' }, money(v.selling_price)), h('small', {}, fmtQty(v.stock_qty)))),
+            // Sizes packed from the loose stock: the loose stock itself can be sold by weight too.
+            full.loose_base ? h('button', { class: 'tile', type: 'button', onclick: () => { m.close(); add({ ...full, has_variants: false, stock_qty: full.loose_qty }, null); } },
+              h('span', { class: 'tile-name' }, t('Loose')), h('span', { class: 'tile-price' }, money(full.selling_price), full.unit_name ? h('small', {}, ` /${full.unit_name}`) : null), h('small', {}, fmtQty(full.loose_qty))) : null),
           });
           return;
         }

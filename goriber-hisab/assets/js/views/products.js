@@ -78,7 +78,7 @@ async function detail(el, id, query = {}) {
     h('div', { class: 'grid-2' },
       pr.track_stock ? card(t('Stock by branch'), pr.stock.length ? simpleTable([
         { label: t('Branch'), render: (s) => branches[Number(s.branch_id)] || s.branch_name },
-        { label: t('Variant'), render: (s) => (Number(s.variant_id) ? (pr.variants.find((v) => v.id === Number(s.variant_id))?.name || '#' + s.variant_id) : '—') },
+        { label: t('Variant'), render: (s) => (Number(s.variant_id) ? (pr.variants.find((v) => v.id === Number(s.variant_id))?.name || '#' + s.variant_id) : (pr.loose_base ? t('Loose') : '—')) },
         { label: t('Qty'), align: 'right', render: (s) => qty(s.qty) },
         { label: t('Avg cost'), align: 'right', render: (s) => (s.avg_cost === null ? '—' : money(s.avg_cost)) },
         { label: t('Value'), align: 'right', render: (s) => (s.value === null ? '—' : money(s.value)) },
