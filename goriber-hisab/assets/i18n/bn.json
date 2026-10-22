@@ -1993,5 +1993,10 @@
 "This person also uses other shops or this website, so only they can change their details.": "এই ব্যক্তি অন্য দোকান বা এই ওয়েবসাইটও ব্যবহার করেন, তাই তার তথ্য শুধু তিনি নিজেই বদলাতে পারবেন।",
 "e.g. 5": "যেমন ৫",
 "Loose stock (no size)": "খোলা স্টক (সাইজ ছাড়া)",
-"Add / fix loose stock": "খোলা স্টক যোগ / ঠিক করুন"
+"Add / fix loose stock": "খোলা স্টক যোগ / ঠিক করুন",
+"Restore": "ফিরিয়ে আনুন",
+"Restored": "ফিরিয়ে আনা হয়েছে",
+"Reopen order": "অর্ডার আবার চালু করুন",
+"Bring {n} back? Stock and accounts are posted again with the same number. Payments taken before the void stay cancelled, so it comes back as due — receive the payment again if it was paid.": "{n} ফিরিয়ে আনবেন? একই নম্বরে স্টক আর হিসাব আবার যোগ হবে। বাতিলের আগে যে পেমেন্ট নেওয়া হয়েছিল সেটা বাতিলই থাকবে, তাই বিলটা বাকি হিসেবে ফিরবে — টাকা আগে পেয়ে থাকলে আবার 'Receive payment' দিয়ে নিন।",
+"Only a voided sale can be restored.": "শুধু বাতিল (void) বিক্রিই ফিরিয়ে আনা যায়।"
 }

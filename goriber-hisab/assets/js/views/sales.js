@@ -59,6 +59,13 @@ export default async function sales(el, params, query) {
   mount(el, p.el);
 }
 
+/** Voided by mistake: bring the sale (and its online order) back. */
+export async function restoreSale(s, onDone) {
+  const msg = t('Bring {n} back? Stock and accounts are posted again with the same number. Payments taken before the void stay cancelled, so it comes back as due — receive the payment again if it was paid.', { n: s.number });
+  if (!(await confirmDialog(msg, { confirmText: t('Restore') }))) return;
+  try { await api.post(`sales/${s.id}/restore`); toast(t('Restored')); onDone?.(); } catch (err) { showError(err); }
+}
+
 async function detail(el, id) {
   const s = await api.get(`sales/${id}`);
   const isDone = s.status === 'completed';
@@ -71,6 +78,7 @@ async function detail(el, id) {
     s.status === 'held' && can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/pos' }, t('Resume in POS')) : null,
     isDone && can('sales.return') ? h('a', { class: 'btn btn-sm', href: `#/sales/${id}/return` }, icon('return', 16), t('Return')) : null,
     s.status !== 'void' && can('sales.edit') && !Number(s.return_amount) ? h('a', { class: 'btn btn-sm', href: `#/sales/${id}/edit` }, icon('edit', 16), t('Edit')) : null,
+    s.status === 'void' && can('sales.delete') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => restoreSale(s, reload) }, icon('refresh', 16), t('Restore')) : null,
     s.status !== 'void' && can('sales.delete') ? h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => {
       const ok = await confirmDialog(t('Void {n}? Stock, payments and accounts will be reversed. This cannot be undone.', { n: s.number }), { danger: true, confirmText: t('Void sale'), reason: true });
       if (!ok) return;

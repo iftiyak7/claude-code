@@ -416,4 +416,16 @@ final class OrdersTest extends IntegrationTestCase {
 		$this->assertThrows( ConflictException::class, fn() => $this->k->orders->merge( $this->ctx, $all['id'], $shipped['id'] ) );
 		$this->assertThrows( ConflictException::class, fn() => $this->k->orders->addItems( $this->ctx, $shipped['id'], array( array( 'product_id' => $saree, 'qty' => '1' ) ) ) );
 	}
+
+	public function testCancelledOrderComesBackWithItsSale(): void {
+		$p = $this->product( 'Ghee', '1000', '700', '5' );
+		$o = $this->k->orders->confirm( $this->ctx, $this->order( $p )['id'] );
+		$o = $this->k->orders->close( $this->ctx, $o['id'], 'cancelled', array( 'reason' => 'by mistake' ) );
+		$this->assertSame( 'cancelled', $o['status'] );
+		$this->assertSame( '5.0000', $this->qty( $p ) );
+		$this->k->sales->restore( $this->ctx, (int) $o['sale_id'] );
+		$this->assertSame( 'confirmed', $this->k->orders->get( $this->ctx, $o['id'] )['status'] );
+		$this->assertSame( 'completed', $this->k->sales->get( $this->ctx, (int) $o['sale_id'] )['status'] );
+		$this->assertBooksBalanced( 'order reopened' );
+	}
 }

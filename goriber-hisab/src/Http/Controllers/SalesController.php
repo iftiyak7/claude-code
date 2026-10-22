@@ -28,6 +28,7 @@ final class SalesController extends Controller {
 			$this->route( 'POST', '/sales/(?P<id>\d+)/complete', fn( BusinessContext $c, array $a, $q ) => $this->withSms( $c, $s->complete( $c, self::id( $q ), $a ) ) ),
 			$this->route( 'POST', '/sms/send', array( $this, 'sendSms' ) ),
 			$this->route( 'GET', '/sms/usage', fn( BusinessContext $c ) => $this->k->sms->usage( $c ) ),
+			$this->route( 'POST', '/sales/(?P<id>\d+)/restore', fn( BusinessContext $c, array $a, $q ) => $s->restore( $c, self::id( $q ), $a ) ),
 			$this->route( 'POST', '/sales/(?P<id>\d+)/void', fn( BusinessContext $c, array $a, $q ) => $s->void( $c, self::id( $q ), (string) ( $a['reason'] ?? '' ) ) ),
 
 			$this->route( 'GET', '/returns', fn( BusinessContext $c, array $a ) => $r->list( $c, $a ) ),

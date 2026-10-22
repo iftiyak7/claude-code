@@ -249,6 +249,46 @@ final class SaleService extends Service {
 	}
 
 	/**
+	 * Bring a voided sale back (voided by mistake, or its online order was
+	 * cancelled by mistake). Same number and date; stock and accounts are
+	 * posted again. Payments taken before the void stay cancelled, so the
+	 * sale comes back as due unless new payments are given. A cancelled /
+	 * returned online order behind it is reopened.
+	 *
+	 * @param array<string,mixed> $data payments (optional).
+	 * @return array<string,mixed>
+	 */
+	public function restore( BusinessContext $ctx, int $id, array $data = array() ): array {
+		$ctx->authorize( 'sales.delete' );
+		$sale = $this->findScoped( $ctx, 'sales', $id, 'Sale' );
+		if ( 'void' !== $sale['status'] ) {
+			throw new ConflictException( 'Only a voided sale can be restored.' );
+		}
+		$doc = $this->prepare( $ctx, $this->asInput( $ctx, $id, $sale ), $id );
+		$this->db->transaction(
+			function () use ( $ctx, $id, $sale, $doc, $data ) {
+				$this->replaceContent( $ctx, $id, $doc, 'completed', (string) $sale['number'] );
+				$this->finalise( $ctx, $id, $doc, (array) ( $data['payments'] ?? array() ), false );
+				$this->db->update( $this->db->table( 'sales' ), array( 'voided_at' => null, 'voided_by' => 0 ), array( 'id' => $id ) );
+				$this->payments->reallocateAdvances( $ctx, 'customer', (int) $doc['customer_id'] );
+				$this->payments->recalc( $ctx, 'sale', $id );
+				// Its online order was closed with the void: open it again where it was.
+				$ot    = $this->db->table( 'orders' );
+				$order = $this->db->row( "SELECT id, number, status, shipped_at, delivered_at FROM {$ot} WHERE business_id = %d AND sale_id = %d", array( $ctx->business_id, $id ) );
+				if ( $order && in_array( $order['status'], array( 'cancelled', 'returned' ), true ) ) {
+					$back = $order['delivered_at'] ? 'delivered' : ( $order['shipped_at'] ? 'shipped' : 'confirmed' );
+					$this->db->update( $ot, array( 'status' => $back, 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => (int) $order['id'] ) );
+					$this->audit->log( $ctx, 'update', 'order', (int) $order['id'], 'Order reopened ' . $order['number'] . ' (sale restored)' );
+				}
+				$this->audit->log( $ctx, 'update', 'sale', $id, 'Sale restored ' . $sale['number'] );
+			}
+		);
+		$out = $this->get( $ctx, $id );
+		$this->events->dispatch( 'goriber_hisab/sale/completed', $ctx, $out );
+		return $out;
+	}
+
+	/**
 	 * Full sale with items, payments, returns and customer.
 	 *
 	 * @return array<string,mixed>

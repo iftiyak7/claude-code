@@ -267,4 +267,21 @@ final class SalesFlowTest extends IntegrationTestCase {
 		$this->assertSame( '4.7083', $this->qty( $p ) );
 		$this->assertBooksBalanced( 'loose items' );
 	}
+
+	public function testVoidedSaleCanBeRestored(): void {
+		$p    = $this->product( 'Honey 500 g', '300', '220', '10' );
+		$c    = $this->customer( 'Mina' );
+		$sale = $this->k->sales->create( $this->ctx, array( 'customer_id' => $c, 'items' => array( array( 'product_id' => $p, 'qty' => '2' ) ), 'payments' => array( array( 'amount' => '600' ) ) ) );
+		$this->k->sales->void( $this->ctx, $sale['id'], 'by mistake' );
+		$this->assertSame( '10.0000', $this->qty( $p ) );
+		$back = $this->k->sales->restore( $this->ctx, $sale['id'] );
+		$this->assertSame( 'completed', $back['status'] );
+		$this->assertSame( $sale['number'], $back['number'] );
+		$this->assertSame( '8.0000', $this->qty( $p ) );
+		$this->assertMoney( '600', $back['due_amount'], 'old payment stays cancelled' );
+		$this->assertMoney( '600', $this->balance( 'receivable', $c ) );
+		$this->assertMoney( '440', $this->balance( 'cogs' ) );
+		$this->assertBooksBalanced( 'restored' );
+		$this->assertThrows( ConflictException::class, fn() => $this->k->sales->restore( $this->ctx, $sale['id'] ) );
+	}
 }

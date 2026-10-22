@@ -624,6 +624,7 @@ async function detail(el, id) {
     const returning = o.status === 'shipped';
     actions.push(h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: () => closeOrder(o, returning ? 'returned' : 'cancelled', reload) }, returning ? t('Returned') : t('Cancel order')));
   }
+  if (['cancelled', 'returned'].includes(o.status) && o.sale_id && can('sales.delete') && m) actions.push(h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => { const { restoreSale } = await import('./sales.js'); restoreSale({ id: o.sale_id, number: o.number }, reload); } }, icon('refresh', 16), t('Reopen order')));
   if (o.sale_id && can('sales.view')) actions.push(h('a', { class: 'btn btn-sm', href: `#/sales/${o.sale_id}` }, icon('printer', 16), t('Invoice')));
   if (!['cancelled'].includes(o.status)) actions.push(h('button', { class: 'btn btn-sm', type: 'button', onclick: () => printStickers([o.id]) }, icon('barcode', 16), t('Sticker')));
 
