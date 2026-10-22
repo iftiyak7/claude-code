@@ -1094,3 +1094,6 @@ button.kpi:active { transform: scale(.98); }
 .loose-setup { padding: 12px 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--border)); background: color-mix(in srgb, var(--brand) 7%, transparent); }
 .loose-setup p { margin: 4px 0 6px; }
 .loose-setup ul { margin: 4px 0 10px; padding-left: 18px; }
+
+.loose-stat { display: grid; gap: 4px; align-content: start; }
+.loose-stat .btn { justify-self: start; margin-top: 4px; max-width: 100%; white-space: normal; text-align: left; }

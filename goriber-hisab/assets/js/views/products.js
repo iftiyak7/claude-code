@@ -73,6 +73,7 @@ async function detail(el, id, query = {}) {
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Selling price')), h('strong', { class: 'stat-value' }, money(pr.selling_price))),
       pr.purchase_price !== null ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Purchase price')), h('strong', { class: 'stat-value' }, money(pr.purchase_price))) : null,
       Number(pr.wholesale_price) ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Wholesale')), h('strong', { class: 'stat-value' }, money(pr.wholesale_price))) : null,
+      pr.variants.length && pr.track_stock ? looseStat(pr, reload) : null,
       pr.has_recipe && pr.make_qty !== null ? h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Can be made now')), h('strong', { class: 'stat-value' }, qty(pr.make_qty)), h('span', { class: 'stat-hint' }, t('from the ingredients in stock'))) : null,
       pr.track_stock ? h('div', { class: `stat ${pr.is_low ? 'bad' : ''}` }, h('span', { class: 'stat-label' }, t('In stock (this branch)')), h('strong', { class: 'stat-value' }, qty(pr.stock_qty)), h('span', { class: 'stat-hint' }, t('Minimum {n}', { n: qty(pr.min_stock) }))) : null),
     h('div', { class: 'grid-2' },
@@ -92,6 +93,16 @@ async function detail(el, id, query = {}) {
       try { await api.del(`products/${id}`); toast(t('Deleted')); navigate('/products'); } catch (err) { showError(err); }
     } }, icon('trash', 16), t('Delete product')) : null);
   mount(el, p.el);
+}
+
+/** Products with sizes: the stock without a size is the loose stock (honey in jars). Easy to see and to add to. */
+function looseStat(pr, reload) {
+  const here = Number(state.ctx.branch_id);
+  const loose = pr.loose_qty ?? String((pr.stock || []).filter((s) => !Number(s.variant_id) && Number(s.branch_id) === here).reduce((a, s) => a + Number(s.qty), 0));
+  return h('div', { class: 'stat loose-stat' },
+    h('span', { class: 'stat-label' }, t('Loose stock (no size)')),
+    h('strong', { class: 'stat-value' }, `${qty(loose)} ${pr.unit_name || ''}`),
+    can('inventory.adjust') ? h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: () => stockAdjust(pr, null, reload) }, icon('plus', 14), t('Add / fix loose stock')) : null);
 }
 
 function variantsCard(pr, reload) {

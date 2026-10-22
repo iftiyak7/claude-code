@@ -112,7 +112,11 @@ final class ProductService extends Service {
 		$product['stock'] = $this->stockByBranch( $ctx, $id );
 		$product['stock_qty'] = Decimal::toString( Decimal::sum( array_map( static fn( $s ) => Decimal::of( $s['qty'] ), array_filter( $product['stock'], static fn( $s ) => (int) $s['branch_id'] === $ctx->branch_id ) ) ) );
 		$product['variants']  = $this->variants( $ctx, $id );
-		return $this->withRecipes( $ctx, array( $product ) )[0];
+		$product              = $this->withRecipes( $ctx, array( $product ) )[0];
+		if ( $product['variants'] && null === $product['loose_qty'] ) {
+			$product['loose_qty'] = Decimal::toString( $this->stock->onHand( $ctx, $id, 0 ) ); // Stock without a size.
+		}
+		return $product;
 	}
 
 	/**

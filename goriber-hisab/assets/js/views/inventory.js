@@ -97,7 +97,7 @@ export function stockAdjust(product, variant, onDone) {
   const sync = () => { hint.hidden = !['opening', 'add'].includes(mode.value); if (costField) costField.hidden = ['mistake', 'remove'].includes(mode.value); };
   mode.addEventListener('change', sync); sync();
   const m = modal({
-    title: t('Adjust stock: {p}', { p: product.name + (variant ? ` - ${variant.name}` : '') }),
+    title: t('Adjust stock: {p}', { p: product.name + (variant ? ` - ${variant.name}` : ((product.variants || []).length ? ` (${t('loose')})` : '')) }),
     body: f,
     actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
       try {
