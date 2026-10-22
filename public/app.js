@@ -267,7 +267,8 @@
     'ফার্মেসি': 'pharmacy', 'ফার্মেসী': 'pharmacy', 'ওষুধ': 'pharmacy', farmesi: 'pharmacy', dentist: 'dental', 'ডেন্টিস্ট': 'dental', 'দাঁত': 'dental',
     'চক্ষু': 'eye', 'চোখ': 'eye', police: 'police', 'পুলিশ': 'police', 'থানা': 'police', thana: 'police', fire: 'fire', 'ফায়ার': 'fire',
     ambulance: 'ambulance', 'অ্যাম্বুলেন্স': 'ambulance', 'এম্বুলেন্স': 'ambulance', 'মসজিদ': 'mosque', masjid: 'mosque', mosque: 'mosque',
-    'নামাজ': 'mosque', namaz: 'mosque', 'ঈদগাহ': 'eidgah', eidgah: 'eidgah' };
+    'নামাজ': 'mosque', namaz: 'mosque', 'ঈদগাহ': 'eidgah', eidgah: 'eidgah', 'হোমিও': 'homeo', 'হোমিওপ্যাথি': 'homeo', 'হোমিওপ্যাথিক': 'homeo',
+    homeo: 'homeo', homio: 'homeo', homeopathy: 'homeo', homeopathic: 'homeo', 'চেম্বার': 'doctor', chamber: 'doctor' };
   const KINDKEYS = { 'ভাড়া': 'rent', 'বাসা': 'rent', 'ফ্ল্যাট': 'rent', rent: 'rent', flat: 'rent', 'টুলেট': 'rent', tolet: 'rent', mess: 'mess', 'মেস': 'mess', 'সিট': 'mess',
     job: 'job', jobs: 'job', 'চাকরি': 'job', 'চাকরী': 'job', chakri: 'job', 'টিউশন': 'tuition', 'টিউশনি': 'tuition', tuition: 'tuition', tutor: 'tuition',
     'টিউটর': 'tuition', 'গৃহশিক্ষক': 'tuition', 'প্রাইভেট': 'tuition' };
@@ -810,7 +811,7 @@
 
   /* ---------------- add / post ---------------- */
   pages.add = () => {
-    const opts = [['listing?mode=paid', 'store', '#0e9f6e', 'ব্যবসা যুক্ত করুন', 'প্রাইভেট হাসপাতাল, ক্লিনিক, রেস্টুরেন্ট, দোকান, হোটেল, সার্ভিস, কোচিং', 'পেইড প্যাকেজ'],
+    const opts = [['listing?mode=paid', 'store', '#0e9f6e', 'ব্যবসা যুক্ত করুন', 'প্রাইভেট হাসপাতাল, ক্লিনিক, ডাক্তার ও হোমিও চেম্বার, রেস্টুরেন্ট, দোকান, হোটেল, কোচিং', 'পেইড প্যাকেজ'],
       ['listing?mode=free', 'landmark', '#7c5cff', 'ফ্রি তথ্য যোগ করুন', 'সরকারি হাসপাতাল, দর্শনীয় স্থান, জরুরি নম্বর, স্কুল-কলেজ, স্বেচ্ছাসেবী সংগঠন', 'ফ্রি'],
       ['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন', 'ফ্রি'],
       ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট / দোকান ভাড়া', 'টু-লেট বিজ্ঞাপন দিন', 'ফ্রি'],
@@ -1152,10 +1153,27 @@
   }
   window.addEventListener('hashchange', () => { closeSheet(true); render(); });
 
+  let slideTimer;
   function carousel() {
+    clearInterval(slideTimer);
     const c = app.querySelector('[data-carousel], [data-slides]'), dots = app.querySelector('[data-dots]');
     if (!c || !dots) return;
-    c.onscroll = () => { const i = Math.round(c.scrollLeft / c.clientWidth); dots.querySelectorAll('i').forEach((d, n) => d.classList.toggle('on', n === i)); };
+    const kids = [...c.children], at = k => k.offsetLeft - kids[0].offsetLeft;
+    const idx = () => kids.reduce((best, k, n) => Math.abs(at(k) - c.scrollLeft) < Math.abs(at(kids[best]) - c.scrollLeft) ? n : best, 0);
+    c.onscroll = () => { const i = idx(); dots.querySelectorAll('i').forEach((d, n) => d.classList.toggle('on', n === i)); };
+    // Home banners slide on their own (admin can turn it off); a touch or hover pauses them for a while.
+    const site = D.site || {};
+    if (!c.matches('[data-carousel]') || site.bannerAuto === false || kids.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let pausedUntil = 0;
+    const pause = () => { pausedUntil = Date.now() + 7000; };
+    ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach(ev => c.addEventListener(ev, pause, { passive: true }));
+    c.addEventListener('mouseenter', () => { pausedUntil = Infinity; });
+    c.addEventListener('mouseleave', () => { pausedUntil = 0; });
+    slideTimer = setInterval(() => {
+      if (!c.isConnected) return clearInterval(slideTimer);
+      if (document.hidden || Date.now() < pausedUntil || document.querySelector('.sheet, .popup-bg, .welcome')) return;
+      c.scrollTo({ left: at(kids[(idx() + 1) % kids.length]), behavior: 'smooth' });
+    }, Math.max(3, +site.bannerSeconds || 5) * 1000);
   }
 
   async function doLocate(then) {

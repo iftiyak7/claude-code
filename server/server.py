@@ -177,17 +177,37 @@ def init_db():
             upgrade_seed(c, seed)
 
 
-SEED_VERSION = 2
+SEED_VERSION = 3
+NEW_SUBS = {3: {'hospital': ('doctor', 'homeo')}}     # sub-types added to existing categories, by seed version
 FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
 
 
 def upgrade_seed(c, seed):
-    """Bring an existing install's starter data up to date without touching anything the admin changed:
-    new starter entries are added once, empty fields are filled, and only our own early rough coordinates are replaced."""
+    """Bring an existing install's starter data up to date without touching anything the admin changed."""
     row = c.execute("SELECT value FROM settings WHERE key='_seedv'").fetchone()
     v = int(row[0]) if row else 1
     if v >= SEED_VERSION:
         return
+    if v < 2:
+        upgrade_v2(c, seed, v)
+    cats = get_setting(c, 'categories') or []
+    for ver, by_cat in NEW_SUBS.items():
+        if v >= ver:
+            continue
+        for x in cats:
+            sc = next((y for y in seed['categories'] if y['id'] == x['id']), None)
+            for sub in by_cat.get(x['id'], ()):
+                if sc and sub not in (x.get('subs') or {}):
+                    x.setdefault('subs', {})[sub] = sc['subs'][sub]
+                    x.setdefault('subsEn', {})[sub] = sc.get('subsEn', {}).get(sub, sub)
+            if sc:
+                x['keys'] = list(dict.fromkeys((x.get('keys') or []) + [k for k in sc.get('keys', []) if k not in (x.get('keys') or [])]))
+    c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
+    c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
+
+
+def upgrade_v2(c, seed, v):
+    """New starter entries are added once, empty fields are filled, and only our own early rough coordinates are replaced."""
     now, rough = int(time.time()), seed.get('_oldRough', {})
     have = {r['id']: r for r in c.execute('SELECT id, doc FROM listings')}
     for it in seed.get('listings', []):
@@ -218,7 +238,6 @@ def upgrade_seed(c, seed):
     geo = get_setting(c, 'areaGeo') or {}
     merged = {**seed.get('areaGeo', {}), **geo}
     c.execute("INSERT OR REPLACE INTO settings VALUES ('areaGeo', ?)", (json.dumps(merged, ensure_ascii=False),))
-    c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
 
 
 def get_setting(c, key):

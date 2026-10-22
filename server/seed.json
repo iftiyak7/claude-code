@@ -20,7 +20,9 @@
   "disclaimerEn": "Jashore360 is an independent information platform. It is not a government app and does not provide emergency services itself.",
   "snakeTipEn": "For a snake bite, go straight to the nearest government hospital or upazila health complex — not a traditional healer. Keep the bitten limb still.",
   "classifiedDisclaimer": "নিজ দায়িত্বে যাচাই করে চাকরি বা বাসা ভাড়া নিন। বিজ্ঞাপনদাতা বা বাড়ির মালিকের সাথে Jashore360-এর কোনো সম্পর্ক নেই। কোনো প্রতারণা বা ক্ষতি হলে Jashore360 দায়ী থাকবে না।",
-  "classifiedDisclaimerEn": "Verify everything yourself before taking a job or renting. Jashore360 has no connection with advertisers or property owners and is not responsible for any fraud or loss."
+  "classifiedDisclaimerEn": "Verify everything yourself before taking a job or renting. Jashore360 has no connection with advertisers or property owners and is not responsible for any fraud or loss.",
+  "bannerAuto": true,
+  "bannerSeconds": 5
  },
  "areas": [
   "যশোর সদর",
@@ -134,6 +136,8 @@
     "private": "বেসরকারি হাসপাতাল",
     "clinic": "ক্লিনিক",
     "diagnostic": "ডায়াগনস্টিক",
+    "doctor": "ডাক্তারের চেম্বার",
+    "homeo": "হোমিও ডাক্তার",
     "dental": "ডেন্টাল",
     "eye": "চক্ষু",
     "pharmacy": "ফার্মেসি",
@@ -170,7 +174,16 @@
     "সাপ",
     "snake",
     "health",
-    "স্বাস্থ্য"
+    "স্বাস্থ্য",
+    "হোমিও",
+    "হোমিওপ্যাথি",
+    "হোমিওপ্যাথিক",
+    "homeo",
+    "homeopathy",
+    "homeopathic",
+    "homio",
+    "চেম্বার",
+    "chamber"
    ],
    "criteria": [
     "তথ্যের স্বচ্ছতা",
@@ -183,6 +196,8 @@
     "private": "Private hospital",
     "clinic": "Clinic",
     "diagnostic": "Diagnostic centre",
+    "doctor": "Doctor's chamber",
+    "homeo": "Homeopathy doctor",
     "dental": "Dental",
     "eye": "Eye care",
     "pharmacy": "Pharmacy",

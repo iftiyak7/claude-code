@@ -517,6 +517,15 @@
           ${b.active === false ? ` <span class="tag">${T('বন্ধ')}</span>` : expired ? ` <span class="tag bad">${T('মেয়াদ শেষ')}</span>` : notyet ? ` <span class="tag warn">${T('শুরু হয়নি')}</span>` : ` <span class="tag ok">${T('চলছে')}</span>`}`;
       },
       stats: () => api('/admin/adstats'),
+      before: () => { const s = S.settings.site || {}; return `<form class="card" data-slidecfg><div class="cbody slidecfg"><span class="thumb" style="--c:#0e9f6e">${icon('layers', 20)}</span>
+        <div><b>${T('হোমপেজ স্লাইডার')}</b><small class="muted">${T('একাধিক ব্যানার থাকলে নিজে থেকে পরেরটায় যাবে। কেউ হাত দিয়ে সরালে কিছুক্ষণ থেমে থাকবে।')}</small></div>
+        <label class="check"><input type="checkbox" name="bannerAuto" ${s.bannerAuto !== false ? 'checked' : ''}><span>${T('অটো স্লাইড')}</span></label>
+        <select name="bannerSeconds">${[3, 4, 5, 6, 8, 10].map(n => `<option value="${n}" ${(+s.bannerSeconds || 5) === n ? 'selected' : ''}>${T('প্রতি {n} সেকেন্ডে', { n: num(n) })}</option>`).join('')}</select></div></form>`; },
+      mounted: () => {
+        const f = root.querySelector('[data-slidecfg]');
+        f.onsubmit = e => e.preventDefault();
+        f.onchange = () => saveSetting('site', { ...S.settings.site, bannerAuto: f.bannerAuto.checked, bannerSeconds: +f.bannerSeconds.value });
+      },
       fields: () => [['placement', 'select', 'কোথায় দেখাবে', '', PLACEMENTS], ['category', 'select', 'ক্যাটাগরি (শুধু ক্যাটাগরি পেজের জন্য)', '', [['', '— সব —'], ...cats().map(c => [c.id, catName(c)])]],
         ['advertiser', 'text', 'বিজ্ঞাপনদাতা', 'প্রতিষ্ঠানের নাম ও ফোন — শুধু আপনার রেকর্ডের জন্য'], ['kicker', 'text', 'উপরের ছোট লেখা', 'যেমন: Sponsored, সীমিত অফার'],
         ['title', 'text', 'শিরোনাম *'], ['titleEn', 'text', 'শিরোনাম (English)'], ['subtitle', 'text', 'বিবরণ'], ['subtitleEn', 'text', 'বিবরণ (English)'],

@@ -271,3 +271,6 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 .slugrow em { font-style: normal; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .slugrow input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
 @media (max-width: 640px) { .slugrow { flex-wrap: wrap; } .slugrow em { width: 100%; } }
+.slidecfg { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.slidecfg > div { flex: 1; min-width: 220px; display: grid; gap: 2px; }
+.slidecfg select { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 10px; font: inherit; }

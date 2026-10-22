@@ -443,5 +443,9 @@ Object.assign(window.I18N_EN, {
   '{n}টি আসল তালিকার লিংকে এখনো "demo" লেখা আছে (যেমন /p/{id}), কারণ সেগুলো নমুনা তথ্য বদলে বানানো।': '{n} real listings still have "demo" in their link (e.g. /p/{id}) because they were made by editing sample data.',
   'এক ক্লিকে ঠিক করুন': 'Fix in one click',
   'লিংকে শুধু ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও - দিন (যেমন: shahi-khana)': 'Use only lowercase English letters, numbers and - in the link (e.g. shahi-khana)',
-  'এই লিংক আরেকটি তালিকায় আছে, অন্যটি দিন': 'Another listing already uses this link, choose a different one'
+  'এই লিংক আরেকটি তালিকায় আছে, অন্যটি দিন': 'Another listing already uses this link, choose a different one',
+  'প্রাইভেট হাসপাতাল, ক্লিনিক, ডাক্তার ও হোমিও চেম্বার, রেস্টুরেন্ট, দোকান, হোটেল, কোচিং': 'Private hospitals, clinics, doctors\' & homeopathy chambers, restaurants, shops, hotels, coaching',
+  'একাধিক ব্যানার থাকলে নিজে থেকে পরেরটায় যাবে। কেউ হাত দিয়ে সরালে কিছুক্ষণ থেমে থাকবে।': 'With more than one banner, it moves to the next one on its own. It pauses for a while when someone swipes it.',
+  'অটো স্লাইড': 'Auto slide',
+  'প্রতি {n} সেকেন্ডে': 'Every {n} seconds'
 });
