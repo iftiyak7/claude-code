@@ -98,6 +98,12 @@ export default async function documentForm(el, params) {
   async function addProduct(p, variant = null) {
     if (p.has_variants && !variant) {
       const full = await api.get(`products/${p.id}`);
+      // Sizes packed from the loose stock (honey jars → bottles): a purchase buys the loose stock.
+      if (!isSale && full.loose_base) {
+        doc.lines.push({ product_id: full.id, variant_id: 0, name: `${full.name} (${t('loose')})`, qty: '1', price: str(dec(full.purchase_price ?? 0), places()), discount_type: 'fixed', discount_value: '', tax_rate_id: full.tax_rate_id || '' });
+        paintLines();
+        return;
+      }
       if (full.variants.length) {
         full.variants.forEach((v) => addProduct(full, v));
         toast(t('All variants added — remove the ones you don\'t need.'), 'info');
