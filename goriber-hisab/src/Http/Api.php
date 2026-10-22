@@ -99,7 +99,8 @@ final class Api {
 			$write   = 'GET' !== $request->get_method();
 			if ( $write ) {
 				$this->k->limiter->hit( 'write:' . $user_id, (int) apply_filters( 'goriber_hisab/rate_limit_writes', 240 ), 60 );
-			} else {
+			} elseif ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache() ) {
+				// Without an object cache every count is two database writes; reads are not worth that.
 				$this->k->limiter->hit( 'read:' . $user_id, (int) apply_filters( 'goriber_hisab/rate_limit_reads', 900 ), 60 );
 			}
 

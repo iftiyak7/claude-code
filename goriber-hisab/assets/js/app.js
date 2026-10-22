@@ -217,7 +217,8 @@ async function render(match) {
   try {
     const mod = await match.route.load();
     if (current().path !== match.path) return; // navigated away while loading
-    const el = h('div', { class: 'view' });
+    // Keep the spinner until the page has its data (views replace it when they mount).
+    const el = h('div', { class: 'view' }, spinner());
     mount(main, el);
     await mod.default(el, { ...match.params, ...meta }, match.query);
     main.focus({ preventScroll: true });
