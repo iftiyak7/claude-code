@@ -33,6 +33,13 @@
   "বেজপাড়া",
   "শংকরপুর",
   "খড়কি",
+  "চাঁচড়া",
+  "উপশহর",
+  "কাশিমপুর",
+  "আরবপুর",
+  "কারবালা",
+  "জেল রোড",
+  "মুড়লী",
   "ঝিকরগাছা",
   "চৌগাছা",
   "মনিরামপুর",
@@ -40,7 +47,8 @@
   "অভয়নগর",
   "বাঘারপাড়া",
   "শার্শা",
-  "বেনাপোল"
+  "বেনাপোল",
+  "নওয়াপাড়া"
  ],
  "categories": [
   {
@@ -184,7 +192,8 @@
    "freeSubs": [
     "govt",
     "bloodbank"
-   ]
+   ],
+   "near": true
   },
   {
    "id": "restaurant",
@@ -354,10 +363,6 @@
     "পরিবার",
     "ফুল",
     "flower",
-    "মসজিদ",
-    "mosque",
-    "মন্দির",
-    "temple",
     "historical",
     "ঐতিহাসিক",
     "travel"
@@ -377,6 +382,54 @@
    },
    "paid": false,
    "freeSubs": []
+  },
+  {
+   "id": "religious",
+   "since": 2,
+   "bn": "মসজিদ ও উপাসনালয়",
+   "en": "Mosques & worship",
+   "icon": "mosque",
+   "color": "#0b8a5f",
+   "subs": {
+    "mosque": "মসজিদ",
+    "eidgah": "ঈদগাহ",
+    "temple": "মন্দির",
+    "church": "গির্জা"
+   },
+   "subsEn": {
+    "mosque": "Mosques",
+    "eidgah": "Eidgah",
+    "temple": "Temples",
+    "church": "Churches"
+   },
+   "keys": [
+    "মসজিদ",
+    "masjid",
+    "mosque",
+    "jame",
+    "জামে",
+    "নামাজ",
+    "namaz",
+    "namaj",
+    "salah",
+    "prayer",
+    "ঈদগাহ",
+    "eidgah",
+    "মন্দির",
+    "temple",
+    "mondir",
+    "গির্জা",
+    "church"
+   ],
+   "criteria": [
+    "পরিবেশ",
+    "অজুখানা ও সুবিধা",
+    "যাতায়াত"
+   ],
+   "active": true,
+   "paid": false,
+   "freeSubs": [],
+   "near": true
   },
   {
    "id": "hotel",
@@ -680,8 +733,11 @@
    "area": "যশোর সদর",
    "hours": "24h",
    "status": "pending",
-   "lat": 23.1676,
-   "lng": 89.2117
+   "lat": 23.16554,
+   "lng": 89.21379,
+   "phone": "01320143180",
+   "phone2": "042165034",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)"
   },
   {
    "id": "e-benapole-ps",
@@ -692,20 +748,22 @@
    "area": "বেনাপোল",
    "hours": "24h",
    "status": "pending",
-   "lat": 23.0425,
-   "lng": 88.895
+   "phone": "01320143388",
+   "address": "বেনাপোল, শার্শা",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)"
   },
   {
    "id": "e-fire-jsr",
    "cat": "emergency",
    "sub": "fire",
-   "name": "যশোর ফায়ার সার্ভিস স্টেশন",
-   "nameEn": "Jashore Fire Station",
+   "name": "ফায়ার সার্ভিস ও সিভিল ডিফেন্স, যশোর",
+   "nameEn": "Fire Service & Civil Defence, Jashore",
    "area": "যশোর সদর",
    "hours": "24h",
    "status": "pending",
-   "lat": 23.169,
-   "lng": 89.205
+   "phone": "02477761330",
+   "phone2": "01901020134",
+   "note": "জেলা দপ্তর · আগুন লাগলে ১০২ বা ৯৯৯ · সূত্র: ফায়ার সার্ভিস যশোর (fireservice.jessore.gov.bd)"
   },
   {
    "id": "e-amb-gh",
@@ -716,18 +774,22 @@
    "area": "যশোর সদর",
    "hours": "24h",
    "status": "pending",
-   "lat": 23.165,
-   "lng": 89.2125
+   "lat": 23.16891,
+   "lng": 89.20903,
+   "note": "অ্যাম্বুলেন্সের সরাসরি নম্বর এখনো যাচাই হয়নি — হাসপাতালের নম্বরে বা ৯৯৯ এ কল করুন"
   },
   {
    "id": "e-power",
    "cat": "emergency",
    "sub": "power",
-   "name": "বিদ্যুৎ অভিযোগ কেন্দ্র (যশোর)",
-   "nameEn": "Power Complaint Centre",
+   "name": "ওজোপাডিকো বিদ্যুৎ অভিযোগ কেন্দ্র, যশোর",
+   "nameEn": "WZPDCL power complaints, Jashore",
    "area": "যশোর সদর",
    "hours": null,
-   "status": "pending"
+   "status": "pending",
+   "phone": "01709208610",
+   "phone2": "02477762553",
+   "note": "শহরের বিদ্যুৎ · কল সেন্টার ১৬১১৭ · সূত্র: wzpdcl.jessore.gov.bd"
   },
   {
    "id": "e-water",
@@ -743,32 +805,41 @@
    "id": "e-vet",
    "cat": "emergency",
    "sub": "vet",
-   "name": "জেলা ভেটেরিনারি হাসপাতাল",
-   "nameEn": "District Veterinary Hospital",
+   "name": "জেলা প্রাণিসম্পদ দপ্তর ও ভেটেরিনারি হাসপাতাল, যশোর",
+   "nameEn": "District Livestock Office & Veterinary Hospital, Jashore",
    "area": "যশোর সদর",
    "hours": null,
-   "status": "pending"
+   "status": "pending",
+   "phone": "01712050690",
+   "note": "জেলা প্রাণিসম্পদ কর্মকর্তার মোবাইল · সূত্র: dls.jessore.gov.bd"
   },
   {
    "id": "h-general",
    "cat": "hospital",
    "sub": "govt",
    "name": "২৫০ শয্যা জেনারেল হাসপাতাল, যশোর",
-   "nameEn": "250 Bed General Hospital Jashore",
+   "nameEn": "Jashore 250 Bed General Hospital",
    "area": "যশোর সদর",
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.165,
-   "lng": 89.2125,
+   "lat": 23.16891,
+   "lng": 89.20903,
    "tags": [
-    "সদর হাসপাতাল",
+    "general hospital",
     "sadar hospital",
-    "জরুরি বিভাগ",
-    "সাপ",
-    "snake"
+    "সদর হাসপাতাল",
+    "জেনারেল হাসপাতাল",
+    "govt",
+    "সরকারি",
+    "emergency",
+    "জরুরি"
    ],
-   "note": "সাপে কামড়ালে দ্রুত সরকারি হাসপাতালে যান। অ্যান্টিভেনম প্রাপ্যতা আগে ফোনে নিশ্চিত করুন।"
+   "note": "সাপে কামড়ালে দ্রুত সরকারি হাসপাতালে যান। অ্যান্টিভেনম প্রাপ্যতা আগে ফোনে নিশ্চিত করুন। · ফোন নম্বরের সূত্র: jessore.gov.bd",
+   "phone": "01730324795",
+   "address": "ঘোপ–নওয়াপাড়া রোড, যশোর",
+   "about": "যশোর জেলার প্রধান সরকারি হাসপাতাল (২৫০ শয্যা), যশোর মেডিকেল কলেজের শিক্ষা হাসপাতাল হিসেবেও ব্যবহৃত হয়। জরুরি বিভাগ আছে।",
+   "aboutEn": "The main government hospital of Jashore district (250 beds), also the teaching hospital of Jashore Medical College. Has an emergency department."
   },
   {
    "id": "h-cmh",
@@ -779,8 +850,8 @@
    "area": "যশোর সদর",
    "hours": "24h",
    "status": "pending",
-   "lat": 23.185,
-   "lng": 89.165
+   "address": "যশোর সেনানিবাস",
+   "about": "যশোর সেনানিবাসে অবস্থিত সামরিক হাসপাতাল; প্রধানত সেনা সদস্য ও তাদের পরিবারের জন্য।"
   },
   {
    "id": "h-uhc-jhikargachha",
@@ -792,49 +863,60 @@
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.1,
-   "lng": 89.1,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324584",
+   "address": "ঝিকরগাছা, যশোর",
+   "about": "ঝিকরগাছা উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Jhikargachha upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)",
+   "lat": 23.10524,
+   "lng": 89.10907
   },
   {
    "id": "h-uhc-chougachha",
    "cat": "hospital",
    "sub": "govt",
    "name": "চৌগাছা উপজেলা স্বাস্থ্য কমপ্লেক্স",
-   "nameEn": "Chougachha Upazila Health Complex",
+   "nameEn": "Chaugachha Upazila Health Complex",
    "area": "চৌগাছা",
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.26,
-   "lng": 89.03,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324583",
+   "address": "চৌগাছা, যশোর",
+   "about": "চৌগাছা উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Chaugachha upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)"
   },
   {
    "id": "h-uhc-monirampur",
    "cat": "hospital",
    "sub": "govt",
    "name": "মনিরামপুর উপজেলা স্বাস্থ্য কমপ্লেক্স",
-   "nameEn": "Monirampur Upazila Health Complex",
+   "nameEn": "Manirampur Upazila Health Complex",
    "area": "মনিরামপুর",
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.01,
-   "lng": 89.24,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324586",
+   "address": "মনিরামপুর, যশোর",
+   "about": "মনিরামপুর উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Manirampur upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)"
   },
   {
    "id": "h-uhc-keshabpur",
@@ -846,13 +928,16 @@
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 22.91,
-   "lng": 89.22,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324585",
+   "address": "কেশবপুর, যশোর",
+   "about": "কেশবপুর উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Keshabpur upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)"
   },
   {
    "id": "h-uhc-abhaynagar",
@@ -864,13 +949,16 @@
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.02,
-   "lng": 89.42,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324581",
+   "address": "নওয়াপাড়া, অভয়নগর",
+   "about": "অভয়নগর উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Abhaynagar upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)"
   },
   {
    "id": "h-uhc-bagherpara",
@@ -882,13 +970,16 @@
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.22,
-   "lng": 89.35,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324582",
+   "address": "বাঘারপাড়া, যশোর",
+   "about": "বাঘারপাড়া উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Bagherpara upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd)"
   },
   {
    "id": "h-uhc-sharsha",
@@ -900,13 +991,16 @@
    "hours": "24h",
    "status": "pending",
    "emergency": true,
-   "lat": 23.08,
-   "lng": 88.97,
    "tags": [
     "সাপ",
     "snake",
     "উপজেলা"
-   ]
+   ],
+   "phone": "01730324587",
+   "address": "শার্শা, যশোর",
+   "about": "শার্শা উপজেলার সরকারি উপজেলা স্বাস্থ্য কমপ্লেক্স।",
+   "aboutEn": "Government Upazila Health Complex of Sharsha upazila.",
+   "note": "সূত্র: জেলা প্রশাসনের ওয়েবসাইট (jessore.gov.bd) · উপজেলা ওয়েবসাইটে আরেকটি নম্বর আছে (০১৭১৭-৮১৩৩৪৪) — কোনটি চালু, যাচাই প্রয়োজন"
   },
   {
    "id": "h-demo-clinic",
@@ -1396,6 +1490,256 @@
    "nameEn": "Jashore Zilla School",
    "area": "যশোর সদর",
    "status": "pending"
+  },
+  {
+   "id": "h-tb-jsr",
+   "cat": "hospital",
+   "sub": "govt",
+   "name": "যশোর বক্ষব্যাধি হাসপাতাল (টিবি হাসপাতাল)",
+   "nameEn": "Jashore Chest Disease (TB) Hospital",
+   "phone": "01711397289",
+   "area": "যশোর সদর",
+   "address": "বকচর, যশোর",
+   "about": "যক্ষ্মা ও বক্ষব্যাধি রোগীদের জন্য সরকারি হাসপাতাল।",
+   "aboutEn": "Government hospital for tuberculosis and chest diseases.",
+   "note": "সূত্র: স্বাস্থ্য অধিদপ্তরের ফ্যাসিলিটি রেজিস্ট্রি",
+   "tags": [
+    "tb",
+    "যক্ষ্মা",
+    "chest",
+    "বক্ষব্যাধি"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-sharsha",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "শার্শা থানা",
+   "nameEn": "Sharsha Police Station",
+   "phone": "01320143310",
+   "area": "শার্শা",
+   "address": "শার্শা, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-jhikargachha",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "ঝিকরগাছা থানা",
+   "nameEn": "Jhikargachha Police Station",
+   "phone": "01320143206",
+   "area": "ঝিকরগাছা",
+   "address": "ঝিকরগাছা, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-chougachha",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "চৌগাছা থানা",
+   "nameEn": "Chaugachha Police Station",
+   "phone": "01320143284",
+   "area": "চৌগাছা",
+   "address": "চৌগাছা, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-abhaynagar",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "অভয়নগর থানা",
+   "nameEn": "Abhaynagar Police Station",
+   "phone": "01320143362",
+   "area": "অভয়নগর",
+   "address": "অভয়নগর, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-bagherpara",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "বাঘারপাড়া থানা",
+   "nameEn": "Bagherpara Police Station",
+   "phone": "01320143258",
+   "area": "বাঘারপাড়া",
+   "address": "বাঘারপাড়া, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-monirampur",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "মনিরামপুর থানা",
+   "nameEn": "Manirampur Police Station",
+   "phone": "01320143232",
+   "area": "মনিরামপুর",
+   "address": "মনিরামপুর, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-ps-keshabpur",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "কেশবপুর থানা",
+   "nameEn": "Keshabpur Police Station",
+   "phone": "01320143336",
+   "area": "কেশবপুর",
+   "address": "কেশবপুর, যশোর",
+   "hours": "24h",
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "thana",
+    "থানা",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-sp-jsr",
+   "cat": "emergency",
+   "sub": "police",
+   "name": "পুলিশ সুপারের কার্যালয়, যশোর",
+   "nameEn": "Superintendent of Police Office, Jashore",
+   "phone": "02477762688",
+   "area": "যশোর সদর",
+   "note": "সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "tags": [
+    "police",
+    "sp",
+    "এসপি",
+    "পুলিশ"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "e-fire-chougachha",
+   "cat": "emergency",
+   "sub": "fire",
+   "name": "চৌগাছা ফায়ার সার্ভিস স্টেশন",
+   "nameEn": "Chaugachha Fire Station",
+   "phone": "01901022840",
+   "phone2": "01901022839",
+   "area": "চৌগাছা",
+   "hours": "24h",
+   "note": "সূত্র: ফায়ার সার্ভিস যশোর (fireservice.jessore.gov.bd)",
+   "tags": [
+    "fire",
+    "ফায়ার",
+    "আগুন"
+   ],
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "m-jailroad",
+   "cat": "religious",
+   "sub": "mosque",
+   "name": "জেল রোড জামে মসজিদ",
+   "nameEn": "Jail Road Jame Masjid",
+   "area": "জেল রোড",
+   "address": "জেল রোড, যশোর কেন্দ্রীয় কারাগারের কাছে",
+   "lat": 23.1719,
+   "lng": 89.21382,
+   "note": "অবস্থান: OpenStreetMap",
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "m-gh",
+   "cat": "religious",
+   "sub": "mosque",
+   "name": "জেনারেল হাসপাতাল জামে মসজিদ",
+   "nameEn": "General Hospital Mosque, Jashore",
+   "area": "যশোর সদর",
+   "address": "২৫০ শয্যা জেনারেল হাসপাতাল চত্বর, যশোর",
+   "lat": 23.16827,
+   "lng": 89.20984,
+   "note": "অবস্থান: OpenStreetMap",
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "m-busstand",
+   "cat": "religious",
+   "sub": "mosque",
+   "name": "বাসস্ট্যান্ড জামে মসজিদ",
+   "nameEn": "Bus Stand Jame Masjid",
+   "area": "যশোর সদর",
+   "address": "বিআরটিসি কাউন্টার / মণিহার সিনেমা হলের কাছে, যশোর",
+   "note": "ম্যাপে সঠিক অবস্থান এখনো যোগ হয়নি",
+   "status": "pending",
+   "since": 2
+  },
+  {
+   "id": "m-khoyertola",
+   "cat": "religious",
+   "sub": "mosque",
+   "name": "নতুন খয়েরতলা জামে মসজিদ",
+   "nameEn": "Notun Khoyertola Jame Masjid",
+   "area": "যশোর সদর",
+   "address": "নতুন খয়েরতলা, যশোর",
+   "note": "ম্যাপে সঠিক অবস্থান এখনো যোগ হয়নি",
+   "status": "pending",
+   "since": 2
   }
  ],
  "plans": [
@@ -1497,5 +1841,73 @@
   "updated": "2026-10-20",
   "bn": "১. Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম। এটি সরকারি অ্যাপ নয় এবং নিজে কোনো জরুরি সেবা দেয় না। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।\n\n২. অ্যাপের তথ্য যতটা সম্ভব যাচাই করা হয়, তবে ভুল বা পুরনো তথ্য থাকতে পারে। গুরুত্বপূর্ণ সিদ্ধান্তের আগে সরাসরি যোগাযোগ করে নিশ্চিত হোন।\n\n৩. চাকরি, বাসা ভাড়া ও মেস ভাড়ার বিজ্ঞাপন ব্যবহারকারীরা দেন। বিজ্ঞাপনদাতা বা বাড়ির মালিকের সাথে Jashore360-এর কোনো সম্পর্ক নেই। নিজ দায়িত্বে যাচাই করে লেনদেন করুন। আগাম টাকা পাঠানোর আগে সরাসরি দেখে নিন। কোনো প্রতারণা বা ক্ষতি হলে Jashore360 দায়ী থাকবে না।\n\n৪. অ্যাকাউন্ট খুলতে সঠিক নাম ও নিজের মোবাইল নম্বর দিতে হবে। আপনার পাসওয়ার্ডের নিরাপত্তা আপনার দায়িত্ব।\n\n৫. মিথ্যা, বিভ্রান্তিকর, আপত্তিকর বা অন্যের অধিকার ক্ষুণ্ণ করে এমন তথ্য, ছবি, ভিডিও বা রিভিউ দেওয়া যাবে না। এমন কিছু পেলে অ্যাডমিন তা সরাতে এবং অ্যাকাউন্ট বন্ধ করতে পারবেন।\n\n৬. ব্যবসার প্যাকেজের টাকা পেমেন্ট যাচাইয়ের পর ফেরতযোগ্য নয়, তবে তথ্য প্রকাশ না হলে যোগাযোগ করুন।\n\n৭. আপনার দেওয়া তথ্য, ছবি ও ভিডিও অ্যাপে প্রকাশের অনুমতি আপনি দিচ্ছেন। আপনার মোবাইল নম্বর শুধু অ্যাকাউন্ট ও যোগাযোগের জন্য ব্যবহার হবে, বিক্রি করা হবে না।\n\n৮. Jashore360 প্রয়োজনে এই শর্তাবলি পরিবর্তন করতে পারে। পরিবর্তন হলে অ্যাপে আবার সম্মতি চাওয়া হবে।",
   "en": "1. Jashore360 is an independent information platform. It is not a government app and does not provide emergency services itself. In an emergency, call 999.\n\n2. Information is verified as far as possible, but it may be wrong or out of date. Confirm directly before making important decisions.\n\n3. Job, rental and mess ads are posted by users. Jashore360 has no connection with advertisers or property owners. Verify everything yourself; see the place in person before sending any advance money. Jashore360 is not responsible for any fraud or loss.\n\n4. You must use your real name and your own mobile number to open an account. You are responsible for keeping your password safe.\n\n5. Do not post false, misleading or offensive information, photos, videos or reviews, or anything that violates others' rights. The admin may remove such content and close the account.\n\n6. Business plan payments are not refundable once verified; contact us if your listing is not published.\n\n7. You allow the information, photos and videos you submit to be published in the app. Your mobile number is used only for your account and contact, and is never sold.\n\n8. Jashore360 may change these terms. When they change, the app will ask for your consent again."
+ },
+ "areaGeo": {
+  "নিউমার্কেট": [
+   23.18032,
+   89.21342
+  ],
+  "চাঁচড়া": [
+   23.14611,
+   89.19797
+  ],
+  "জেল রোড": [
+   23.1719,
+   89.21382
+  ]
+ },
+ "_oldRough": {
+  "e-kotwali": [
+   23.1676,
+   89.2117
+  ],
+  "e-benapole-ps": [
+   23.0425,
+   88.895
+  ],
+  "e-fire-jsr": [
+   23.169,
+   89.205
+  ],
+  "e-amb-gh": [
+   23.165,
+   89.2125
+  ],
+  "h-general": [
+   23.165,
+   89.2125
+  ],
+  "h-cmh": [
+   23.185,
+   89.165
+  ],
+  "h-uhc-jhikargachha": [
+   23.1,
+   89.1
+  ],
+  "h-uhc-chougachha": [
+   23.26,
+   89.03
+  ],
+  "h-uhc-monirampur": [
+   23.01,
+   89.24
+  ],
+  "h-uhc-keshabpur": [
+   22.91,
+   89.22
+  ],
+  "h-uhc-abhaynagar": [
+   23.02,
+   89.42
+  ],
+  "h-uhc-bagherpara": [
+   23.22,
+   89.35
+  ],
+  "h-uhc-sharsha": [
+   23.08,
+   88.97
+  ]
  }
 }

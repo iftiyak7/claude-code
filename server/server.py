@@ -11,6 +11,7 @@ Standard library only (Python 3.9+), so a stock Ubuntu VPS can run it as-is.
 import argparse
 import base64
 import gzip
+import http.client
 import hashlib
 import hmac
 import json
@@ -25,7 +26,7 @@ import threading
 import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.normpath(os.path.join(HERE, '..', 'public'))
@@ -43,10 +44,10 @@ mimetypes.add_type('video/mp4', '.mp4')
 mimetypes.add_type('video/webm', '.webm')
 mimetypes.add_type('video/quicktime', '.mov')
 
-SETTING_KEYS = ('site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms')
-DICT_SETTINGS = ('site', 'payment', 'app', 'terms')
+SETTING_KEYS = ('site', 'areas', 'areaGeo', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'popup')
+DICT_SETTINGS = ('site', 'payment', 'app', 'terms', 'popup', 'areaGeo')
 MODERATOR_SETTINGS = {'notices'}           # every other setting is owner-only
-CLASS_KINDS = ('job', 'rent', 'mess')
+CLASS_KINDS = ('job', 'rent', 'mess', 'tuition')
 CLASS_DAYS = 30
 STATUSES = ('verified', 'pending', 'needs_update', 'temp_closed', 'closed')
 MAX_IMAGES, MAX_VIDEOS = 10, 2
@@ -137,6 +138,22 @@ def init_db():
                     if x.get('subtitle') == 'বিনামূল্যে প্রোফাইল — যাচাইয়ের পর প্রকাশিত হবে':   # old stock text; listing is paid now
                         x.update({f: seeded[x['id']][f] for f in ('subtitle', 'subtitleEn', 'link') if f in seeded.get(x['id'], {})})
                 c.execute('UPDATE settings SET value=? WHERE key=?', (json.dumps(cur, ensure_ascii=False), key))
+        if 'categories' in have:                       # categories added in later versions (e.g. mosques), and the "near" flag
+            cats = json.loads(c.execute("SELECT value FROM settings WHERE key='categories'").fetchone()[0])
+            ids, changed = {x['id'] for x in cats}, False
+            for i, sc in enumerate(seed['categories']):
+                if sc['id'] not in ids and sc.get('since', 1) > 1:
+                    after = seed['categories'][i - 1]['id'] if i else None
+                    pos = next((n + 1 for n, x in enumerate(cats) if x['id'] == after), len(cats))
+                    cats.insert(pos, {k: v for k, v in sc.items() if k != 'since'})
+                    changed = True
+            for x in cats:
+                sc = next((y for y in seed['categories'] if y['id'] == x['id']), None)
+                if sc and 'near' in sc and 'near' not in x:
+                    x['near'] = sc['near']
+                    changed = True
+            if changed:
+                c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
         if 'categories' in have:                       # give older category lists the pricing fields
             cats = json.loads(c.execute("SELECT value FROM settings WHERE key='categories'").fetchone()[0])
             seeded = {x['id']: x for x in seed['categories']}
@@ -151,8 +168,56 @@ def init_db():
         if fresh:
             now = int(time.time())
             for it in seed.get('listings', []):
+                it = {k: v for k, v in it.items() if k != 'since'}
                 c.execute('INSERT OR IGNORE INTO listings (id, doc, review, source, created_at, updated_at) VALUES (?,?,?,?,?,?)',
                           (it['id'], json.dumps(it, ensure_ascii=False), 'approved', 'seed', now, now))
+            c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
+        else:
+            upgrade_seed(c, seed)
+
+
+SEED_VERSION = 2
+FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
+
+
+def upgrade_seed(c, seed):
+    """Bring an existing install's starter data up to date without touching anything the admin changed:
+    new starter entries are added once, empty fields are filled, and only our own early rough coordinates are replaced."""
+    row = c.execute("SELECT value FROM settings WHERE key='_seedv'").fetchone()
+    v = int(row[0]) if row else 1
+    if v >= SEED_VERSION:
+        return
+    now, rough = int(time.time()), seed.get('_oldRough', {})
+    have = {r['id']: r for r in c.execute('SELECT id, doc FROM listings')}
+    for it in seed.get('listings', []):
+        it = dict(it)
+        since = it.pop('since', 1)
+        if it['id'] not in have:
+            if since > v:
+                c.execute('INSERT OR IGNORE INTO listings (id, doc, review, source, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+                          (it['id'], json.dumps(it, ensure_ascii=False), 'approved', 'seed', now, now))
+            continue
+        doc = json.loads(have[it['id']]['doc'])
+        new = dict(doc)
+        for k in FILL_FIELDS:
+            if not new.get(k) and it.get(k):
+                new[k] = it[k]
+        if it['id'] in rough and [doc.get('lat'), doc.get('lng')] == rough[it['id']]:
+            for k in ('lat', 'lng'):
+                if it.get(k) is None:
+                    new.pop(k, None)
+                else:
+                    new[k] = it[k]
+        if new != doc:
+            c.execute('UPDATE listings SET doc=? WHERE id=?', (json.dumps(new, ensure_ascii=False), it['id']))
+    areas = get_setting(c, 'areas') or []
+    added = [a for a in seed.get('areas', []) if a not in areas]
+    if added:
+        c.execute("UPDATE settings SET value=? WHERE key='areas'", (json.dumps(areas + added, ensure_ascii=False),))
+    geo = get_setting(c, 'areaGeo') or {}
+    merged = {**seed.get('areaGeo', {}), **geo}
+    c.execute("INSERT OR REPLACE INTO settings VALUES ('areaGeo', ?)", (json.dumps(merged, ensure_ascii=False),))
+    c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
 
 
 def get_setting(c, key):
@@ -192,11 +257,10 @@ def live_ads(ads):
 
 
 def bootstrap_payload():
-    v = _version[0]
-    hit = _boot_cache.get(v)
+    v, t = _version[0], today()
+    hit = _boot_cache.get((v, t))                  # per day too: paid listings and popups expire by date
     if hit:
         return hit
-    t = today()
     with db() as c:
         ratings = {r[0]: (round(r[1], 2), r[2]) for r in
                    c.execute('SELECT listing_id, AVG(stars), COUNT(*) FROM reviews WHERE hidden=0 GROUP BY listing_id')}
@@ -215,13 +279,17 @@ def bootstrap_payload():
             counts[r[0]] = r[1]
     out['ads'] = live_ads(out['ads'])
     out['notices'] = [n for n in out['notices'] or [] if n.get('active', True)]
+    pop = out.get('popup') or {}
+    live = pop.get('active') and (pop.get('title') or pop.get('image')) and (pop.get('start') or '') <= t and (not pop.get('end') or pop['end'] >= t)
+    out['popup'] = pop if live else None
     out['categories'] = [x for x in out['categories'] or [] if x.get('active', True)]
     out['listings'] = listings
     out['classifiedCounts'] = counts
     out['v'] = v
     raw = json.dumps(out, ensure_ascii=False, separators=(',', ':')).encode()
-    entry = (raw, gzip.compress(raw, 6), '"b%d"' % v)
-    _boot_cache[v] = entry
+    entry = (raw, gzip.compress(raw, 6), '"b%d-%s"' % (v, t))
+    _boot_cache.clear()
+    _boot_cache[(v, t)] = entry
     return entry
 
 
@@ -320,6 +388,60 @@ def norm_phone(p):
     return p if re.match(r'^01[3-9]\d{8}$', p) else None
 
 
+# ---------------------------------------------------------------- maps
+
+MAP_HOSTS = ('google.com', 'goo.gl', 'g.co', 'google.com.bd')
+
+
+def map_host_ok(url):
+    u = urlparse(url)
+    host = (u.hostname or '').lower()
+    return u.scheme in ('http', 'https') and any(host == h or host.endswith('.' + h) for h in MAP_HOSTS)
+
+
+def coords_from_text(text):
+    """Pull a lat/lng pair out of a Google Maps link (or plain "23.16, 89.21") and check it is in or near Bangladesh."""
+    t = unquote(unquote(str(text or '')))
+    for rx in (r'!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)', r'@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)',
+               r'[?&](?:q|query|ll|destination|center|daddr|sll)=(?:loc:)?(-?\d{1,2}\.\d+)[, +]+(-?\d{1,3}\.\d+)',
+               r'^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$'):
+        m = re.search(rx, t)
+        if m:
+            lat, lng = float(m.group(1)), float(m.group(2))
+            if 20 <= lat <= 27.5 and 87.5 <= lng <= 93:
+                return round(lat, 6), round(lng, 6)
+    return None
+
+
+def resolve_map_link(url, hops=5):
+    """Follow a short Google Maps link (maps.app.goo.gl/…) to the full URL that carries the coordinates.
+    Only Google hosts are contacted, at every hop."""
+    for _ in range(hops):
+        found = coords_from_text(url)
+        if found or not map_host_ok(url):
+            return found
+        u = urlparse(url)
+        conn = (http.client.HTTPSConnection if u.scheme == 'https' else http.client.HTTPConnection)(u.hostname, timeout=6)
+        try:
+            conn.request('GET', (u.path or '/') + ('?' + u.query if u.query else ''), headers={'User-Agent': 'Mozilla/5.0 Jashore360'})
+            r = conn.getresponse()
+            loc = r.getheader('Location')
+            body = r.read(200000).decode('utf-8', 'ignore') if not loc else ''
+        finally:
+            conn.close()
+        if loc:
+            url = urljoin(url, loc)
+            continue
+        m = re.search(r'https://www\.google\.[a-z.]+/maps/[^"\'\s\\]+', body)
+        return coords_from_text(m.group(0)) if m else coords_from_text(body[:5000])
+    return None
+
+
+def clean_map_url(v):
+    v = s(v, 500)
+    return v if v and map_host_ok(v) else None
+
+
 # ---------------------------------------------------------------- validation
 
 def s(v, n=200):
@@ -352,7 +474,8 @@ def clean_listing(d, admin):
         'web': s(d.get('web'), 300) if re.match(r'^https?://', str(d.get('web') or '')) else None,
         'facebook': s(d.get('facebook'), 300) if re.match(r'^https?://', str(d.get('facebook') or '')) else None,
         'hours': s(d.get('hours'), 20) if re.match(r'^(24h|\d\d:\d\d-\d\d:\d\d)$', str(d.get('hours') or '')) else None,
-        'note': s(d.get('note'), 400), 'about': s(d.get('about'), 3000), 'price': to_int(d.get('price')),
+        'note': s(d.get('note'), 400), 'about': s(d.get('about'), 3000), 'aboutEn': s(d.get('aboutEn'), 3000), 'price': to_int(d.get('price')),
+        'mapUrl': clean_map_url(d.get('mapUrl')),
     }
     if out['cat'] not in cats:
         raise ValueError('ক্যাটাগরি সঠিক নয়')
@@ -375,7 +498,7 @@ def clean_listing(d, admin):
         out['verifiedAt'] = s(d.get('verifiedAt'), 10)
         if out['status'] == 'verified' and not out['verifiedAt']:
             out['verifiedAt'] = today()
-        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden'):
+        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'halal'):
             out[k] = bool(d.get(k)) or None
     else:
         out['status'] = 'pending'
@@ -387,8 +510,9 @@ CLASS_FIELDS = {
     'job': {'company': 120, 'jobType': 30, 'deadline': 10, 'qualification': 400, 'howToApply': 500, 'experience': 60},
     'rent': {'propertyType': 30, 'availableFrom': 10, 'floor': 20, 'facilities': 400},
     'mess': {'seatType': 30, 'gender': 10, 'availableFrom': 10, 'facilities': 400},
+    'tuition': {'tuitionType': 10, 'subject': 200, 'classLevel': 60, 'medium': 30, 'tutorGender': 10, 'qualification': 400},
 }
-CLASS_NUMS = {'*': ('price',), 'job': ('vacancies',), 'rent': ('rooms', 'baths', 'size'), 'mess': ('seats',)}
+CLASS_NUMS = {'*': ('price',), 'job': ('vacancies',), 'rent': ('rooms', 'baths', 'size'), 'mess': ('seats',), 'tuition': ('students', 'daysPerWeek')}
 
 
 def clean_classified(kind, d):
@@ -402,6 +526,12 @@ def clean_classified(kind, d):
             out[k] = to_int(d.get(k))
     out['phone'] = norm_phone(d.get('phone'))
     out['whatsapp'] = norm_phone(d.get('whatsapp'))
+    out['mapUrl'] = clean_map_url(d.get('mapUrl'))
+    for k in ('lat', 'lng'):
+        try:
+            out[k] = round(float(d[k]), 6) if d.get(k) not in (None, '') else None
+        except (TypeError, ValueError):
+            out[k] = None
     if not out['title']:
         raise ValueError('শিরোনাম দিন')
     if not out['phone']:
@@ -1089,7 +1219,8 @@ def user_media(h, b, keep=()):
     return {'images': imgs or None, 'videos': m['videos']}
 
 
-USER_LISTING_FIELDS = ('name', 'area', 'address', 'phone', 'phone2', 'hours', 'price', 'web', 'facebook', 'about', 'note', 'images', 'videos')
+USER_LISTING_FIELDS = ('name', 'area', 'address', 'phone', 'phone2', 'hours', 'price', 'web', 'facebook', 'about', 'note', 'images', 'videos',
+                       'lat', 'lng', 'mapUrl')
 
 
 @route('GET', r'/my/listings/([\w-]+)', auth='user')
@@ -1142,6 +1273,23 @@ def my_edit_classified(h, cid):
                   (json.dumps(doc, ensure_ascii=False), int(time.time()), cid))
     bump()
     h.json({'ok': True})
+
+
+@route('POST', '/maplink')
+def api_maplink(h):
+    """Turn a pasted Google Maps link into coordinates (used by the app's and the admin's forms)."""
+    url = str(h.body().get('url') or '').strip()[:1000]
+    if not rate_ok('map:' + h.who(), 30, 3600):
+        raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, পরে আবার চেষ্টা করুন')
+    found = coords_from_text(url)
+    if not found and map_host_ok(url):
+        try:
+            found = resolve_map_link(url)
+        except (OSError, http.client.HTTPException):
+            raise ApiError(502, 'লিংকটি খোলা যায়নি, আবার চেষ্টা করুন')
+    if not found:
+        raise ApiError(400, 'লিংক থেকে লোকেশন পাওয়া যায়নি। Google Maps-এ জায়গাটি খুলে "Share" থেকে লিংক কপি করুন।')
+    h.json({'lat': found[0], 'lng': found[1]})
 
 
 @route('POST', '/my/terms', auth='user')
@@ -1539,6 +1687,10 @@ def adm_put_setting(h, key):
             old = get_setting(c, 'terms') or {}
             val = {'bn': s(val.get('bn'), 30000) or '', 'en': s(val.get('en'), 30000) or '', 'updated': today(),
                    'version': (old.get('version') or 0) + (1 if (val.get('bn'), val.get('en')) != (old.get('bn'), old.get('en')) else 0)}
+        if key == 'popup':                         # changed content counts as a new popup, so "show once" shows it again
+            old = get_setting(c, 'popup') or {}
+            body = {k: v for k, v in val.items() if k != 'rev'}
+            val = dict(body, rev=(old.get('rev') or 0) + (1 if body != {k: v for k, v in old.items() if k != 'rev'} else 0))
         c.execute('INSERT OR REPLACE INTO settings VALUES (?,?)', (key, json.dumps(val, ensure_ascii=False)))
     bump()
     h.audit('settings.' + key)

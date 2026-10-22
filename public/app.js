@@ -93,13 +93,17 @@
   const KINDS = {
     rent: { bn: 'বাসা ভাড়া', icon: 'home', color: '#4f6bed' },
     mess: { bn: 'মেস / সিট ভাড়া', icon: 'bed', color: '#0f9fa8' },
-    job: { bn: 'চাকরি', icon: 'briefcase', color: '#f2711c' }
+    job: { bn: 'চাকরি', icon: 'briefcase', color: '#f2711c' },
+    tuition: { bn: 'টিউশন', icon: 'cap', color: '#7c5cff' }
   };
   const OPTS = {
     propertyType: [['family', 'ফ্যামিলি বাসা'], ['bachelor', 'ব্যাচেলর বাসা'], ['flat', 'ফ্ল্যাট'], ['room', 'রুম'], ['shop', 'দোকান'], ['office', 'অফিস']],
     seatType: [['single', 'সিঙ্গেল রুম'], ['double', 'ডাবল রুম'], ['shared', 'শেয়ারড সিট']],
     gender: [['male', 'ছেলে'], ['female', 'মেয়ে']],
-    jobType: [['full', 'ফুলটাইম'], ['part', 'পার্টটাইম'], ['intern', 'ইন্টার্নশিপ'], ['remote', 'রিমোট']]
+    jobType: [['full', 'ফুলটাইম'], ['part', 'পার্টটাইম'], ['intern', 'ইন্টার্নশিপ'], ['remote', 'রিমোট']],
+    tuitionType: [['need', 'শিক্ষক চাই'], ['offer', 'পড়াতে চাই']],
+    medium: [['bangla', 'বাংলা মাধ্যম'], ['english', 'ইংলিশ ভার্সন'], ['emedium', 'ইংলিশ মিডিয়াম'], ['madrasa', 'মাদ্রাসা']],
+    tutorGender: [['any', 'যেকোনো'], ['male', 'পুরুষ শিক্ষক'], ['female', 'মহিলা শিক্ষক']]
   };
   const optLabel = (k, v) => T((OPTS[k] || []).find(o => o[0] === v)?.[1] || v || '');
 
@@ -135,16 +139,44 @@
         rej, { timeout: 9000, maximumAge: 600000 });
     });
   }
+  /* Areas: upazilas, plus localities of Jashore town that count as part of Sadar */
+  const UPAZILAS = ['যশোর সদর', 'ঝিকরগাছা', 'চৌগাছা', 'মনিরামপুর', 'কেশবপুর', 'অভয়নগর', 'বাঘারপাড়া', 'শার্শা'];
+  const PARENT = { 'বেনাপোল': 'শার্শা', 'নওয়াপাড়া': 'অভয়নগর' };
+  const isTown = a => a && !UPAZILAS.includes(a) && !PARENT[a];
+  function inArea(it, a) {
+    if (!a) return true;
+    const ia = it.area || '';
+    return ia === a || (a === 'যশোর সদর' && isTown(ia)) || PARENT[ia] === a || !!(it.address && it.address.includes(a));
+  }
+  // Distances are measured from the phone's location, or else from the centre of the chosen area.
+  let originCache = null;
+  function origin() {
+    if (here) return { lat: here.lat, lng: here.lng, gps: true };
+    const a = ls.get('area', ''); if (!a || !D) return null;
+    if (originCache?.a === a && originCache.v === D.v) return originCache.o;
+    const g = D.areaGeo?.[a];
+    let o = g ? { lat: +g[0], lng: +g[1] } : null;
+    if (!o) {
+      const pts = items().filter(i => i.lat != null && i.area === a);
+      if (pts.length) o = { lat: pts.reduce((s, i) => s + i.lat, 0) / pts.length, lng: pts.reduce((s, i) => s + i.lng, 0) / pts.length };
+    }
+    if (o) o.area = a;
+    originCache = { a, v: D.v, o };
+    return o;
+  }
   function km(it) {
-    if (!here || it.lat == null) return null;
-    const r = x => x * Math.PI / 180, dLa = r(it.lat - here.lat), dLo = r(it.lng - here.lng);
-    const a = Math.sin(dLa / 2) ** 2 + Math.cos(r(here.lat)) * Math.cos(r(it.lat)) * Math.sin(dLo / 2) ** 2;
+    const o = origin();
+    if (!o || it.lat == null || it.lng == null) return null;
+    const r = x => x * Math.PI / 180, dLa = r(it.lat - o.lat), dLo = r(it.lng - o.lng);
+    const a = Math.sin(dLa / 2) ** 2 + Math.cos(r(o.lat)) * Math.cos(r(it.lat)) * Math.sin(dLo / 2) ** 2;
     return 12742 * Math.asin(Math.sqrt(a));
   }
+  const fromWhere = () => { const o = origin(); return !o ? '' : o.gps ? T('আপনার থেকে') : T('{a} থেকে', { a: areaName(o.area) }); };
   const kmText = k => k == null ? '' : k < 1 ? T('{n} মি.', { n: num(Math.round(k * 20) * 50) }) : T('{n} কিমি', { n: num(k.toFixed(k < 10 ? 1 : 0)) });
   const mq = it => encodeURIComponent([it.nameEn || it.name, it.address, it.area, 'Jashore', 'Bangladesh'].filter(Boolean).join(', '));
-  const mapUrl = it => `https://www.google.com/maps/search/?api=1&query=${mq(it)}`;
-  const dirUrl = it => `https://www.google.com/maps/dir/?api=1&destination=${mq(it)}`;
+  const ll = it => it.lat != null && it.lng != null ? `${it.lat},${it.lng}` : null;
+  const mapUrl = it => it.mapUrl || `https://www.google.com/maps/search/?api=1&query=${ll(it) || mq(it)}`;
+  const dirUrl = it => `https://www.google.com/maps/dir/?api=1&destination=${ll(it) || mq(it)}`;
 
   /* ---------------- components ---------------- */
   const media = (it, cls = '', color, ic) => {
@@ -166,25 +198,27 @@
 
   function gcard(it) {
     return `<a class="gcard" href="#/p/${esc(it.id)}">${media(it)}${heart(it.id)}
-      ${it.sponsored ? '<span class="flag tag glass">Sponsored</span>' : it.demo ? `<span class="flag tag dark">${T('নমুনা')}</span>` : ''}
+      ${it.sponsored ? '<span class="flag tag glass">Sponsored</span>' : it.demo ? `<span class="flag tag dark">${T('নমুনা')}</span>` : it.halal ? `<span class="flag tag halal">${icon('halal', 12)}${T('হালাল')}</span>` : ''}
       <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b>${esc(nameOf(it))}</b>
         <div class="meta"><span>${it.price ? money(it.price) : isOpen(it) === true ? T('এখন খোলা') : ''}</span>${it.rating ? `<span class="rate">${icon('star', 12)}${num(it.rating.toFixed(1))}</span>` : ''}</div></div></a>`;
   }
+  const halalTag = it => it.halal ? `<span class="tag halal">${icon('halal', 13)}${T('হালাল')}</span>` : '';
   function row(it) {
     const d = km(it);
     const act = it.phone ? `<span class="act ${it.cat === 'emergency' ? 'red' : ''}" data-call="${esc(it.phone)}" data-id="${esc(it.id)}" role="button" aria-label="${T('কল')}">${icon('phone', 18)}</span>`
       : `<span class="act">${icon('chevR', 18)}</span>`;
     return `<a class="row" href="#/p/${esc(it.id)}">${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
-      <div class="meta">${rateTag(it)}${openTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
+      <div class="meta">${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
   }
   const wcard = it => `<a class="wcard" href="#/p/${esc(it.id)}">${media(it)}<div class="t"><b>${esc(nameOf(it))}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
   function crow(a) {
     const k = KINDS[a.kind];
     const meta = a.kind === 'job' ? [a.company, optLabel('jobType', a.jobType)] : a.kind === 'rent' ? [optLabel('propertyType', a.propertyType), a.rooms && T('{n} রুম', { n: num(a.rooms) })]
-      : [optLabel('seatType', a.seatType), a.gender && optLabel('gender', a.gender)];
+      : a.kind === 'tuition' ? [a.tuitionType && optLabel('tuitionType', a.tuitionType), a.subject, a.classLevel]
+      : [optLabel('seatType', a.seatType), a.gender && optLabel('gender', a.gender)], d = km(a);
     return `<a class="row" href="#/ad/${esc(a.id)}">${media(a, '', k.color, k.icon)}<div class="body"><b>${esc(a.title)}</b>
-      <div class="sub">${esc(meta.filter(Boolean).join(' · '))}${a.area ? ' · ' + esc(areaName(a.area)) : ''}</div>
+      <div class="sub">${esc(meta.filter(Boolean).join(' · '))}${a.area ? ' · ' + esc(areaName(a.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
       <div class="meta">${a.price ? `<span class="tag ok">${money(a.price)}${a.kind !== 'job' ? ' / ' + T('মাসে') : ''}</span>` : ''}<span class="muted">${fmtDate(a.t, { day: 'numeric', month: 'short' })}</span></div></div>
       <span class="act">${icon('chevR', 18)}</span></a>`;
   }
@@ -232,9 +266,11 @@
     burger: 'fastfood', 'পিজা': 'fastfood', 'বার্গার': 'fastfood', coffee: 'cafe', cafe: 'cafe', 'কফি': 'cafe', 'চা': 'cafe', pharmacy: 'pharmacy',
     'ফার্মেসি': 'pharmacy', 'ফার্মেসী': 'pharmacy', 'ওষুধ': 'pharmacy', farmesi: 'pharmacy', dentist: 'dental', 'ডেন্টিস্ট': 'dental', 'দাঁত': 'dental',
     'চক্ষু': 'eye', 'চোখ': 'eye', police: 'police', 'পুলিশ': 'police', 'থানা': 'police', thana: 'police', fire: 'fire', 'ফায়ার': 'fire',
-    ambulance: 'ambulance', 'অ্যাম্বুলেন্স': 'ambulance', 'এম্বুলেন্স': 'ambulance' };
+    ambulance: 'ambulance', 'অ্যাম্বুলেন্স': 'ambulance', 'এম্বুলেন্স': 'ambulance', 'মসজিদ': 'mosque', masjid: 'mosque', mosque: 'mosque',
+    'নামাজ': 'mosque', namaz: 'mosque', 'ঈদগাহ': 'eidgah', eidgah: 'eidgah' };
   const KINDKEYS = { 'ভাড়া': 'rent', 'বাসা': 'rent', 'ফ্ল্যাট': 'rent', rent: 'rent', flat: 'rent', 'টুলেট': 'rent', tolet: 'rent', mess: 'mess', 'মেস': 'mess', 'সিট': 'mess',
-    job: 'job', jobs: 'job', 'চাকরি': 'job', 'চাকরী': 'job', chakri: 'job' };
+    job: 'job', jobs: 'job', 'চাকরি': 'job', 'চাকরী': 'job', chakri: 'job', 'টিউশন': 'tuition', 'টিউশনি': 'tuition', tuition: 'tuition', tutor: 'tuition',
+    'টিউটর': 'tuition', 'গৃহশিক্ষক': 'tuition', 'প্রাইভেট': 'tuition' };
   const STOP = new Set(['যশোরে', 'যশোর', 'jashore', 'jessore', 'ভালো', 'valo', 'bhalo', 'best', 'good', 'আমার', 'খুঁজছি', 'চাই', 'কোথায়', 'in', 'the', 'a',
     'মধ্যে', 'টাকার', 'taka', 'tk', 'জন্য', 'সঙ্গে', 'নিয়ে', 'কম', 'বাজেটে', 'জায়গা', 'kothay', 'ki', 'কী', 'of', 'for', 'under', 'within']);
   const NEAR = new Set(['কাছাকাছি', 'কাছে', 'near', 'nearby', 'nearest', 'kache', 'kachakachi', 'me']);
@@ -242,8 +278,9 @@
 
   function search(text) {
     const tokens = norm(text).split(' ').filter(Boolean);
-    const intent = { near: false, open: false, budget: null, cats: new Set(), sub: null, kind: null }, words = [];
+    const intent = { near: false, open: false, budget: null, cats: new Set(), sub: null, kind: null, halal: false }, words = [];
     tokens.forEach(t => {
+      if (t === 'হালাল' || t === 'halal') return void (intent.halal = true);
       if (NEAR.has(t)) return void (intent.near = true);
       if (OPEN.has(t)) return void (intent.open = true);
       if (/^\d{2,5}$/.test(t) && +t >= 50 && t !== '999') return void (intent.budget = +t);
@@ -303,6 +340,7 @@
       <h4>${T('সাজানো')}</h4><div class="seg">${[['', 'প্রাসঙ্গিক'], ['rating', 'রেটিং'], ['near', 'কাছাকাছি']].map(([k, v]) =>
         `<button class="${(p.get('sort') || '') === k ? 'on' : ''}" data-fsort="${k}">${T(v)}</button>`).join('')}</div>
       <label class="switch" style="margin-top:16px"><span>${T('শুধু এখন খোলা')}</span><input type="checkbox" data-fopen ${p.get('open') ? 'checked' : ''}></label>
+      <label class="switch" style="margin-top:10px"><span>${icon('halal', 16)} ${T('শুধু হালাল')}</span><input type="checkbox" data-fhalal ${p.get('halal') ? 'checked' : ''}></label>
       <div class="two" style="margin-top:20px"><button class="btn ghost" data-freset>${T('রিসেট')}</button><button class="btn" data-fapply>${T('ফলাফল দেখুন')}</button></div>`, sh => {
       const st = { cat: p.get('cat') || '', sort: p.get('sort') || '', budget, open: !!p.get('open') };
       sh.addEventListener('click', e => {
@@ -311,11 +349,11 @@
         if ('fsort' in b.dataset) { st.sort = b.dataset.fsort; sh.querySelectorAll('[data-fsort]').forEach(x => x.classList.toggle('on', x === b)); }
         if ('freset' in b.dataset) { closeSheet(); go('#/search'); }
         if ('fapply' in b.dataset) {
-          st.open = sh.querySelector('[data-fopen]').checked;
+          st.open = sh.querySelector('[data-fopen]').checked; st.halal = sh.querySelector('[data-fhalal]').checked;
           const np = new URLSearchParams();
           if (p.get('q')) np.set('q', p.get('q'));
           if (st.cat) np.set('cat', st.cat); if (st.sort) np.set('sort', st.sort);
-          if (st.budget && st.budget < 2000) np.set('budget', st.budget); if (st.open) np.set('open', '1');
+          if (st.budget && st.budget < 2000) np.set('budget', st.budget); if (st.open) np.set('open', '1'); if (st.halal) np.set('halal', '1');
           closeSheet();
           if (st.sort === 'near' && !here) return doLocate('#/search?' + np);
           go('#/search?' + np);
@@ -335,12 +373,38 @@
   }
 
   function areaSheet() {
-    const cur = ls.get('area', '');
-    openSheet(`${sheetHead(T('আপনার এলাকা'))}<p class="muted" style="margin:-6px 0 14px;font-size:13px">${T('এলাকা বাছলে সেই এলাকার তথ্য আগে দেখাবে।')}</p>
-      <div class="pills wrap">${['', ...(D.areas || [])].map(a => `<button class="pill sm ${a === cur ? 'on' : ''}" data-area="${esc(a)}">${esc(a ? areaName(a) : T('পুরো যশোর'))}</button>`).join('')}</div>`, sh => {
-      sh.addEventListener('click', e => { const b = e.target.closest('[data-area]'); if (b) { ls.set('area', b.dataset.area); closeSheet(); render(); } });
+    const cur = ls.get('area', ''), all = D.areas || [];
+    const town = all.filter(isTown), upa = all.filter(a => !isTown(a));
+    const pill = a => `<button class="pill sm ${a === cur ? 'on' : ''}" data-area="${esc(a)}" data-k="${esc(norm(a + ' ' + areaName(a)))}">${esc(a ? areaName(a) : T('পুরো যশোর'))}</button>`;
+    openSheet(`${sheetHead(T('এলাকা ও লোকেশন'))}
+      <button class="gpsrow" data-areagps><span class="ib">${icon('nav', 20)}</span><span><b>${T(here ? 'লোকেশন চালু আছে' : 'আমার বর্তমান লোকেশন')}</b>
+        <small>${T(here ? 'দূরত্ব আপনার লোকেশন থেকে দেখানো হচ্ছে — বন্ধ করতে চাপুন' : 'কাছের মসজিদ, হাসপাতাল, দোকান দূরত্বসহ দেখুন')}</small></span></button>
+      <p class="muted" style="margin:14px 0 10px;font-size:13px">${T('এলাকা বাছলে শুধু সেই এলাকার তথ্য ও বিজ্ঞাপন দেখাবে, আর দূরত্ব সেখান থেকে মাপা হবে।')}</p>
+      <div class="search" style="margin-bottom:12px">${icon('search', 18)}<input type="search" placeholder="${T('এলাকা খুঁজুন')}" data-areaq></div>
+      <div class="pills wrap">${pill('')}</div>
+      ${town.length ? `<h4>${T('যশোর শহর')}</h4><div class="pills wrap">${town.map(pill).join('')}</div>` : ''}
+      <h4>${T('উপজেলা')}</h4><div class="pills wrap">${upa.map(pill).join('')}</div>`, sh => {
+      sh.addEventListener('click', async e => {
+        const b = e.target.closest('[data-area]');
+        if (b) { ls.set('area', b.dataset.area); originCache = null; closeSheet(); return render(); }
+        if (e.target.closest('[data-areagps]')) {
+          closeSheet();
+          if (here) { here = null; ls.set('loc', null); return render(); }
+          return doLocate();
+        }
+      });
+      sh.querySelector('[data-areaq]').addEventListener('input', e => {
+        const q = norm(e.target.value);
+        sh.querySelectorAll('[data-area]').forEach(x => x.hidden = !!q && !x.dataset.k.includes(q));
+      });
     });
   }
+  const ctxbar = (shown, total, nearMode) => {
+    const a = ls.get('area', '');
+    return `<div class="ctxbar"><span class="ib">${icon(here ? 'nav' : 'pin', 17)}</span><div><b>${esc(here && nearMode ? T('আপনার লোকেশন') : a ? areaName(a) : T('পুরো যশোর'))}</b>
+      <small>${nearMode ? T('কাছেরগুলো আগে, দূরত্বসহ') : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
+      ${a ? `<button class="linkbtn" data-clrarea>${T('সব এলাকা')}</button>` : ''}<button class="chipbtn" data-areasheet>${T(a ? 'বদলান' : 'এলাকা বাছুন')}</button></div>`;
+  };
 
   function reportSheet(target) {
     const review = target.review;
@@ -409,7 +473,10 @@
     const pop = pages.home.pop || '';
     const pool = items().filter(i => i.cat !== 'emergency' && (!pop || i.cat === pop));
     const ranked = pool.slice().sort((a, b) => (!!b.featured - !!a.featured) || ((b.rating || 0) - (a.rating || 0)) || ((a.area === area) ? -1 : 0) || (!!a.demo - !!b.demo)).slice(0, 6);
-    const near = here ? items().filter(i => i.lat != null && i.cat !== 'emergency').sort((a, b) => km(a) - km(b)).slice(0, 4) : [];
+    const o = origin();
+    const near = o ? items().filter(i => i.lat != null && i.cat !== 'emergency').sort((a, b) => km(a) - km(b)).slice(0, 4) : [];
+    const nearChips = [CAT.religious && ['religious', 'mosque', 'mosque', 'মসজিদ'], ['hospital', 'pharmacy', 'pill', 'ফার্মেসি'], ['hospital', '', 'hospital', 'হাসপাতাল'],
+      ['restaurant', '', 'utensils', 'খাবার'], ['shop', '', 'bag', 'দোকান']].filter(Boolean);
     const places = items().filter(i => i.cat === 'place');
     const recent = ls.get('recent', []).map(getItem).filter(Boolean).slice(0, 3);
     const cats = D.categories.filter(c => c.id !== 'emergency');
@@ -450,10 +517,13 @@
 
     ${adStrip('inline')}
 
-    <section class="sec"><div class="sechead"><h2>${T('আপনার কাছাকাছি')}</h2>${here ? `<button class="linkbtn" data-locate>${icon('refresh', 14)} ${T('রিফ্রেশ')}</button>` : ''}</div>
-      ${here ? `<div class="rows">${near.map(row).join('')}</div>` :
-        `<button class="row" style="width:100%;border:0;text-align:left" data-locate><span class="media" style="--c:#0e9f6e;width:56px;height:56px"><span class="gen"><span class="ring" style="width:70%">${icon('nav', 26)}</span></span></span>
-        <span class="body"><b>${T('লোকেশন চালু করুন')}</b><span class="sub" style="white-space:normal">${T('কাছাকাছি হাসপাতাল, ফার্মেসি ও দোকান দূরত্বসহ দেখুন')}</span></span><span class="act">${icon('chevR', 18)}</span></button>`}</section>
+    <section class="sec"><div class="sechead"><h2>${o && !o.gps ? T('{a}-এর কাছাকাছি', { a: areaName(o.area) }) : T('আপনার কাছাকাছি')}</h2>${here ? `<button class="linkbtn" data-locate>${icon('refresh', 14)} ${T('রিফ্রেশ')}</button>` : ''}</div>
+      <div class="nearchips">${nearChips.map(([c, sub, ic, t]) => `<a href="#/c/${c}?${sub ? 'sub=' + sub + '&' : ''}sort=near"><span>${icon(ic, 20)}</span>${T(t)}</a>`).join('')}</div>
+      ${o ? `<div class="rows">${near.map(row).join('')}</div>` :
+        `<div class="locask"><button class="row" style="border:0;text-align:left" data-locate><span class="media" style="--c:#0e9f6e;width:52px;height:52px"><span class="gen"><span class="ring" style="width:70%">${icon('nav', 24)}</span></span></span>
+        <span class="body"><b>${T('লোকেশন চালু করুন')}</b><span class="sub" style="white-space:normal">${T('কাছের মসজিদ, হাসপাতাল, ফার্মেসি দূরত্বসহ দেখুন')}</span></span></button>
+        <button class="row" style="border:0;text-align:left" data-areasheet><span class="media" style="--c:#4f6bed;width:52px;height:52px"><span class="gen"><span class="ring" style="width:70%">${icon('pin', 24)}</span></span></span>
+        <span class="body"><b>${T('অথবা এলাকা বাছুন')}</b><span class="sub" style="white-space:normal">${T('যেমন নিউমার্কেট — শুধু সেই এলাকার তথ্য দেখাবে')}</span></span></button></div>`}</section>
 
     ${places.length ? `<section class="sec"><div class="sechead"><h2>${T('যশোর ঘুরে দেখুন')}</h2><a href="#/c/place">${T('সব দেখুন')}${icon('chevR', 14)}</a></div>
       <div class="wcards">${places.map(wcard).join('')}</div></section>` : ''}
@@ -489,12 +559,18 @@
     if (open || intent?.open) list = list.filter(i => isOpen(i) === true);
     const bud = budget || intent?.budget;
     if (bud) list = list.filter(i => !i.price || i.price <= bud);
-    const area = ls.get('area', '');
+    const halal = !!p.get('halal') || intent?.halal;
+    if (halal) list = list.filter(i => i.halal);
+    const area = ls.get('area', ''), total = list.length;
+    // For "nearby" categories (mosques, hospitals) the chosen area is where distances start, not a filter.
+    const nearMode = !!(c?.near && !qtext && origin() && (!sort || sort === 'near'));
+    if (area && !nearMode) list = list.filter(i => inArea(i, area));
+    const nearSort = sort === 'near' || intent?.near || nearMode;
     if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    else if (sort === 'near' || intent?.near) list.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
+    else if (nearSort) list.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
     else if (!qtext) list.sort((a, b) => (!!b.sponsored - !!a.sponsored) || (!!b.featured - !!a.featured) || ((b.area === area) - (a.area === area)) ||
       ((a.status === 'closed') - (b.status === 'closed')) || (!!a.demo - !!b.demo) || (b.rating || 0) - (a.rating || 0));
-    const active = !!(open || budget || sort || cat && qtext);
+    const active = !!(open || budget || sort || halal || cat && qtext);
     const link = o => { const np = new URLSearchParams(p); Object.entries(o).forEach(([k, v]) => v ? np.set(k, v) : np.delete(k)); return (c && !qtext ? `#/c/${cat}` : '#/search') + (np.toString() ? '?' + np : ''); };
     const title = qtext ? T('খুঁজুন') : c ? catName(c) : T('সব তথ্য');
     const hist = ls.get('hist', []);
@@ -509,15 +585,19 @@
         `<a class="pill sm ${k === sub ? 'on' : ''}" href="${link({ sub: k })}">${esc(subName(c, k))}</a>`).join('')}</div>` : ''}
       ${kindHit ? `<a class="row" href="#/ads/${kindHit}" style="margin-bottom:12px"><span class="media" style="--c:${KINDS[kindHit].color};width:56px;height:56px"><span class="gen"><span class="ring" style="width:70%">${icon(KINDS[kindHit].icon, 24)}</span></span></span>
         <span class="body"><b>${T(KINDS[kindHit].bn)}</b><span class="sub">${T('{n}টি বিজ্ঞাপন', { n: num(D.classifiedCounts?.[kindHit] || 0) })}</span></span><span class="act">${icon('chevR', 18)}</span></a>` : ''}
-      ${intent && (intent.cats.size || intent.open || intent.budget || intent.near) ? `<div class="pills">${[...intent.cats].map(id => CAT[id] ?
+      ${intent && (intent.cats.size || intent.open || intent.budget || intent.near || intent.halal) ? `<div class="pills">${[...intent.cats].map(id => CAT[id] ?
         `<a class="pill sm on" href="#/c/${id}${intent.sub && CAT[id].subs?.[intent.sub] ? '?sub=' + intent.sub : ''}">${icon(CAT[id].icon, 15)}${esc(catName(CAT[id]))}</a>` : '').join('')}
-        ${intent.open ? `<span class="pill sm">${T('এখন খোলা')}</span>` : ''}${intent.budget ? `<span class="pill sm">${T('{n} পর্যন্ত', { n: money(intent.budget) })}</span>` : ''}
+        ${intent.open ? `<span class="pill sm">${T('এখন খোলা')}</span>` : ''}${intent.halal ? `<span class="pill sm">${icon('halal', 14)}${T('হালাল')}</span>` : ''}${intent.budget ? `<span class="pill sm">${T('{n} পর্যন্ত', { n: money(intent.budget) })}</span>` : ''}
         ${intent.near ? (here ? `<span class="pill sm">${T('কাছাকাছি')}</span>` : `<button class="pill sm" data-locate>${icon('nav', 14)}${T('লোকেশন দিন')}</button>`) : ''}</div>` : ''}
       ${!qtext && !c ? (hist.length ? `<div class="sechead"><h2 style="font-size:15px">${T('সাম্প্রতিক সার্চ')}</h2><button class="linkbtn" data-clearhist>${T('মুছুন')}</button></div>
         <div class="pills wrap">${hist.map(h => `<a class="pill sm" href="#/search?q=${encodeURIComponent(h)}">${icon('clock', 14)}${esc(h)}</a>`).join('')}</div>` : '')
         + `<div class="sechead" style="margin-top:8px"><h2 style="font-size:15px">${T('জনপ্রিয় সার্চ')}</h2></div><div class="pills wrap">${['কাছাকাছি হাসপাতাল', 'আজ খোলা ফার্মেসি', '২০০ টাকার মধ্যে রেস্টুরেন্ট', 'কাচ্চি', 'বাসা ভাড়া', 'মোবাইল সার্ভিসিং', 'হোটেল']
           .map(s => `<a class="pill sm" href="#/search?q=${encodeURIComponent(T(s))}">${esc(T(s))}</a>`).join('')}</div>` : ''}
-      ${qtext || c || active ? `<div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${[['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']]
+      ${qtext || c || active ? `${ctxbar(list.length, total, nearMode)}
+      ${nearSort && !origin() ? `<div class="note">${icon('nav', 18)}<span>${T('দূরত্ব দেখতে লোকেশন চালু করুন বা এলাকা বাছুন।')} <button class="linkbtn" data-locate>${T('লোকেশন দিন')}</button> · <button class="linkbtn" data-areasheet>${T('এলাকা বাছুন')}</button></span></div>` : ''}
+      ${['restaurant', 'shop'].includes(cat) && !halal ? `<a class="pill sm" style="margin:0 0 10px" href="${link({ halal: '1' })}">${icon('halal', 14)}${T('শুধু হালাল দেখুন')}</a>` : ''}
+      ${halal ? `<a class="pill sm on" style="margin:0 0 10px" href="${link({ halal: '' })}">${icon('halal', 14)}${T('শুধু হালাল')} ${icon('x', 12)}</a>` : ''}
+      <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${[['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']]
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
       <div class="rows">${list.map(row).join('') || (kindHit ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>` : ''}`;
   };
@@ -531,7 +611,7 @@
     const related = items().filter(x => x.id !== id && (it.cat === 'place' ? ['restaurant', 'hotel'].includes(x.cat) && x.lat != null && it.lat != null : x.cat === it.cat))
       .map(x => ({ x, d: it.lat != null && x.lat != null ? Math.hypot(x.lat - it.lat, x.lng - it.lng) : 9 })).sort((a, b) => a.d - b.d).slice(0, 8).map(o => o.x);
     const infoRows = [
-      (it.address || it.area) && ['pin', T('ঠিকানা'), esc([it.address, areaName(it.area), T('যশোর')].filter(Boolean).join(', ')) + (d != null ? ` <span class="muted">· ${kmText(d)}</span>` : '')],
+      (it.address || it.area) && ['pin', T('ঠিকানা'), esc([it.address, areaName(it.area), T('যশোর')].filter(Boolean).join(', ')) + (d != null ? ` <span class="muted">· ${kmText(d)} ${esc(fromWhere())}</span>` : '')],
       ['clock', T('সময়সূচি'), hoursText(it)],
       it.phone && ['phone', T('ফোন'), `<a href="tel:${esc(it.phone)}" data-call-track="${esc(id)}">${num(it.phone)}</a>${it.phone2 ? ` · <a href="tel:${esc(it.phone2)}">${num(it.phone2)}</a>` : ''}`],
       it.web && ['globe', T('ওয়েবসাইট'), `<a href="${esc(it.web)}" target="_blank" rel="noopener nofollow">${esc(it.web.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`],
@@ -545,7 +625,7 @@
       <div class="sheet-body">
         <div class="dtitle"><h1>${esc(nameOf(it))}</h1>${it.price ? `<div class="price"><b>${money(it.price)}</b><small>${T(PRICE_UNIT[it.cat] || 'আনুমানিক')}</small></div>` : ''}</div>
         <div class="dsub">${icon(subIcon(it), 15)}${esc(subLabel(it))}${it.area ? ` · ${esc(areaName(it.area))}` : ''}${it.rating ? ` · ${rateTag(it)}` : ''}</div>
-        <div class="dtags">${statusTag(it)}${openTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
+        <div class="dtags">${statusTag(it)}${openTag(it)}${halalTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
         ${it.demo ? `<div class="note warn">${icon('info', 16)}<span>${T('এটি নমুনা তথ্য, বাস্তব প্রতিষ্ঠান নয়।')}</span></div>` : ''}
         ${!it.phone && it.cat === 'emergency' ? `<div class="note red">${icon('alert', 16)}<span>${T('স্থানীয় নম্বর যাচাই চলছে। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।')}</span></div>` : ''}
         <div class="tabs">${[['about', T('বিবরণ')], ['info', T('তথ্য')], ['reviews', T('রিভিউ') + (it.reviews ? ` (${num(it.reviews)})` : '')]].map(([k, v]) =>
@@ -567,7 +647,7 @@
       setTimeout(() => loadReviews(it), 0);
       return `<div data-rv><div class="boot" style="min-height:120px"><div class="spinner"></div></div></div>`;
     }
-    const about = it.about || it.note;
+    const about = loc(it, 'about') || it.note;
     return `${about ? `<p class="prose">${esc(about)}</p>` : ''}
       ${videoBlock(it.videos)}
       ${it.features?.length ? `<div class="feat">${it.features.map(f => `<span>${icon('check', 15)}${esc(f)}</span>`).join('')}</div>` : ''}
@@ -611,17 +691,20 @@
     const k = KINDS[kind]; if (!k) return pages.notfound();
     const list = cache.ads[kind];
     if (!list) loadKind(kind).catch(e => toast(e.message));
-    const area = p.get('area') || '', sort = p.get('sort') || '';
-    const rows = (list || []).filter(a => !area || a.area === area);
+    const area = ls.get('area', ''), sort = p.get('sort') || '';
+    const rows = (list || []).filter(a => inArea(a, area));
     if (sort === 'low') rows.sort((a, b) => (a.price || 1e12) - (b.price || 1e12));
     if (sort === 'high') rows.sort((a, b) => (b.price || 0) - (a.price || 0));
+    if (sort === 'near') rows.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
     return `${topbar(T(k.bn), `<a class="roundbtn" href="#/post/${kind}" aria-label="${T('বিজ্ঞাপন দিন')}">${icon('plus', 20)}</a>`)}
       <div class="pills">${Object.entries(KINDS).map(([x, v]) => `<a class="pill sm ${x === kind ? 'on' : ''}" href="#/ads/${x}">${icon(v.icon, 15)}${T(v.bn)}</a>`).join('')}</div>
       ${adStrip('classifieds')}
-      <div class="count"><select data-adarea aria-label="${T('এলাকা')}"><option value="">${T('সব এলাকা')}</option>${(D.areas || []).map(a => `<option value="${esc(a)}" ${a === area ? 'selected' : ''}>${esc(areaName(a))}</option>`).join('')}</select>
-        <select data-adsort aria-label="${T('সাজানো')}">${[['', 'নতুন আগে'], ['low', 'কম দাম আগে'], ['high', 'বেশি দাম আগে']].map(([x, v]) => `<option value="${x}" ${x === sort ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
+      ${list ? ctxbar(rows.length, list.length) : ''}
+      <div class="count"><span>${T('{n}টি বিজ্ঞাপন', { n: num(rows.length) })}</span>
+        <select data-adsort aria-label="${T('সাজানো')}">${[['', 'নতুন আগে'], ['low', 'কম দাম আগে'], ['high', 'বেশি দাম আগে'], ['near', 'কাছাকাছি']].map(([x, v]) => `<option value="${x}" ${x === sort ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
       ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>' : `<div class="rows">${rows.map(crow).join('') ||
-        empty(T('এখনো কোনো বিজ্ঞাপন নেই'), T('প্রথম বিজ্ঞাপনটি আপনিই দিন — সম্পূর্ণ ফ্রি।'), `<a class="btn sm" href="#/post/${kind}">${T('বিজ্ঞাপন দিন')}</a>`, k.icon)}</div>`}
+        (area && list.length ? empty(T('{a}-এ এখনো কোনো বিজ্ঞাপন নেই', { a: areaName(area) }), T('অন্য এলাকা বা পুরো যশোর দেখুন।'), `<button class="btn sm" data-clrarea>${T('পুরো যশোর দেখুন')}</button>`, k.icon)
+        : empty(T('এখনো কোনো বিজ্ঞাপন নেই'), T('প্রথম বিজ্ঞাপনটি আপনিই দিন — সম্পূর্ণ ফ্রি।'), `<a class="btn sm" href="#/post/${kind}">${T('বিজ্ঞাপন দিন')}</a>`, k.icon))}</div>`}
       ${list?.length ? disclaimer('classified') : ''}
       <a class="bizcta" href="#/post/${kind}"><span>${icon('megaphone', 22)}</span><div><b>${T('ফ্রি বিজ্ঞাপন দিন')}</b><small>${T('অ্যাডমিন যাচাইয়ের পর {n} দিন দেখাবে', { n: num(30) })}</small></div>${icon('chevR', 18)}</a>`;
   };
@@ -635,16 +718,20 @@
       ['cap', 'যোগ্যতা', a.qualification], ['star', 'অভিজ্ঞতা', a.experience], ['calendar', 'আবেদনের শেষ তারিখ', a.deadline && fmtDate(a.deadline)], ['edit', 'আবেদনের নিয়ম', a.howToApply]]
       : a.kind === 'rent' ? [['home', 'ধরন', optLabel('propertyType', a.propertyType)], ['bed', 'রুম', a.rooms && num(a.rooms)], ['droplet', 'বাথরুম', a.baths && num(a.baths)],
         ['grid', 'আয়তন', a.size && T('{n} বর্গফুট', { n: num(a.size) })], ['layers', 'তলা', a.floor], ['calendar', 'কবে থেকে', a.availableFrom && fmtDate(a.availableFrom)], ['check', 'সুবিধা', a.facilities]]
+      : a.kind === 'tuition' ? [['info', 'ধরন', a.tuitionType && optLabel('tuitionType', a.tuitionType)], ['cap', 'বিষয়', a.subject], ['layers', 'শ্রেণি', a.classLevel],
+        ['globe', 'মাধ্যম', a.medium && optLabel('medium', a.medium)], ['users', 'শিক্ষার্থী', a.students && num(a.students)], ['calendar', 'সপ্তাহে', a.daysPerWeek && T('{n} দিন', { n: num(a.daysPerWeek) })],
+        ['user', 'শিক্ষক', a.tutorGender && optLabel('tutorGender', a.tutorGender)], ['star', 'যোগ্যতা', a.qualification]]
       : [['bed', 'সিটের ধরন', optLabel('seatType', a.seatType)], ['users', 'কাদের জন্য', a.gender && optLabel('gender', a.gender)], ['grid', 'খালি সিট', a.seats && num(a.seats)],
         ['calendar', 'কবে থেকে', a.availableFrom && fmtDate(a.availableFrom)], ['check', 'সুবিধা', a.facilities]]).filter(f => f[2]);
+    const dist = km(a), hasMap = a.lat != null || a.mapUrl;
     const wa = a.whatsapp || a.phone;
     return `<div class="detail">
       <div class="hero" style="--c:${k.color}">${imgs.length ? `<div class="media"><div class="slides" data-slides>${imgs.map(u => `<img src="${esc(u)}" alt="">`).join('')}</div></div>` : media(a, '', k.color, k.icon)}
         <div class="hbar"><button class="roundbtn" data-back aria-label="${T('ফিরে যান')}">${icon('back', 20)}</button><button class="roundbtn" data-sharead="${esc(id)}" aria-label="${T('শেয়ার')}">${icon('share', 19)}</button></div>
         ${imgs.length > 1 ? `<div class="dots" data-dots>${imgs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}</div>
       <div class="sheet-body">
-        <div class="dtitle"><h1>${esc(a.title)}</h1>${a.price ? `<div class="price"><b>${money(a.price)}</b><small>${T(a.kind === 'job' ? 'বেতন' : 'প্রতি মাসে')}</small></div>` : ''}</div>
-        <div class="dsub">${icon(k.icon, 15)}${T(k.bn)}${a.area ? ` · ${esc(areaName(a.area))}` : ''} · ${esc(fmtDate(a.t))}</div>
+        <div class="dtitle"><h1>${esc(a.title)}</h1>${a.price ? `<div class="price"><b>${money(a.price)}</b><small>${T(a.kind === 'job' ? 'বেতন' : a.kind === 'tuition' ? 'সম্মানী / মাস' : 'প্রতি মাসে')}</small></div>` : ''}</div>
+        <div class="dsub">${icon(k.icon, 15)}${T(k.bn)}${a.area ? ` · ${esc(areaName(a.area))}` : ''}${dist != null ? ` · ${kmText(dist)} ${esc(fromWhere())}` : ''} · ${esc(fmtDate(a.t))}</div>
         ${a.description ? `<p class="prose" style="margin-top:16px">${esc(a.description)}</p>` : ''}
         ${videoBlock(a.videos)}
         <div class="info" style="margin-top:12px">${facts.map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${T(l)}</small>${esc(v)}</div></div>`).join('')}
@@ -654,6 +741,7 @@
         <button class="reportlink" data-reportad="${esc(id)}">${icon('flag', 14)}${T('ভুয়া বা আপত্তিকর বিজ্ঞাপন? রিপোর্ট করুন')}</button>
         <div style="height:24px"></div></div></div>
       <div class="actionbar"><a class="sq" href="https://wa.me/88${esc(wa)}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('msg', 21)}</a>
+        ${hasMap ? `<a class="sq" href="${esc(a.lat != null ? dirUrl(a) : a.mapUrl)}" target="_blank" rel="noopener" aria-label="${T('দিকনির্দেশ')}">${icon('nav', 21)}</a>` : ''}
         <a class="btn block dark" href="tel:${esc(a.phone)}">${icon('phone', 19)}${T('কল করুন')}</a></div>`;
   };
 
@@ -725,7 +813,8 @@
       ['listing?mode=free', 'landmark', '#7c5cff', 'ফ্রি তথ্য যোগ করুন', 'সরকারি হাসপাতাল, দর্শনীয় স্থান, জরুরি নম্বর, স্কুল-কলেজ, স্বেচ্ছাসেবী সংগঠন', 'ফ্রি'],
       ['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন', 'ফ্রি'],
       ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট / দোকান ভাড়া', 'টু-লেট বিজ্ঞাপন দিন', 'ফ্রি'],
-      ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন', 'ফ্রি']];
+      ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন', 'ফ্রি'],
+      ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন', 'ফ্রি']];
     return `${topbar(T('কী যোগ করতে চান?'))}
       ${ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
       <div class="rows">${opts.map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
@@ -762,7 +851,9 @@
     if (!ME) { go('#/login?next=' + encodeURIComponent('/post/' + what + (p.toString() ? '?' + p : ''))); return ''; }
     if (pages.post.done) { const d = pages.post.done; pages.post.done = null;
       return `${topbar(T('জমা হয়েছে'))}${empty(T('জমা হয়েছে!'), T(d), `<a class="btn sm" href="#/account${what === 'listing' ? '' : '?tab=ads'}">${T('আমার অ্যাকাউন্ট')}</a>`, 'check')}`; }
-    const areaSel = `<select name="area">${(D.areas || []).map(a => `<option value="${esc(a)}">${esc(areaName(a))}</option>`).join('')}</select>`;
+    const myArea = ls.get('area', ''), opt = a => `<option value="${esc(a)}" ${a === myArea ? 'selected' : ''}>${esc(areaName(a))}</option>`;
+    const areaSel = `<select name="area"><optgroup label="${T('যশোর শহর')}">${(D.areas || []).filter(isTown).map(opt).join('')}</optgroup>
+      <optgroup label="${T('উপজেলা')}">${(D.areas || []).filter(a => !isTown(a)).map(opt).join('')}</optgroup></select>`;
     const editNote = edit ? `<div class="note warn">${icon('edit', 18)}<span>${T(edit.review === 'approved' || edit.review === 'rejected' ? 'পরিবর্তন জমা দিলে অ্যাডমিন আবার যাচাই করবেন, ততক্ষণ এটি অ্যাপে দেখাবে না।' : 'পরিবর্তন জমা দিন — অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>` : '';
     const editAttr = edit ? ` data-edit="${esc(edit.id)}"` : '';
     if (what === 'listing') {
@@ -776,6 +867,7 @@
         <div class="two"><label class="field"><span>${T('এলাকা')} *</span>${areaSel}</label>
           <label class="field"><span>${T('ফোন')}</span><input name="phone" inputmode="tel" placeholder="01XXXXXXXXX" value="${mode === 'paid' ? esc(ME.phone) : ''}"></label></div>
         <label class="field"><span>${T('ঠিকানা')}</span><input name="address" maxlength="200" placeholder="${T('রাস্তা, ল্যান্ডমার্ক')}"></label>
+        ${locField()}
         <div class="two"><label class="field"><span>${T('খোলে')}</span><input name="open" type="time"></label><label class="field"><span>${T('বন্ধ হয়')}</span><input name="close" type="time"></label></div>
         <label class="switch"><span>${T('২৪ ঘণ্টা খোলা')}</span><input type="checkbox" name="h24"></label>
         <div class="two"><label class="field"><span>${T('আনুমানিক খরচ (৳)')}</span><input name="price" inputmode="numeric"></label>
@@ -794,6 +886,13 @@
         <label class="field"><span>${T('যোগ্যতা')}</span><input name="qualification" maxlength="400"></label>
         <div class="two"><label class="field"><span>${T('অভিজ্ঞতা')}</span><input name="experience" maxlength="60"></label><label class="field"><span>${T('আবেদনের শেষ তারিখ')}</span><input name="deadline" type="date"></label></div>
         <label class="field"><span>${T('আবেদনের নিয়ম')}</span><textarea name="howToApply" maxlength="500" placeholder="${T('সিভি পাঠানোর ঠিকানা, ইমেইল বা সরাসরি যোগাযোগ')}"></textarea></label>`
+      : what === 'tuition' ? `
+        <div class="two"><label class="field"><span>${T('আপনি কী চান')} *</span><select name="tuitionType" required>${OPTS.tuitionType.map(([v, l]) => `<option value="${v}">${T(l)}</option>`).join('')}</select></label>
+          <label class="field"><span>${T('সম্মানী (৳/মাস)')}</span><input name="price" inputmode="numeric"></label></div>
+        <label class="field"><span>${T('বিষয়')}</span><input name="subject" maxlength="200" placeholder="${T('যেমন: গণিত, ইংরেজি, সব বিষয়')}"></label>
+        <div class="two"><label class="field"><span>${T('শ্রেণি')}</span><input name="classLevel" maxlength="60" placeholder="${T('যেমন: ৮ম শ্রেণি, এসএসসি')}"></label><label class="field"><span>${T('মাধ্যম')}</span>${sel('medium', 'medium')}</label></div>
+        <div class="two"><label class="field"><span>${T('সপ্তাহে কত দিন')}</span><input name="daysPerWeek" inputmode="numeric"></label><label class="field"><span>${T('শিক্ষার্থী সংখ্যা')}</span><input name="students" inputmode="numeric"></label></div>
+        <div class="two"><label class="field"><span>${T('শিক্ষক')}</span>${sel('tutorGender', 'tutorGender')}</label><label class="field"><span>${T('যোগ্যতা')}</span><input name="qualification" maxlength="400" placeholder="${T('যেমন: বিশ্ববিদ্যালয়ের ছাত্র/ছাত্রী')}"></label></div>`
       : what === 'rent' ? `
         <div class="two"><label class="field"><span>${T('ধরন')}</span>${sel('propertyType', 'propertyType')}</label><label class="field"><span>${T('ভাড়া (৳/মাস)')} *</span><input name="price" inputmode="numeric" required></label></div>
         <div class="two"><label class="field"><span>${T('রুম')}</span><input name="rooms" inputmode="numeric"></label><label class="field"><span>${T('বাথরুম')}</span><input name="baths" inputmode="numeric"></label></div>
@@ -808,10 +907,11 @@
     return `${topbar(T(k.bn) + ' — ' + T(edit ? 'সম্পাদনা' : 'বিজ্ঞাপন'))}
       ${editNote || `<div class="note">${icon('megaphone', 18)}<span>${T('বিজ্ঞাপন সম্পূর্ণ ফ্রি। অ্যাডমিন যাচাইয়ের পর {n} দিন দেখাবে।', { n: num(30) })}</span></div>`}
       <form class="form" data-addclassified="${what}"${editAttr}>
-        <label class="field"><span>${T('শিরোনাম')} *</span><input name="title" required maxlength="120" placeholder="${T(what === 'job' ? 'যেমন: সেলসম্যান নিয়োগ' : what === 'rent' ? 'যেমন: ২ রুমের ফ্যামিলি বাসা ভাড়া' : 'যেমন: ছাত্রদের মেসে সিট খালি')}"></label>
+        <label class="field"><span>${T('শিরোনাম')} *</span><input name="title" required maxlength="120" placeholder="${T(what === 'job' ? 'যেমন: সেলসম্যান নিয়োগ' : what === 'rent' ? 'যেমন: ২ রুমের ফ্যামিলি বাসা ভাড়া' : what === 'tuition' ? 'যেমন: ৮ম শ্রেণির গণিতের জন্য শিক্ষক চাই' : 'যেমন: ছাত্রদের মেসে সিট খালি')}"></label>
         ${extra}
         <label class="field"><span>${T('বিস্তারিত')}</span><textarea name="description" maxlength="3000"></textarea></label>
         <div class="two"><label class="field"><span>${T('এলাকা')}</span>${areaSel}</label><label class="field"><span>${T('ঠিকানা')}</span><input name="address" maxlength="200"></label></div>
+        ${what === 'job' ? '' : locField()}
         <div class="two"><label class="field"><span>${T('যোগাযোগের নাম')}</span><input name="contactName" maxlength="60" value="${esc(ME.name)}"></label>
           <label class="field"><span>${T('মোবাইল')} *</span><input name="phone" required inputmode="tel" value="${esc(ME.phone)}"></label></div>
         <label class="field"><span>WhatsApp</span><input name="whatsapp" inputmode="tel" placeholder="${T('ঐচ্ছিক')}"></label>
@@ -819,6 +919,16 @@
         <label class="check"><input type="checkbox" required><span>${T('আমি নিশ্চিত করছি বিজ্ঞাপনের তথ্য সঠিক।')}</span></label>
         <button class="btn block" type="submit">${T(edit ? 'পরিবর্তন জমা দিন' : 'বিজ্ঞাপন জমা দিন')}</button></form>`;
   };
+  const locField = () => `<div class="field"><span>${T('ম্যাপে লোকেশন (ঐচ্ছিক)')}</span>
+      <div class="locpick"><input name="mapUrl" type="url" inputmode="url" placeholder="${T('Google Maps লিংক পেস্ট করুন')}" data-maplink>
+        <button type="button" class="btn sm ghost" data-gpsfill>${icon('nav', 16)}${T('আমি এখানেই আছি')}</button></div>
+      <input type="hidden" name="lat"><input type="hidden" name="lng">
+      <em class="locstatus" data-locstatus>${T('লোকেশন দিলে মানুষ দূরত্ব দেখতে ও সহজে পথ খুঁজে পাবে।')}</em></div>`;
+  function setLoc(f, lat, lng, msg) {
+    f.lat.value = lat ?? ''; f.lng.value = lng ?? '';
+    const st = f.querySelector('[data-locstatus]');
+    if (st) { st.classList.toggle('ok', lat != null && lat !== ''); st.innerHTML = lat != null && lat !== '' ? `${icon('check', 14)} ${T('লোকেশন যোগ হয়েছে')} (${num(Number(lat).toFixed(4))}, ${num(Number(lng).toFixed(4))})${msg ? ' · ' + msg : ''}` : esc(msg || ''); }
+  }
   const needsPay = l => { const c = CAT[l.cat]; return !!c?.paid && !(c.freeSubs || []).includes(l.sub); };
 
   /* photos & videos: uploaded one by one as soon as they are picked */
@@ -866,6 +976,7 @@
     const v = { ...d, web: d.web || d.facebook, open: /^\d/.test(d.hours || '') ? d.hours.split('-')[0] : '', close: /^\d/.test(d.hours || '') ? d.hours.split('-')[1] : '' };
     [...f.elements].forEach(el => { if (el.name && !['checkbox', 'radio', 'file'].includes(el.type) && v[el.name] != null) el.value = String(v[el.name]); });
     if (f.h24) f.h24.checked = d.hours === '24h';
+    if (f.lat && d.lat != null) setLoc(f, d.lat, d.lng);
   }
 
   pages.pay = ([lid]) => {
@@ -972,9 +1083,38 @@
       if (e.target.closest('[data-start]')) {
         ls.set('welcomed', true); ls.set('termsV', tv); w.remove();
         if (ME) api('/my/terms', {}).catch(() => {});
+        setTimeout(maybePopup, 600);
       }
     });
     w.addEventListener('change', e => { if (e.target.matches('[data-agree]')) w.querySelector('[data-start]').disabled = !e.target.checked; });
+  }
+
+  /* ---------------- admin popup ---------------- */
+  function maybePopup() {
+    const pp = D.popup;
+    if (!pp || document.querySelector('.welcome, .popup-bg')) return;
+    const seen = ls.get('popupSeen', {}), today = new Date().toISOString().slice(0, 10);
+    const due = pp.show === 'every' ? !sessionStorage.getItem('j360.pp' + pp.rev) : pp.show === 'daily' ? seen.rev !== pp.rev || seen.day !== today : seen.rev !== pp.rev;
+    if (!due) return;
+    ls.set('popupSeen', { rev: pp.rev, day: today }); try { sessionStorage.setItem('j360.pp' + pp.rev, '1'); } catch {}
+    const bg = document.createElement('div');
+    bg.className = 'popup-bg';
+    bg.innerHTML = `<div class="popup" role="dialog" aria-modal="true">${pp.image ? `<img src="${esc(pp.image)}" alt="">` : ''}
+      <button class="roundbtn pclose" data-ppclose aria-label="${T('বন্ধ করুন')}">${icon('x', 18)}</button>
+      <div class="pbody">${pp.title ? `<h2>${esc(loc(pp, 'title'))}</h2>` : ''}${pp.body ? `<p>${esc(loc(pp, 'body'))}</p>` : ''}
+      <div class="pacts">${pp.cta && pp.link ? `<button class="btn block" data-ppgo>${esc(loc(pp, 'cta'))}</button><button class="btn block ghost" data-ppclose>${T('পরে')}</button>`
+        : `<button class="btn block" data-ppclose>${T('ঠিক আছে')}</button>`}</div></div></div>`;
+    document.body.appendChild(bg);
+    requestAnimationFrame(() => bg.classList.add('show'));
+    const close = () => { bg.classList.remove('show'); setTimeout(() => bg.remove(), 200); };
+    bg.addEventListener('click', e => {
+      if (e.target === bg || e.target.closest('[data-ppclose]')) return close();
+      if (e.target.closest('[data-ppgo]')) {
+        close();
+        const l = pp.link;
+        if (l.startsWith('#')) go(l); else if (/^(tel|mailto):/.test(l)) location.href = l; else window.open(l, '_blank', 'noopener');
+      }
+    });
   }
 
   /* ---------------- router ---------------- */
@@ -1040,6 +1180,7 @@
     if ('filter' in ds) { const [, q = ''] = location.hash.split('?'); const p = new URLSearchParams(q); const m = location.hash.match(/#\/c\/([\w-]+)/); if (m) p.set('cat', m[1]); return filterSheet(p); }
     if ('notices' in ds) return noticesSheet();
     if ('areasheet' in ds) return areaSheet();
+    if ('clrarea' in ds) { ls.set('area', ''); originCache = null; cache.ads = {}; return render(); }
     if ('locate' in ds) return doLocate();
     if ('forgetloc' in ds) { here = null; ls.set('loc', null); return render(); }
     if ('pop' in ds) { pages.home.pop = ds.pop; return render(); }
@@ -1073,6 +1214,11 @@
       try { await api(`/reviews/${rid}/vote`, { up: up === '1' }); toast(T('ধন্যবাদ!')); loadReviews(getItem(location.hash.split('/')[2])); } catch (er) { toast(er.message); }
       return;
     }
+    if ('gpsfill' in ds) {
+      const f = el.closest('form'); toast(T('লোকেশন খোঁজা হচ্ছে…'));
+      try { const h = await locate(); setLoc(f, h.lat.toFixed(6), h.lng.toFixed(6)); f.mapUrl.value = ''; } catch { toast(T('লোকেশন পাওয়া যায়নি — ব্রাউজারে অনুমতি দিন')); }
+      return;
+    }
     if (ds.rmmedia) { const [k, i] = ds.rmmedia.split('|'); MEDIA[k].splice(+i, 1); return drawMedia(); }
     if ('logout' in ds) { await api('/auth/logout', {}); ME = null; cache.my = null; toast(T('লগআউট হয়েছে')); return go('#/profile'); }
     if (ds.delad || ds.dellisting) {
@@ -1089,15 +1235,28 @@
       if (el.value === 'near' && !here) return doLocate(h + '?' + p);
       return go(h + (p.toString() ? '?' + p : ''));
     }
-    if (el.matches('[data-adarea], [data-adsort]')) {
-      const [h, q = ''] = location.hash.split('?'), p = new URLSearchParams(q), k = el.matches('[data-adarea]') ? 'area' : 'sort';
-      el.value ? p.set(k, el.value) : p.delete(k); return go(h + (p.toString() ? '?' + p : ''));
+    if (el.matches('[data-adsort]')) {
+      const [h, q = ''] = location.hash.split('?'), p = new URLSearchParams(q);
+      el.value ? p.set('sort', el.value) : p.delete('sort');
+      if (el.value === 'near' && !origin()) return doLocate(h + '?' + p);
+      return go(h + (p.toString() ? '?' + p : ''));
+    }
+    if (el.matches('[data-maplink]')) {
+      const f = el.closest('form'), v = el.value.trim();
+      if (!v) return setLoc(f, '', '', '');
+      setLoc(f, '', '', T('লিংক থেকে লোকেশন খোঁজা হচ্ছে…'));
+      try { const r = await api('/maplink', { url: v }); setLoc(f, r.lat, r.lng); } catch (er) { setLoc(f, '', '', er.message); }
+      return;
     }
     if (el.name === 'plan') {
       el.closest('.plans').querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x.contains(el)));
       if (el.closest('[data-planpick]')) { pages.pay.plan = el.value; render(); }
       return;
     }
+  });
+
+  document.addEventListener('paste', e => {
+    if (e.target.matches?.('[data-maplink]')) setTimeout(() => e.target.dispatchEvent(new Event('change', { bubbles: true })), 30);
   });
 
   document.addEventListener('submit', async e => {
@@ -1128,7 +1287,7 @@
         const v = Object.fromEntries(new FormData(f)), [cat, sub] = (v.catsub || '|').split('|');
         const body = { name: v.name, cat, sub, area: v.area, address: v.address, phone: toLatin(v.phone || ''),
           hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, price: toLatin(v.price || '').replace(/\D/g, ''),
-          web: /facebook\.com/.test(v.web) ? null : v.web, facebook: /facebook\.com/.test(v.web) ? v.web : null, about: v.about, plan: v.plan, ...mediaBody() };
+          web: /facebook\.com/.test(v.web) ? null : v.web, facebook: /facebook\.com/.test(v.web) ? v.web : null, about: v.about, plan: v.plan, mapUrl: v.mapUrl, lat: v.lat, lng: v.lng, ...mediaBody() };
         if (f.dataset.edit) {
           await api('/my/listings/' + f.dataset.edit, body, 'PUT');
           cache.my = null; cache.edit = null; toast(T('পরিবর্তন জমা হয়েছে — যাচাইয়ের পর প্রকাশিত হবে')); return go('#/account');
@@ -1140,7 +1299,7 @@
       }
       if (f.dataset.addclassified) {
         const v = Object.fromEntries(new FormData(f));
-        ['price', 'rooms', 'baths', 'size', 'vacancies', 'seats', 'phone', 'whatsapp'].forEach(k => v[k] && (v[k] = toLatin(v[k])));
+        ['price', 'rooms', 'baths', 'size', 'vacancies', 'seats', 'students', 'daysPerWeek', 'phone', 'whatsapp'].forEach(k => v[k] && (v[k] = toLatin(v[k])));
         if (f.dataset.edit) {
           await api('/my/classifieds/' + f.dataset.edit, { ...v, ...mediaBody() }, 'PUT');
           cache.my = null; cache.edit = null; cache.ads = {}; toast(T('পরিবর্তন জমা হয়েছে — যাচাইয়ের পর প্রকাশিত হবে')); return go('#/account?tab=ads');
@@ -1175,7 +1334,8 @@
       const [changed, me] = await Promise.all([refresh(), api('/auth/me').catch(() => null)]);
       ME = me;
       if (changed || me) render();
-      if (!cached?.plans) welcome();
+      welcome();
+      setTimeout(maybePopup, 900);
     } catch { if (!D) app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" onclick="location.reload()">${T('আবার চেষ্টা')}</button>`, 'globe'); }
   })();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});

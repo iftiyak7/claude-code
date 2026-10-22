@@ -259,3 +259,11 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 .vlist dt { color: var(--muted); }
 .vlist dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
 @media (max-width: 560px) { .vlist { grid-template-columns: 1fr; gap: 2px; } .vlist dd { margin-bottom: 8px; } }
+.pp-wrap { background: color-mix(in srgb, var(--ink) 55%, transparent); border-radius: 0 0 20px 20px; display: grid; place-items: center; padding: 34px 20px; }
+.pp-card { width: min(340px, 100%); background: var(--surface); border-radius: 22px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+.pp-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+.pp-b { padding: 18px 20px 20px; }
+.pp-b b { font-size: 18px; display: block; }
+.pp-b p { margin: 8px 0 0; color: var(--ink-2); white-space: pre-wrap; font-size: 14.5px; }
+.pp-acts { display: flex; gap: 8px; margin-top: 16px; }
+.pp-acts .btn { flex: 1; justify-content: center; }

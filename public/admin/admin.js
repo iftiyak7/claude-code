@@ -21,7 +21,7 @@
   const day = d => d ? new Date(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   const LOGO = '<svg viewBox="0 0 24 24"><path d="M12 21.5s-7.2-6.3-7.2-11.8a7.2 7.2 0 0 1 14.4 0c0 5.5-7.2 11.8-7.2 11.8z" fill="#fff"/><circle cx="12" cy="9.6" r="2.8" fill="#0f1b2d"/></svg>';
   const STATUS = { verified: ['যাচাইকৃত', 'ok'], pending: ['যাচাই চলছে', 'warn'], needs_update: ['আপডেট প্রয়োজন', 'warn'], temp_closed: ['সাময়িক বন্ধ', 'bad'], closed: ['স্থায়ীভাবে বন্ধ', 'bad'] };
-  const KINDS = { rent: ['বাসা ভাড়া', 'home', '#4f6bed'], mess: ['মেস / সিট ভাড়া', 'bed', '#0f9fa8'], job: ['চাকরি', 'briefcase', '#f2711c'] };
+  const KINDS = { rent: ['বাসা ভাড়া', 'home', '#4f6bed'], mess: ['মেস / সিট ভাড়া', 'bed', '#0f9fa8'], job: ['চাকরি', 'briefcase', '#f2711c'], tuition: ['টিউশন', 'cap', '#7c5cff'] };
   const DAYS = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
   const S = { me: null, listings: null, settings: {}, reviews: null, reports: null };
   const owner = () => S.me?.role === 'owner';
@@ -63,7 +63,7 @@
   const upload = async file => (await api('/admin/upload', { data: await compress(file) })).url;
 
   /* ---------------- data ---------------- */
-  const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms'];
+  const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'popup', 'areaGeo'];
   const cats = () => S.settings.categories || [];
   const catOf = id => cats().find(c => c.id === id) || { bn: id, en: id, icon: 'info', color: '#8b95a7', subs: {} };
   const catName = c => LANG() === 'en' ? c.en || c.bn : c.bn;
@@ -110,7 +110,7 @@
       ['reviews', 'msg', 'রিভিউ'], ['reports', 'flag', 'রিপোর্ট', 'reports']]],
     ['ব্যবসা ও আয়', [['payments', 'wallet', 'পেমেন্ট', 'pays'], ['users', 'users', 'ব্যবহারকারী'], ['plans', 'tag', 'প্যাকেজ ও পেমেন্ট সেটিংস', null, true],
       ['ads', 'image', 'বিজ্ঞাপন (Ads)', null, true]]],
-    ['অ্যাপ সাজানো', [['categories', 'grid', 'ক্যাটাগরি', null, true], ['notices', 'bell', 'ঘোষণা']]],
+    ['অ্যাপ সাজানো', [['categories', 'grid', 'ক্যাটাগরি', null, true], ['notices', 'bell', 'ঘোষণা'], ['popup', 'sparkle', 'পপআপ', null, true]]],
     ['সিস্টেম', [['app', 'download', 'অ্যাপ রিলিজ (APK)', null, true], ['settings', 'cog', 'সাধারণ সেটিংস', null, true], ['terms', 'doc', 'শর্তাবলি', null, true], ['admins', 'shield', 'অ্যাডমিন ও নিরাপত্তা']]]
   ];
   const TITLES = Object.fromEntries(NAV.flatMap(g => g[1]).map(x => [x[0], x[2]]));
@@ -245,6 +245,7 @@
           <div class="two"><label class="field"><span>${T('ক্যাটাগরি *')}</span><select name="cat" data-catsel>${cats().map(x => `<option value="${x.id}" ${x.id === l.cat ? 'selected' : ''}>${esc(catName(x))}</option>`).join('')}</select></label>
             <label class="field"><span>${T('ধরন')}</span><select name="sub" data-subsel data-val="${esc(l.sub || '')}"></select></label></div>
           <label class="field"><span>${T('বিবরণ')}</span><textarea name="about" rows="5" maxlength="3000">${esc(l.about || '')}</textarea></label>
+          <label class="field"><span>${T('বিবরণ (English)')}</span><textarea name="aboutEn" rows="3" maxlength="3000">${esc(l.aboutEn || '')}</textarea></label>
           <label class="field"><span>${T('ছোট নোট')}</span><input name="note" value="${esc(l.note || '')}" maxlength="400"><em>${T('তালিকা ও জরুরি পেজে নামের নিচে দেখায়')}</em></label>
           <div class="two">${f('features', 'সুবিধা', '', 'কমা দিয়ে আলাদা করুন: পার্কিং, হোম ডেলিভারি')}${f('tags', 'সার্চ কীওয়ার্ড', '', 'কমা দিয়ে: kacchi, তেহারি, biryani')}</div>
         </div></div>
@@ -252,7 +253,10 @@
           <div class="two">${f('phone', 'ফোন', 'inputmode="tel"')}${f('phone2', 'বিকল্প ফোন', 'inputmode="tel"')}</div>
           <div class="two">${f('web', 'ওয়েবসাইট', 'type="url" placeholder="https://"')}${f('facebook', 'ফেসবুক পেজ', 'type="url" placeholder="https://facebook.com/…"')}</div>
           <div class="two"><label class="field"><span>${T('এলাকা')}</span><input name="area" list="areas" value="${esc(l.area || '')}"><datalist id="areas">${(S.settings.areas || []).map(a => `<option value="${esc(a)}">`).join('')}</datalist></label>${f('address', 'ঠিকানা')}</div>
-          <div class="two">${f('lat', 'Latitude', 'inputmode="decimal" data-latlng', 'Google Maps-এ জায়গায় রাইট-ক্লিক করে সংখ্যা কপি করে এখানে পেস্ট করুন')}${f('lng', 'Longitude', 'inputmode="decimal"')}</div>
+          <label class="field"><span>${T('Google Maps লিংক')}</span><input name="mapUrl" type="url" value="${esc(l.mapUrl || '')}" placeholder="https://maps.app.goo.gl/…" data-adminmaplink>
+            <em data-maphint>${T('Google Maps-এ জায়গাটি খুলে Share → Copy link করে এখানে পেস্ট করুন — Latitude/Longitude নিজে বসে যাবে।')}</em></label>
+          <div class="two">${f('lat', 'Latitude', 'inputmode="decimal" data-latlng', 'অথবা Google Maps-এ জায়গায় রাইট-ক্লিক করে সংখ্যা কপি করে এখানে পেস্ট করুন')}${f('lng', 'Longitude', 'inputmode="decimal"')}</div>
+          ${l.lat != null ? `<a class="btn sm ghost" style="justify-self:start" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${esc(l.lat)},${esc(l.lng)}">${icon('map', 16)}${T('ম্যাপে মিলিয়ে দেখুন')}</a>` : ''}
         </div></div>
         <div class="card"><h3>${T('সময় ও দাম')}</h3><div class="cbody form">
           <label class="check"><input type="checkbox" name="h24" ${l.hours === '24h' ? 'checked' : ''}><span>${T('২৪ ঘণ্টা খোলা')}</span></label>
@@ -267,7 +271,7 @@
           ${f('verifiedAt', 'সর্বশেষ যাচাইয়ের তারিখ', 'type="date"', '"যাচাইকৃত" বাছলে খালি থাকলে আজকের তারিখ বসবে')}
           ${owner() && l._plan ? f('_paidUntil', 'পেইড মেয়াদ শেষ', 'type="date"', 'এই তারিখের পর তালিকাটি অ্যাপে দেখাবে না') : ''}
           ${[['featured', 'হোমপেজে "জনপ্রিয়" অংশে দেখান'], ['sponsored', 'Sponsored (পেইড প্রচার)', 'তালিকার উপরে, "Sponsored" লেবেলসহ'], ['pin', 'জরুরি তালিকায় সবার উপরে'],
-            ['demo', 'নমুনা তথ্য', 'অ্যাপে "নমুনা" লেবেল দেখাবে'], ['hidden', 'লুকিয়ে রাখুন', 'অ্যাপে দেখাবে না']].map(([k, t, s]) =>
+            ['halal', 'হালাল', 'খাবারের দোকান/রেস্টুরেন্টে "হালাল" চিহ্ন ও হালাল ফিল্টারে দেখাবে'], ['demo', 'নমুনা তথ্য', 'অ্যাপে "নমুনা" লেবেল দেখাবে'], ['hidden', 'লুকিয়ে রাখুন', 'অ্যাপে দেখাবে না']].map(([k, t, s]) =>
             `<label class="check"><input type="checkbox" name="${k}" ${l[k] ? 'checked' : ''}><span>${T(t)}${s ? `<small>${T(s)}</small>` : ''}</span></label>`).join('')}
         </div></div>
         <div class="card"><h3>${T('ছবি')} <small class="muted" style="font-weight:400">${T('প্রথম ছবিটি কভার')}</small></h3><div class="cbody"><div class="imgs" data-imgs></div></div></div>
@@ -301,11 +305,11 @@
   }
   function readListing(form) {
     const fd = new FormData(form), v = Object.fromEntries(fd);
-    const out = { name: v.name, nameEn: v.nameEn, cat: v.cat, sub: v.sub, about: v.about, note: v.note, features: v.features, tags: v.tags, phone: v.phone, phone2: v.phone2,
-      web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, price: (v.price || '').replace(/[^\d]/g, ''),
+    const out = { name: v.name, nameEn: v.nameEn, cat: v.cat, sub: v.sub, about: v.about, aboutEn: v.aboutEn, note: v.note, features: v.features, tags: v.tags, phone: v.phone, phone2: v.phone2,
+      web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, mapUrl: v.mapUrl, price: (v.price || '').replace(/[^\d]/g, ''),
       hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, images: form._images, videos: form._videos || [] };
     if ('_paidUntil' in v) out._paidUntil = v._paidUntil;
-    ['featured', 'sponsored', 'pin', 'demo', 'hidden'].forEach(k => out[k] = !!v[k]);
+    ['featured', 'sponsored', 'pin', 'demo', 'hidden', 'halal'].forEach(k => out[k] = !!v[k]);
     return out;
   }
 
@@ -378,11 +382,14 @@
   };
 
   const CLOPT = { family: 'ফ্যামিলি বাসা', bachelor: 'ব্যাচেলর বাসা', flat: 'ফ্ল্যাট', room: 'রুম', shop: 'দোকান', office: 'অফিস', single: 'সিঙ্গেল রুম', double: 'ডাবল রুম',
-    shared: 'শেয়ারড সিট', male: 'ছেলে', female: 'মেয়ে', full: 'ফুলটাইম', part: 'পার্টটাইম', intern: 'ইন্টার্নশিপ', remote: 'রিমোট' };
+    shared: 'শেয়ারড সিট', male: 'ছেলে', female: 'মেয়ে', full: 'ফুলটাইম', part: 'পার্টটাইম', intern: 'ইন্টার্নশিপ', remote: 'রিমোট',
+    need: 'শিক্ষক চাই', offer: 'পড়াতে চাই', bangla: 'বাংলা মাধ্যম', english: 'ইংলিশ ভার্সন', emedium: 'ইংলিশ মিডিয়াম', madrasa: 'মাদ্রাসা', any: 'যেকোনো' };
   const CLFIELDS = {
     job: [['company', 'প্রতিষ্ঠান'], ['jobType', 'চাকরির ধরন'], ['vacancies', 'পদ সংখ্যা'], ['qualification', 'যোগ্যতা'], ['experience', 'অভিজ্ঞতা'], ['deadline', 'আবেদনের শেষ তারিখ'], ['howToApply', 'আবেদনের নিয়ম']],
     rent: [['propertyType', 'ধরন'], ['rooms', 'রুম'], ['baths', 'বাথরুম'], ['size', 'আয়তন (বর্গফুট)'], ['floor', 'তলা'], ['availableFrom', 'কবে থেকে'], ['facilities', 'সুবিধা']],
-    mess: [['seatType', 'সিটের ধরন'], ['gender', 'কাদের জন্য'], ['seats', 'খালি সিট'], ['availableFrom', 'কবে থেকে'], ['facilities', 'সুবিধা']]
+    mess: [['seatType', 'সিটের ধরন'], ['gender', 'কাদের জন্য'], ['seats', 'খালি সিট'], ['availableFrom', 'কবে থেকে'], ['facilities', 'সুবিধা']],
+    tuition: [['tuitionType', 'ধরন'], ['subject', 'বিষয়'], ['classLevel', 'শ্রেণি'], ['medium', 'মাধ্যম'], ['students', 'শিক্ষার্থী'], ['daysPerWeek', 'সপ্তাহে কত দিন'],
+      ['tutorGender', 'শিক্ষক'], ['qualification', 'যোগ্যতা']]
   };
   const mediaHtml = x => `${x.images?.length ? `<div class="vgallery">${x.images.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy"></a>`).join('')}</div>` : ''}
     ${x.videos?.length ? `<div class="vvideos">${x.videos.map(u => `<video src="${esc(u)}" controls playsinline preload="metadata"></video>`).join('')}</div>` : ''}`;
@@ -401,14 +408,14 @@
     const [kn, , col] = KINDS[c.kind], now = Date.now() / 1000;
     const rows = [['মূল্য', c.price ? money(c.price) + (c.kind === 'job' ? ' / ' + T('মাস (বেতন)') : ' / ' + T('মাস')) : ''],
       ...CLFIELDS[c.kind].map(([k, l]) => [l, k === 'deadline' || k === 'availableFrom' ? (c[k] ? date(c[k]) : '') : CLOPT[c[k]] ? T(CLOPT[c[k]]) : c[k] != null ? String(c[k]) : '']),
-      ['এলাকা', c.area], ['ঠিকানা', c.address], ['যোগাযোগের নাম', c.contactName], ['মোবাইল', c.phone], ['WhatsApp', c.whatsapp]].filter(r => r[1]);
+      ['এলাকা', c.area], ['ঠিকানা', c.address], ['ম্যাপ', c.lat != null ? `${c.lat}, ${c.lng}` : c.mapUrl], ['যোগাযোগের নাম', c.contactName], ['মোবাইল', c.phone], ['WhatsApp', c.whatsapp]].filter(r => r[1]);
     const state = c.review === 'approved' ? (c.expires > now ? ['চলমান', 'ok'] : ['মেয়াদ শেষ', 'bad']) : c.review === 'rejected' ? ['বাতিল', 'bad'] : ['অপেক্ষমাণ', 'warn'];
     viewModal(esc(c.title), `
       <div class="tags" style="margin-bottom:12px"><span class="tag" style="background:color-mix(in srgb, ${col} 14%, transparent);color:${col}">${T(kn)}</span><span class="tag ${state[1]}">${T(state[0])}</span>
         ${c.editedAt ? `<span class="tag warn">${T('সম্পাদিত')}: ${date(c.editedAt)}</span>` : ''}</div>
       ${mediaHtml(c)}
       ${c.description ? `<p class="vdesc">${esc(c.description)}</p>` : ''}
-      <dl class="vlist">${rows.map(([l, v]) => `<dt>${T(l)}</dt><dd>${l === 'মোবাইল' || l === 'WhatsApp' ? `<a href="tel:${esc(v)}">${esc(v)}</a>` : esc(v)}</dd>`).join('')}
+      <dl class="vlist">${rows.map(([l, v]) => `<dt>${T(l)}</dt><dd>${l === 'মোবাইল' || l === 'WhatsApp' ? `<a href="tel:${esc(v)}">${esc(v)}</a>` : l === 'ম্যাপ' ? `<a href="${esc(c.mapUrl || 'https://www.google.com/maps/search/?api=1&query=' + v)}" target="_blank" rel="noopener">${T('ম্যাপে দেখুন')}</a>` : esc(v)}</dd>`).join('')}
         <dt>${T('জমাদাতা')}</dt><dd>${esc(c.userName)} · ${esc(c.userPhone)}</dd><dt>${T('জমার সময়')}</dt><dd>${date(c.t)}</dd>
         ${c.review === 'approved' ? `<dt>${T('মেয়াদ')}</dt><dd>${date(c.expires)} · ${T('{v} ভিউ', { v: num(c.views) })}</dd>` : ''}</dl>`,
       `${c.review !== 'approved' || c.expires <= now ? `<select data-cldays="${c.id}">${[7, 15, 30, 60].map(d => `<option value="${d}" ${d === 30 ? 'selected' : ''}>${T('{n} দিন', { n: num(d) })}</option>`).join('')}</select>
@@ -516,7 +523,7 @@
       fields: () => [['id', 'text', 'আইডি *', 'ইংরেজি ছোট হাতের, যেমন: gym (পরে বদলানো যাবে না)'], ['bn', 'text', 'নাম (বাংলা) *'], ['en', 'text', 'নাম (English)'],
         ['icon', 'icon', 'আইকন'], ['color', 'color', 'রং'], ['subs', 'kv', 'ধরন (প্রতি লাইনে: আইডি = নাম)', 'যেমন:\ngovt = সরকারি হাসপাতাল\nclinic = ক্লিনিক'],
         ['subsEn', 'kv', 'ধরনের ইংরেজি নাম (আইডি = English name)'], ['paid', 'check', 'পেইড ক্যাটাগরি — ব্যবসা যুক্ত করতে প্যাকেজ লাগবে'],
-        ['freeSubs', 'list', 'ফ্রি ধরন (আইডি, কমা দিয়ে)', 'যেমন: govt, bloodbank'],
+        ['freeSubs', 'list', 'ফ্রি ধরন (আইডি, কমা দিয়ে)', 'যেমন: govt, bloodbank'], ['near', 'check', 'লোকেশন থাকলে কাছেরগুলো আগে দেখান (যেমন মসজিদ, হাসপাতাল)'],
         ['keys', 'list', 'সার্চ কীওয়ার্ড', 'কমা দিয়ে: hospital, হাসপাতাল, hashpatal'], ['criteria', 'list', 'রেটিংয়ের মানদণ্ড', 'কমা দিয়ে: খাবারের মান, পরিচ্ছন্নতা, সার্ভিস']]
     },
     plans: {
@@ -653,11 +660,52 @@
         ${fieldHtml(F[0], s.name)}${pair(1, 2)}${pair(3, 4)}${fieldHtml(F[5], s.hotline)}${pair(6, 7)}${pair(8, 9)}${fieldHtml(F[10], s.facebook)}
         ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}${pair(17, 18)}${pair(19, 20)}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
       <div class="grid"><form class="card" data-areas><h3>${T('এলাকার তালিকা')}</h3><div class="cbody form"><label class="field"><span>${T('প্রতি লাইনে একটি এলাকা')}</span>
-        <textarea name="areas" rows="14">${esc((S.settings.areas || []).join('\n'))}</textarea></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
+        <textarea name="areas" rows="16">${esc((S.settings.areas || []).map(a => S.settings.areaGeo?.[a] ? `${a} = ${S.settings.areaGeo[a].join(', ')}` : a).join('\n'))}</textarea>
+        <em>${T('চাইলে এলাকার কেন্দ্রের লোকেশন দিন: নিউমার্কেট = 23.1712, 89.2143 — এলাকা বাছলে দূরত্ব এখান থেকে মাপা হবে। না দিলে সেই এলাকার তালিকাগুলোর গড় অবস্থান ধরা হয়।')}</em></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
         <div class="card"><h3>${T('ব্যাকআপ')}</h3><div class="cbody"><p class="muted" style="margin-top:0">${T('সব তালিকা, রিভিউ, পেমেন্ট, ব্যবহারকারী ও সেটিংস একটি ফাইলে ডাউনলোড করুন। নিয়মিত ব্যাকআপ রাখুন।')}</p>
           <a class="btn dark" href="/api/admin/export">${icon('download', 18)}${T('ব্যাকআপ ডাউনলোড')}</a></div></div></div></div>`);
     root.querySelector('[data-site]').onsubmit = async e => { e.preventDefault(); await saveSetting('site', { ...s, ...readFields(e.target, F) }); };
-    root.querySelector('[data-areas]').onsubmit = async e => { e.preventDefault(); await saveSetting('areas', e.target.areas.value.split('\n').map(x => x.trim()).filter(Boolean)); };
+    root.querySelector('[data-areas]').onsubmit = async e => {
+      e.preventDefault();
+      const areas = [], geo = {};
+      e.target.areas.value.split('\n').map(x => x.trim()).filter(Boolean).forEach(line => {
+        const [name, ll] = line.split('=').map(x => x.trim()), m = (ll || '').match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+        if (!areas.includes(name)) areas.push(name);
+        if (m) geo[name] = [+m[1], +m[2]];
+      });
+      await saveSetting('areas', areas);
+      await saveSetting('areaGeo', geo);
+    };
+  };
+
+  const POPUP_F = [['active', 'check', 'পপআপ চালু'], ['title', 'text', 'শিরোনাম'], ['titleEn', 'text', 'শিরোনাম (English)'], ['body', 'textarea', 'বিস্তারিত'],
+    ['bodyEn', 'textarea', 'বিস্তারিত (English)'], ['image', 'image', 'ছবি (ঐচ্ছিক)', 'চওড়া ছবি ভালো দেখায়, যেমন ১২০০×৬৭৫'],
+    ['cta', 'text', 'বাটনের লেখা', 'যেমন: বিস্তারিত দেখুন — খালি রাখলে শুধু "ঠিক আছে" বাটন থাকবে'], ['ctaEn', 'text', 'বাটনের লেখা (English)'],
+    ['link', 'text', 'বাটনের লিংক', 'অ্যাপের পেজ (যেমন #/ads/rent), ওয়েবসাইট (https://…) বা ফোন (tel:01…)'],
+    ['show', 'select', 'কতবার দেখাবে', '', [['once', 'প্রতি ব্যবহারকারীকে একবার'], ['daily', 'দিনে একবার'], ['every', 'প্রতিবার অ্যাপ খুললে']]],
+    ['start', 'date0', 'শুরুর তারিখ', 'খালি রাখলে এখনই শুরু'], ['end', 'date0', 'শেষ তারিখ', 'খালি রাখলে বন্ধ না করা পর্যন্ত চলবে']];
+  const popupPreview = v => `<div class="pp-card">${v.image ? `<img src="${esc(v.image)}" alt="">` : ''}<div class="pp-b"><b>${esc(v.title || T('শিরোনাম'))}</b>
+    ${v.body ? `<p>${esc(v.body)}</p>` : ''}<div class="pp-acts">${v.cta ? `<span class="btn sm">${esc(v.cta)}</span>` : ''}<span class="btn sm ghost">${T(v.cta ? 'পরে' : 'ঠিক আছে')}</span></div></div></div>`;
+  pages.popup = async () => {
+    await load();
+    const v = S.settings.popup || {}, f = POPUP_F;
+    shell('popup', T('পপআপ'), '', `<p class="muted" style="margin-top:0">${T('অ্যাপ খুললে ব্যবহারকারীদের সামনে একটি পপআপ দেখান — নতুন সুবিধা, অফার, জরুরি ঘোষণা বা ক্যাম্পেইনের জন্য। নতুন লেখা দিলে "একবার" সেটিংয়েও সবাই আবার দেখবে।')}</p>
+      <div class="split"><form class="card" data-popup><h3>${T('পপআপ')}</h3><div class="cbody form">
+        ${fieldHtml(f[0], v.active)}<div class="two">${fieldHtml(f[1], v.title)}${fieldHtml(f[2], v.titleEn)}</div><div class="two">${fieldHtml(f[3], v.body)}${fieldHtml(f[4], v.bodyEn)}</div>
+        ${fieldHtml(f[5], v.image)}<div class="two">${fieldHtml(f[6], v.cta)}${fieldHtml(f[7], v.ctaEn)}</div>${fieldHtml(f[8], v.link)}
+        ${fieldHtml(f[9], v.show || 'once')}<div class="two">${fieldHtml(f[10], v.start)}${fieldHtml(f[11], v.end)}</div>
+        <div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
+        <div class="card"><h3>${T('প্রিভিউ')}</h3><div class="cbody pp-wrap" data-pp>${popupPreview(v)}</div></div></div>`);
+    const form = root.querySelector('[data-popup]');
+    const refresh = () => { root.querySelector('[data-pp]').innerHTML = popupPreview(readFields(form, f)); };
+    form.addEventListener('input', refresh); form.addEventListener('change', () => setTimeout(refresh, 50));
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const val = readFields(form, f);
+      if (val.active && !val.title && !val.image) return toast(T('শিরোনাম বা ছবি দিন'), true);
+      await saveSetting('popup', val, val.active ? 'পপআপ চালু হয়েছে' : 'সংরক্ষণ হয়েছে');
+      S.settings.popup = await api('/admin/settings/popup');
+    };
   };
 
   pages.terms = async () => {
@@ -802,7 +850,7 @@
       [arr[i], arr[j]] = [arr[j], arr[i]]; await saveSetting(k, arr, 'ক্রম বদলানো হয়েছে'); return route();
     }
     if (d.pickicon) { const box = b.closest('.field'); box.querySelector('input').value = d.pickicon; box.querySelectorAll('[data-pickicon]').forEach(x => x.classList.toggle('on', x === b)); return; }
-    if ('clearimg' in d) { const box = b.closest('.imgupload'); box.querySelector('input[type=hidden]').value = ''; box.querySelector('.pv').style.backgroundImage = ''; return; }
+    if ('clearimg' in d) { const box = b.closest('.imgupload'); box.querySelector('input[type=hidden]').value = ''; box.querySelector('.pv').style.backgroundImage = ''; box.closest('form')?.dispatchEvent(new Event('change')); return; }
     if (d.viddel != null) { const f = b.closest('form'); f._videos.splice(+d.viddel, 1); return drawVids(f); }
     if (d.imgdel != null) { const f = b.closest('form'); f._images.splice(+d.imgdel, 1); return drawImgs(f); }
     if (d.imgfirst != null) { const f = b.closest('form'); f._images.unshift(...f._images.splice(+d.imgfirst, 1)); return drawImgs(f); }
@@ -816,8 +864,18 @@
     if (d.deladmin) { if (!confirm(T('এই অ্যাডমিন মুছে যাবে। নিশ্চিত?'))) return; await run(() => api('/admin/admins/' + d.deladmin, undefined, 'DELETE'), 'মুছে ফেলা হয়েছে'); return route(); }
   });
 
+  document.addEventListener('paste', e => {
+    if (e.target.matches?.('[data-adminmaplink]')) setTimeout(() => e.target.dispatchEvent(new Event('change', { bubbles: true })), 30);
+  });
   document.addEventListener('change', async e => {
     const el = e.target;
+    if (el.matches('[data-adminmaplink]') && el.value.trim()) {
+      const f = el.closest('form'), hint = f.querySelector('[data-maphint]');
+      hint.textContent = T('লিংক থেকে লোকেশন খোঁজা হচ্ছে…');
+      try { const r = await api('/maplink', { url: el.value.trim() }); f.lat.value = r.lat; f.lng.value = r.lng; hint.textContent = '✓ ' + T('লোকেশন বসানো হয়েছে') + ` (${r.lat}, ${r.lng})`; }
+      catch (er) { hint.textContent = er.message; }
+      return;
+    }
     if (el.closest('[data-filter]')) {
       const f = el.closest('form'), p = new URLSearchParams();
       ['q', 'cat', 'status', 'flag'].forEach(k => f.elements[k].value && p.set(k, f.elements[k].value));
@@ -833,7 +891,8 @@
     }
     if (el.matches('[data-single]')) {
       const box = el.closest('.imgupload');
-      try { toast(T('ছবি আপলোড হচ্ছে…')); const url = await upload(el.files[0]); box.querySelector('input[type=hidden]').value = url; box.querySelector('.pv').style.backgroundImage = `url('${url}')`; toast(T('আপলোড হয়েছে')); }
+      try { toast(T('ছবি আপলোড হচ্ছে…')); const url = await upload(el.files[0]); box.querySelector('input[type=hidden]').value = url; box.querySelector('.pv').style.backgroundImage = `url('${url}')`; toast(T('আপলোড হয়েছে'));
+        box.closest('form')?.dispatchEvent(new Event('change')); }
       catch (er) { toast(er.message, true); }
     }
   });
