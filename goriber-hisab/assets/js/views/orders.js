@@ -11,6 +11,7 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { workerForm, workersCard } from '../core/workers.js';
 import { openPrint } from '../core/printer.js';
+import { smallUnit } from './recipe.js';
 
 const STATUS = {
   pending: ['info', 'New'], confirmed: ['held', 'Confirmed'], packed: ['held', 'Packed'], shipped: ['partial', 'With courier'],
@@ -495,27 +496,60 @@ async function form(el) {
     sub: (x) => `${money(x.selling_price)}${x.track_stock ? ' · ' + t('Stock') + ' ' + fmtQty(x.stock_qty) : ''}`,
     onPick: (x) => { addLine(x); picker.clear(); },
   });
+  // Browse by category: tap a category, tap the product.
+  const browse = h('div', { class: 'order-browse' });
+  let openCat = 0;
+  const cats = (state.me.categories || []).filter((c) => Number(c.product_count) > 0);
+  const catChips = cats.length ? h('div', { class: 'chips order-cats' }) : null;
+  const paintCats = () => catChips && mount(catChips, cats.map((c) => h('button', { class: `chip ${openCat === Number(c.id) ? 'active' : ''}`, type: 'button', onclick: async () => {
+    openCat = openCat === Number(c.id) ? 0 : Number(c.id);
+    paintCats();
+    if (!openCat) { mount(browse); return; }
+    mount(browse, spinner());
+    try {
+      const r = await api.get('products', { category_id: openCat, per_page: 200, orderby: 'name' });
+      mount(browse, h('div', { class: 'order-tiles' }, r.items.filter((x) => x.status === 'active').map((x) => h('button', { class: 'tile', type: 'button', onclick: () => addLine(x) },
+        isLoose(x) ? h('span', { class: 'tile-weigh' }, `⚖ ${t('By weight')}`) : null,
+        h('span', { class: 'tile-name' }, x.name),
+        h('span', { class: 'tile-price' }, money(x.selling_price), isLoose(x) && x.unit_name ? h('small', {}, ` /${x.unit_name}`) : null)))));
+    } catch (err) { mount(browse); showError(err); }
+  } }, c.name)));
+  paintCats();
+  function isLoose(x) {
+    return !!x.unit_decimal || ['kg', 'g', 'gm', 'l', 'ltr', 'ml'].includes(String(x.unit_name || '').toLowerCase());
+  }
   async function addLine(x) {
     if (x.has_variants) {
       const full = await api.get(`products/${x.id}`);
       if (full.variants.length) {
-        const m = modal({ title: x.name, size: 'sm', body: h('div', { class: 'variant-list' }, full.variants.map((v) => h('button', { class: 'tile', type: 'button', onclick: () => { m.close(); push(full, v); } }, h('span', { class: 'tile-name' }, v.name), h('span', { class: 'tile-price' }, money(v.selling_price))))) });
+        const m = modal({ title: x.name, size: 'sm', body: h('div', { class: 'variant-list' },
+          full.variants.map((v) => h('button', { class: 'tile', type: 'button', onclick: () => { m.close(); push(full, v); } }, h('span', { class: 'tile-name' }, v.name), h('span', { class: 'tile-price' }, money(v.selling_price)))),
+          // Sizes filled from the loose stock: the loose stock can be ordered by weight too.
+          full.loose_base ? h('button', { class: 'tile', type: 'button', onclick: () => { m.close(); push(full, null); } }, h('span', { class: 'tile-name' }, t('Loose')), h('span', { class: 'tile-price' }, money(full.selling_price), full.unit_name ? h('small', {}, ` /${full.unit_name}`) : null)) : null) });
         return;
       }
     }
     push(x, null);
   }
   function push(x, v) {
-    lines.push({ product_id: x.id, variant_id: v?.id || 0, name: x.name + (v ? ` - ${v.name}` : ''), qty: '1', unit_price: str(dec((v || x).selling_price ?? 0), places()) });
+    const loose = !v && isLoose(x);
+    lines.push({ product_id: x.id, variant_id: v?.id || 0, name: x.name + (v ? ` - ${v.name}` : (loose && x.has_variants ? ` (${t('loose')})` : '')), qty: loose ? '' : '1', unit_price: str(dec((v || x).selling_price ?? 0), places()), loose, unit: loose ? (x.unit_name || 'kg') : '' });
     paint();
+    if (loose) setTimeout(() => linesEl.querySelectorAll('.order-line')[lines.length - 1]?.querySelector('input')?.focus(), 30);
   }
   function paint() {
     mount(linesEl, lines.length ? lines.map((l, i) => {
-      const q = input(`qty${i}`, l.qty, { inputmode: 'decimal', 'aria-label': t('Qty') });
+      const q = input(`qty${i}`, l.qty, { inputmode: l.loose ? 'text' : 'decimal', 'aria-label': t('Qty'), placeholder: l.loose ? l.unit : '' });
       const pr = money_input(`price${i}`, l.unit_price, { 'aria-label': t('Price') });
-      q.addEventListener('input', () => { l.qty = q.value; paintTotals(); });
-      pr.addEventListener('input', () => { l.unit_price = pr.value; paintTotals(); });
-      return h('div', { class: 'order-line' }, h('span', { class: 'ol-name' }, l.name), q, pr,
+      const amount = h('small', { class: 'muted ol-amount' });
+      const paintAmount = () => { amount.textContent = l.loose && dec(l.qty) ? `${fmtQty(l.qty)} ${l.unit} = ${money(str(Math.round(dec(l.qty) * dec(l.unit_price) / 10000)))}` : ''; };
+      q.addEventListener('input', () => { l.qty = q.value; paintAmount(); paintTotals(); });
+      // Loose: "250g" / "250 গ্রাম" becomes 0.25 kg.
+      q.addEventListener('blur', () => { if (!l.loose) return; const v = smallUnit(q.value, l.unit); if (v !== q.value) { q.value = v; l.qty = v; paintAmount(); paintTotals(); } });
+      pr.addEventListener('input', () => { l.unit_price = pr.value; paintAmount(); paintTotals(); });
+      paintAmount();
+      const weights = l.loose && /^(kg|কেজি|l|ltr|লিটার)$/i.test(l.unit) ? h('div', { class: 'ol-weights' }, [['250g', '0.25'], ['500g', '0.5'], ['1 ' + l.unit, '1'], ['2 ' + l.unit, '2']].map(([label, v]) => h('button', { class: 'chip', type: 'button', onclick: () => { q.value = v; l.qty = v; paintAmount(); paintTotals(); } }, label))) : null;
+      return h('div', { class: 'order-line' }, h('div', { class: 'ol-main' }, h('span', { class: 'ol-name' }, l.name), weights, amount), q, pr,
         h('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Remove'), onclick: () => { lines.splice(i, 1); paint(); } }, icon('trash', 16)));
     }) : h('p', { class: 'muted' }, t('No items yet — search above or scan a barcode.')));
     paintTotals();
@@ -570,7 +604,7 @@ async function form(el) {
       field(t('Delivery area'), area),
       field(t('District / city'), areaName),
       field(t('Order from'), source)), known),
-    card(t('Products'), picker.el, linesEl),
+    card(t('Products'), picker.el, catChips, browse, linesEl),
     card(t('Payment'), h('div', { class: 'form-grid' },
       field(t('Delivery charge'), delivery),
       field(t('Discount'), discount),
