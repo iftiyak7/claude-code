@@ -778,6 +778,14 @@ final class SaleService extends Service {
 		foreach ( $items as $i => $item ) {
 			$line   = $doc['lines'][ array_keys( $doc['lines'] )[ $i ] ];
 			$recipe = $this->stock->recipe( $ctx, (int) $item['product_id'], (int) $item['variant_id'] );
+			if ( $recipe && $line['track_stock'] ) {
+				// Packed ahead (honey bottles): sell what is packed; pack the shortfall from the bulk now.
+				$short = Decimal::of( $item['qty'] ) - max( 0, $this->stock->onHand( $ctx, (int) $item['product_id'], (int) $item['variant_id'] ) );
+				if ( $short > 0 ) {
+					$this->stock->pack( $ctx, (int) $item['product_id'], (int) $item['variant_id'], $short, array( 'date' => $doc['sale_date'], 'note' => 'Packed while selling ' . $number, 'field' => "items.{$i}.qty", 'authorized' => true ) );
+				}
+				$recipe = array();
+			}
 			if ( $recipe ) {
 				// Made at sale time: the ingredients leave stock at their real cost.
 				$made = $this->stock->consumeRecipe(

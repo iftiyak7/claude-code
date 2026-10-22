@@ -212,6 +212,79 @@ final class StockService extends Service {
 	}
 
 	/**
+	 * Pack ahead: turn bulk ingredients into packed stock of a product
+	 * (e.g. 20 × 500 g honey bottles from 10 kg of loose honey). The packed
+	 * stock carries the ingredients' real cost; nothing touches profit.
+	 * A negative quantity unpacks (packed by mistake / opened again).
+	 *
+	 * @param array<string,mixed> $meta date, note, field, authorized (skip the permission check).
+	 * @return array{qty:string,cost:string,stock:string}
+	 */
+	public function pack( BusinessContext $ctx, int $product_id, int $variant_id, int $qty, array $meta = array() ): array {
+		if ( empty( $meta['authorized'] ) ) {
+			$ctx->authorize( 'inventory.adjust' );
+		}
+		if ( 0 === $qty ) {
+			throw ValidationException::field( 'qty', 'Enter a quantity greater than zero.' );
+		}
+		$recipe = $this->recipe( $ctx, $product_id, $variant_id );
+		if ( ! $recipe ) {
+			throw ValidationException::field( 'product_id', 'Set the recipe first: what goes into 1 unit.' );
+		}
+		$pt      = $this->db->table( 'products' );
+		$product = $this->db->row( "SELECT name, track_stock FROM {$pt} WHERE id = %d AND business_id = %d AND deleted_at IS NULL", array( $product_id, $ctx->business_id ) );
+		if ( null === $product || ! (int) $product['track_stock'] ) {
+			throw ValidationException::field( 'product_id', 'This product is made when sold, so it is not packed ahead.' );
+		}
+		$date = Text::date( $meta['date'] ?? null ) ?? $this->today( $ctx );
+		$this->assertOpenPeriod( $ctx, $date );
+		$base = array(
+			'date'           => $date,
+			'reference_type' => 'pack',
+			'reference_id'   => 0,
+			'reference_no'   => '',
+			'note'           => Text::line( $meta['note'] ?? '', 200 ),
+			'field'          => (string) ( $meta['field'] ?? 'qty' ),
+		);
+		return $this->db->transaction(
+			function () use ( $ctx, $product_id, $variant_id, $qty, $recipe, $product, $base ) {
+				if ( $qty > 0 ) {
+					$used = $this->consumeRecipe( $ctx, $recipe, $qty, array_merge( $base, array( 'type' => 'pack', 'product_name' => $product['name'] ) ) );
+					$cost = $used['cost'];
+					$this->in( $ctx, array( 'product_id' => $product_id, 'variant_id' => $variant_id, 'qty' => $qty, 'value' => $cost ), array_merge( $base, array( 'type' => 'pack', 'product_name' => $product['name'] ) ) );
+				} else {
+					// Unpack: the packed units leave at their cost, which goes back to the ingredients.
+					$res   = $this->out( $ctx, array( 'product_id' => $product_id, 'variant_id' => $variant_id, 'qty' => -$qty ), array_merge( $base, array( 'type' => 'unpack', 'product_name' => $product['name'] ) ) );
+					$cost  = $res['cost'];
+					$parts = array();
+					$worth = array();
+					foreach ( $recipe as $c ) {
+						$need    = Decimal::mul( $c['qty'], -$qty );
+						$avg     = Decimal::of( $this->level( $ctx, $c['product_id'], $c['variant_id'] )['avg_cost'] ?? 0 );
+						$worth[] = max( 1, Decimal::mul( $need, $avg ) );
+						$parts[] = array( 'product_id' => $c['product_id'], 'variant_id' => $c['variant_id'], 'name' => $c['name'], 'qty' => Decimal::toString( $need ), 'cost' => '0' );
+					}
+					$total = array_sum( $worth );
+					$left  = $cost;
+					foreach ( $parts as $n => &$part ) {
+						$val          = $n === count( $parts ) - 1 ? $left : (int) round( $cost * $worth[ $n ] / $total );
+						$left        -= $val;
+						$part['cost'] = Decimal::toString( $val );
+					}
+					unset( $part );
+					$this->moveComponents( $ctx, $parts, 'in', array_merge( $base, array( 'type' => 'unpack' ) ) );
+				}
+				$this->audit->log( $ctx, 'adjust', 'stock', $product_id, sprintf( '%s %s × %s', $qty > 0 ? 'Packed' : 'Unpacked', $product['name'], Decimal::toString( abs( $qty ), 2 ) ) );
+				return array(
+					'qty'   => Decimal::toString( $qty ),
+					'cost'  => Decimal::toString( $cost ),
+					'stock' => Decimal::toString( $this->onHand( $ctx, $product_id, $variant_id ) ),
+				);
+			}
+		);
+	}
+
+	/**
 	 * Share of used ingredients for part of a line (returns): qty and cost
 	 * scaled by $part / $whole, with the cost shares adding up to $cost.
 	 *

@@ -23,6 +23,7 @@ final class InventoryController extends Controller {
 			$this->route( 'GET', '/stock/lights', fn( BusinessContext $c, array $a ) => $s->lights( $c, $a ) ),
 			$this->route( 'GET', '/stock/movements', fn( BusinessContext $c, array $a ) => $s->movements( $c, $a ) ),
 			$this->route( 'GET', '/stock/adjustments/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $s->adjustmentInfo( $c, self::id( $r ) ) ),
+			$this->route( 'POST', '/stock/pack', fn( BusinessContext $c, array $a ) => $s->pack( $c, (int) ( $a['product_id'] ?? 0 ), (int) ( $a['variant_id'] ?? 0 ), \GoriberHisab\Support\Decimal::of( $a['qty'] ?? 0 ) * ( ! empty( $a['unpack'] ) ? -1 : 1 ), array( 'date' => $a['date'] ?? null, 'note' => $a['note'] ?? '' ) ) ),
 			$this->route( 'POST', '/stock/adjustments/(?P<id>\d+)/kind', fn( BusinessContext $c, array $a, $r ) => $s->reclassifyAdjustment( $c, self::id( $r ), (string) ( $a['kind'] ?? '' ) ) ),
 			$this->route( 'POST', '/stock/adjustments/(?P<id>\d+)/void', fn( BusinessContext $c, array $a, $r ) => $s->voidAdjustment( $c, self::id( $r ) ) ),
 			$this->route( 'POST', '/stock/adjust', fn( BusinessContext $c, array $a ) => $s->adjust( $c, $a ), array( 'created' => true ) ),

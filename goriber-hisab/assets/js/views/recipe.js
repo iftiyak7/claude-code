@@ -8,7 +8,7 @@ import { api } from '../core/api.js';
 import { can } from '../core/state.js';
 import { t } from '../core/i18n.js';
 import { money, qty } from '../core/format.js';
-import { card, modal, select, toast, showError, combobox, simpleTable } from '../core/ui.js';
+import { card, modal, select, toast, showError, combobox, simpleTable, field, money_input, checkbox } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 
 const num = (v) => Number(v) || 0;
@@ -38,7 +38,12 @@ export function recipeCard(pr, reload, { open = false } = {}) {
       if (open && can('products.edit')) edit(data);
       return;
     }
+    const packAhead = data.mode === 'pack';
     mount(box,
+      h('p', { class: 'recipe-mode' }, packAhead
+        ? t('Packed ahead: packed units sell first; when they run out, the rest is packed from the bulk automatically.')
+        : t('Made when sold: it keeps no stock of its own.')),
+      packAhead && can('inventory.adjust') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => packDialog(pr, data, reload) }, icon('inventory', 14), t('Pack now')) : null,
       data.make_qty !== null ? h('div', { class: 'recipe-make' }, icon('check', 16), t('Ingredients in stock are enough to make {n} {u}', { n: qty(data.make_qty), u: pr.unit_name || '' })) : null,
       ...data.recipes.map((r) => {
         const sell = priceFor(pr, r.variant_id);
@@ -72,6 +77,13 @@ export function recipeEditor(pr, data, onSaved) {
     rows[vid] = r ? r.items.map((i) => ({ ...i, unit_cost: i.unit_cost === null ? null : num(i.unit_cost), options: null })) : [];
   });
   let scope = 0;
+  let mode = data.recipes.length ? data.mode : (variants.length || Number(pr.stock_qty) > 0 ? 'pack' : 'sale');
+  const modeBox = h('div', { class: 'recipe-modes', role: 'radiogroup' });
+  const paintMode = () => mount(modeBox, [
+    ['pack', t('I pack some ahead'), t('e.g. honey bottles: a few are kept packed. Packed ones sell first; if they run out, the rest is packed from the bulk when sold.')],
+    ['sale', t('Made when sold'), t('e.g. honey nuts mixed to order. No stock of its own.')],
+  ].map(([m, title, sub]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(mode === m), class: `recipe-mode-opt ${mode === m ? 'on' : ''}`, onclick: () => { mode = m; paintMode(); } }, h('strong', {}, title), h('small', {}, sub))));
+  paintMode();
   const list = h('div', { class: 'recipe-rows' });
   const sum = h('div', { class: 'recipe-sum' });
   const scopeSel = variants.length ? select('scope', scopes.map((vid) => [String(vid), vid ? sizeName(pr, vid) : t('All sizes (unless a size has its own)')]), '0') : null;
@@ -125,11 +137,11 @@ export function recipeEditor(pr, data, onSaved) {
 
   const body = h('div', { class: 'recipe-editor' },
     h('p', { class: 'muted' }, t('How much of each ingredient goes into 1 {u} of {n}? You can type 300g for 0.3 kg.', { u: pr.unit_name || t('unit'), n: pr.name })),
+    modeBox,
     scopeSel ? h('div', { class: 'field' }, h('label', {}, t('Size')), scopeSel) : null,
     list,
     picker.el,
-    sum,
-    pr.track_stock ? h('p', { class: 'hint' }, t('This product will stop keeping its own stock — it is made from the ingredients when sold.')) : null);
+    sum);
 
   const m = modal({
     title: t('Recipe — {n}', { n: pr.name }),
@@ -142,12 +154,64 @@ export function recipeEditor(pr, data, onSaved) {
         for (const vid of scopes) {
           const had = data.recipes.some((x) => Number(x.variant_id) === vid);
           if (!had && !rows[vid].length) continue;
-          await api.put(`products/${pr.id}/recipe`, { variant_id: vid, items: rows[vid].map((i) => ({ product_id: i.product_id, variant_id: i.variant_id, qty: String(i.qty).trim() })) });
+          await api.put(`products/${pr.id}/recipe`, { variant_id: vid, mode, items: rows[vid].map((i) => ({ product_id: i.product_id, variant_id: i.variant_id, qty: String(i.qty).trim() })) });
         }
         m.close();
         toast(t('Recipe saved'));
         onSaved();
       } catch (err) { showError(err); } finally { btn.disabled = false; }
     } }, icon('check', 16), t('Save recipe'))],
+  });
+}
+
+/** Pack ahead: fill a few bottles from the bulk (or unpack ones packed by mistake). */
+export function packDialog(pr, data, onDone, variantId = null) {
+  const variants = pr.variants || [];
+  const own = new Set(data.recipes.map((r) => Number(r.variant_id)));
+  const general = own.has(0);
+  const sizes = variants.length ? variants.filter((v) => own.has(v.id) || general) : [];
+  if (variants.length && !sizes.length) { toast(t('Set the recipe first: what goes into 1 unit.'), 'error'); return; }
+  const sizeSel = sizes.length ? select('variant_id', sizes.map((v) => [String(v.id), `${v.name} — ${t('packed')} ${qty(v.stock_qty)}`]), String(variantId || sizes[0].id)) : null;
+  const qtyIn = money_input('qty', '', { placeholder: '0', autofocus: true, inputmode: 'numeric' });
+  const undo = checkbox('unpack', false, t('Unpack (packed by mistake / opened again)'));
+  const preview = h('div', { class: 'pack-preview' });
+  const recipeFor = () => {
+    const vid = sizeSel ? Number(sizeSel.value) : 0;
+    return data.recipes.find((r) => Number(r.variant_id) === vid) || data.recipes.find((r) => Number(r.variant_id) === 0);
+  };
+  const paint = () => {
+    const n = num(qtyIn.value);
+    const r = recipeFor();
+    if (!r || !n) { mount(preview, h('p', { class: 'muted' }, t('Type how many you packed.'))); return; }
+    const back = undo.querySelector('input').checked;
+    mount(preview,
+      h('p', { class: 'muted small' }, back ? t('Goes back:') : t('Taken from stock:')),
+      h('ul', { class: 'pack-list' }, r.items.map((i) => {
+        const need = num(i.qty) * n;
+        const short = !back && need > num(i.stock_qty);
+        return h('li', { class: short ? 'bad-text' : '' }, `${i.name}: ${qty(String(+need.toFixed(4)))} ${i.unit}`, short ? ` (${t('only {n} in stock', { n: qty(i.stock_qty) })})` : '');
+      })),
+      r.cost !== null ? h('p', {}, t('Cost of each: {c}', { c: money(String((num(r.cost)).toFixed(2))) })) : null);
+  };
+  qtyIn.addEventListener('input', paint);
+  sizeSel?.addEventListener('change', paint);
+  undo.querySelector('input').addEventListener('change', paint);
+  paint();
+  const m = modal({
+    title: t('Pack — {n}', { n: pr.name }),
+    body: h('div', { class: 'form' }, h('div', { class: 'form-grid' },
+      sizeSel ? field(t('Size'), sizeSel) : null,
+      field(t('How many did you pack?'), qtyIn)), preview, undo),
+    actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const back = undo.querySelector('input').checked;
+        const res = await api.post('stock/pack', { product_id: pr.id, variant_id: sizeSel ? Number(sizeSel.value) : 0, qty: qtyIn.value, unpack: back });
+        m.close();
+        toast(back ? t('Unpacked. Packed now: {n}', { n: qty(res.stock) }) : t('Packed. Packed now: {n}', { n: qty(res.stock) }));
+        onDone?.();
+      } catch (err) { showError(err); } finally { btn.disabled = false; }
+    } }, icon('check', 16), t('Save'))],
   });
 }

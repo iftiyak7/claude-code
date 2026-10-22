@@ -63,7 +63,7 @@ export default async function pos(el) {
   function paintGrid() {
     const list = catalogue.filter((p) => p.status === 'active' && (!category || p.category_id === category)).slice(0, 120);
     mount(grid, list.length ? list.map((p) => h('button', {
-      class: `tile ${(p.track_stock && dec(p.stock_qty) <= 0) || (p.has_recipe && p.make_qty !== null && dec(p.make_qty) <= 0) ? 'out' : ''} ${isLoose(p) ? 'loose' : ''}`, type: 'button', onclick: () => pick(p),
+      class: `tile ${(p.track_stock && !p.has_recipe && dec(p.stock_qty) <= 0) || (p.has_recipe && p.make_qty !== null && dec(p.make_qty) <= 0) ? 'out' : ''} ${isLoose(p) ? 'loose' : ''}`, type: 'button', onclick: () => pick(p),
       title: t('Long-press to change quantity or price'),
       oncontextmenu: (e) => { e.preventDefault(); pickAndEdit(p); },
     },
@@ -124,7 +124,7 @@ export default async function pos(el) {
     const existing = cart.lines.find((l) => `${l.product_id}:${l.variant_id}` === key);
     if (existing) { editLine(existing, false); return; }
     const price = dec(p.selling_price);
-    editLine({ product_id: p.id, variant_id: 0, name: p.name, qty: 10000, price, base: price, discount: 0, track: !!p.track_stock, stock: dec(p.stock_qty), unit: p.unit_name || '', loose: isLoose(p) }, true);
+    editLine({ product_id: p.id, variant_id: 0, name: p.name, qty: 10000, price, base: price, discount: 0, track: !!p.track_stock && !p.has_recipe, stock: dec(p.stock_qty), unit: p.unit_name || '', loose: isLoose(p) }, true);
   }
 
   function isLoose(p) {
@@ -136,7 +136,7 @@ export default async function pos(el) {
     const existing = cart.lines.find((l) => `${l.product_id}:${l.variant_id}` === key);
     const stock = v ? dec(v.stock_qty) : dec(p.stock_qty);
     const price = v ? dec(v.selling_price) : dec(p.selling_price);
-    const line = existing || { product_id: p.id, variant_id: v?.id || 0, name: p.name + (v ? ` - ${v.name}` : ''), qty: 10000, price, base: price, discount: 0, track: !!p.track_stock, stock, unit: p.unit_name || '', loose: isLoose(p) };
+    const line = existing || { product_id: p.id, variant_id: v?.id || 0, name: p.name + (v ? ` - ${v.name}` : ''), qty: 10000, price, base: price, discount: 0, track: !!p.track_stock && !p.has_recipe, stock, unit: p.unit_name || '', loose: isLoose(p) };
     if (line.loose) {
       // Weighed/loose goods (e.g. nuts by the gram): ask how much first.
       editLine(line, !existing);
@@ -454,7 +454,7 @@ export default async function pos(el) {
     cart.lines = s.items.map((i) => {
       const p = catalogue.find((c) => c.id === Number(i.product_id));
       const price = dec(i.unit_price);
-      return { product_id: Number(i.product_id), variant_id: Number(i.variant_id), name: i.name, qty: dec(i.qty), price, base: p ? dec(p.selling_price) : price, discount: dec(i.discount_amount), track: p ? p.track_stock : true, stock: p ? dec(p.stock_qty) : Infinity };
+      return { product_id: Number(i.product_id), variant_id: Number(i.variant_id), name: i.name, qty: dec(i.qty), price, base: p ? dec(p.selling_price) : price, discount: dec(i.discount_amount), track: p ? p.track_stock && !p.has_recipe : true, stock: p ? dec(p.stock_qty) : Infinity };
     });
     paintCustomer();
     paintCart();

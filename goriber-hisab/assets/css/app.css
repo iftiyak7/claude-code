@@ -1079,3 +1079,13 @@ button.kpi:active { transform: scale(.98); }
 .pos-left > :not(.pos-grid) { flex-shrink: 0; }
 .pos-left .chips .chip { flex-shrink: 0; white-space: nowrap; }
 .tile.loose { padding-top: 30px; }
+
+/* Recipe mode (packed ahead / made when sold) and the pack dialog */
+.recipe-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
+.recipe-mode-opt { display: grid; gap: 4px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.recipe-mode-opt small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.recipe-mode-opt.on { border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 25%, transparent); }
+.recipe-mode { margin: 0 0 8px; color: var(--muted); }
+.pack-preview { margin: 8px 0; }
+.pack-list { margin: 4px 0 8px; padding-left: 18px; }
+@media (max-width: 560px) { .recipe-modes { grid-template-columns: 1fr; } }

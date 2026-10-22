@@ -11,7 +11,7 @@ import { page, dataTable, select, input, field, money_input, modal, toast, showE
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 
-const TYPES = { opening: 'Opening', purchase: 'Purchase', sale: 'Sale', sale_return: 'Sales return', purchase_return: 'Purchase return', adjustment: 'Adjustment', sale_void: 'Sale void', purchase_void: 'Purchase void', sale_return_void: 'Return void', purchase_return_void: 'Return void' };
+const TYPES = { opening: 'Opening', purchase: 'Purchase', sale: 'Sale', sale_return: 'Sales return', purchase_return: 'Purchase return', adjustment: 'Adjustment', sale_void: 'Sale void', purchase_void: 'Purchase void', sale_return_void: 'Return void', purchase_return_void: 'Return void', pack: 'Packed', unpack: 'Unpacked' };
 
 export default async function inventory(el, params, query) {
   if (!can('inventory.view')) { mount(el, empty(t('You do not have access to inventory.'))); return; }

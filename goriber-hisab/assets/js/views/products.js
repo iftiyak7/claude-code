@@ -11,7 +11,7 @@ import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
 import { barcodeSvg } from '../core/barcode.js';
 import { stockAdjust } from './inventory.js';
-import { recipeCard } from './recipe.js';
+import { recipeCard, packDialog } from './recipe.js';
 
 export default async function products(el, params, query) {
   const path = location.hash.split('?')[0];
@@ -61,6 +61,7 @@ async function detail(el, id, query = {}) {
     subtitle: [pr.sku, pr.barcode].filter(Boolean).join(' · '),
     actions: [
       h('button', { class: 'btn btn-sm', type: 'button', onclick: () => navigate(`/products/labels?ids=${pr.id}`) }, icon('barcode', 16), t('Print barcode')),
+      pr.has_recipe && pr.track_stock && can('inventory.adjust') ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => { try { packDialog(pr, await api.get(`products/${pr.id}/recipe`), reload); } catch (err) { showError(err); } } }, icon('inventory', 16), t('Pack now')) : null,
       pr.track_stock && can('inventory.adjust') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => stockAdjust(pr, null, reload) }, t('Adjust stock')) : null,
       can('inventory.view') ? h('a', { class: 'btn btn-sm', href: `#/inventory/movements?product_id=${id}` }, t('Stock history')) : null,
       can('products.edit') ? h('a', { class: 'btn btn-primary btn-sm', href: `#/products/${id}/edit` }, icon('edit', 16), t('Edit')) : null,

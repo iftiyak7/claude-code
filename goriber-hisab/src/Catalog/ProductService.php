@@ -289,6 +289,8 @@ final class ProductService extends Service {
 		return array(
 			'product_id' => $product_id,
 			'name'       => (string) $product['name'],
+			// pack = packed ahead, own stock (packed units sell first); sale = made when sold.
+			'mode'       => (int) $product['track_stock'] ? 'pack' : 'sale',
 			'recipes'    => array_values( $recipes ),
 			'make_qty'   => $make[ $product_id ] ?? null,
 		);
@@ -368,11 +370,14 @@ final class ProductService extends Service {
 		if ( $errors ) {
 			throw new ValidationException( $errors );
 		}
-		if ( $items && (int) $product['track_stock'] && 0 !== $this->totalQty( $ctx, $product_id ) ) {
-			throw ValidationException::field( 'items', 'This product still has its own stock. Set its stock to zero first, then add the recipe.' );
+		$had  = (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND product_id = %d", array( $ctx->business_id, $product_id ) ) > 0;
+		$mode = (string) ( $data['mode'] ?? ( $had && (int) $product['track_stock'] ? 'pack' : 'sale' ) );
+		$mode = 'pack' === $mode ? 'pack' : 'sale';
+		if ( $items && 'sale' === $mode && (int) $product['track_stock'] && 0 !== $this->totalQty( $ctx, $product_id ) ) {
+			throw ValidationException::field( 'mode', 'This product still has packed stock. Choose "I pack some ahead", or set its stock to zero first.' );
 		}
 		$this->db->transaction(
-			function () use ( $ctx, $product_id, $variant_id, $items, $rt, $product ) {
+			function () use ( $ctx, $product_id, $variant_id, $items, $rt, $product, $mode ) {
 				$this->db->execute( "DELETE FROM {$rt} WHERE business_id = %d AND product_id = %d AND variant_id = %d", array( $ctx->business_id, $product_id, $variant_id ) );
 				foreach ( $items as $n => $c ) {
 					$this->db->insert(
@@ -388,8 +393,9 @@ final class ProductService extends Service {
 						)
 					);
 				}
-				if ( $items && (int) $product['track_stock'] ) {
-					$this->db->update( $this->db->table( 'products' ), array( 'track_stock' => 0, 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => $product_id, 'business_id' => $ctx->business_id ) );
+				$track = 'pack' === $mode ? 1 : 0;
+				if ( $items && (int) $product['track_stock'] !== $track ) {
+					$this->db->update( $this->db->table( 'products' ), array( 'track_stock' => $track, 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => $product_id, 'business_id' => $ctx->business_id ) );
 				}
 				$this->audit->log( $ctx, 'update', 'product', $product_id, ( $items ? 'Recipe saved: ' : 'Recipe removed: ' ) . $product['name'] );
 			}
