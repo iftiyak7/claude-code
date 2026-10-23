@@ -265,6 +265,10 @@
           <div class="two">${f('lat', 'Latitude', 'inputmode="decimal" data-latlng', 'অথবা Google Maps-এ জায়গায় রাইট-ক্লিক করে সংখ্যা কপি করে এখানে পেস্ট করুন')}${f('lng', 'Longitude', 'inputmode="decimal"')}</div>
           ${l.lat != null ? `<a class="btn sm ghost" style="justify-self:start" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${esc(l.lat)},${esc(l.lng)}">${icon('map', 16)}${T('ম্যাপে মিলিয়ে দেখুন')}</a>` : ''}
         </div></div>
+        <div class="card"><h3>${T('আরও নম্বর (পদবিসহ)')} <small class="muted" style="font-weight:400">${T('যেমন থানার ওসি, ডিউটি অফিসার, হাসপাতালের জরুরি বিভাগ')}</small></h3>
+          <div class="cbody form"><div class="contacts" data-contacts></div>
+            <datalist id="roles">${CONTACT_ROLES.map(r => `<option value="${esc(T(r))}">`).join('')}</datalist>
+            <button type="button" class="btn sm ghost" data-addcontact style="justify-self:start">${icon('plus', 16)}${T('নম্বর যোগ করুন')}</button></div></div>
         <div class="card"><h3>${T('সময় ও দাম')}</h3><div class="cbody form">
           <label class="check"><input type="checkbox" name="h24" ${l.hours === '24h' ? 'checked' : ''}><span>${T('২৪ ঘণ্টা খোলা')}</span></label>
           <div class="two"><label class="field"><span>${T('খোলে')}</span><input type="time" name="open" value="${esc(o)}"></label><label class="field"><span>${T('বন্ধ হয়')}</span><input type="time" name="close" value="${esc(c)}"></label></div>
@@ -294,6 +298,8 @@
     const form = root.querySelector('[data-edit]');
     form._images = [...(l.images || [])];
     form._videos = [...(l.videos || [])];
+    form._contacts = (l.contacts || []).map(c => ({ ...c }));
+    drawContacts(form);
     fillSubs(form); drawImgs(form); drawVids(form);
   };
 
@@ -316,6 +322,17 @@
       <div class="ops"><button type="button" data-imgfirst="${i}" title="${T('কভার করুন')}">${icon('star', 14)}</button><button type="button" data-imgdel="${i}" title="${T('সরান')}">${icon('x', 14)}</button></div></div>`).join('')
       + (form._images.length < 10 ? `<label class="up">${icon('upload', 20)}<span>${T('ছবি যোগ')}</span><input type="file" accept="image/*" multiple data-imgup></label>` : '');
   }
+  const CONTACT_ROLES = ['ওসি (অফিসার ইনচার্জ)', 'পরিদর্শক (তদন্ত)', 'ডিউটি অফিসার', 'থানার ল্যান্ডলাইন', 'কন্ট্রোল রুম', 'জরুরি বিভাগ', 'অ্যাম্বুলেন্স',
+    'রিসেপশন', 'অফিস', 'ম্যানেজার', 'হোয়াটসঅ্যাপ'];
+  function drawContacts(form) {
+    const box = form.querySelector('[data-contacts]'); if (!box) return;
+    box.innerHTML = form._contacts.map((c, i) => `<div class="crow" data-ci="${i}">
+      <input placeholder="${T('পদবি (যেমন ওসি)')}" list="roles" value="${esc(c.role || '')}" data-cf="role">
+      <input placeholder="${T('নাম (ঐচ্ছিক)')}" value="${esc(c.name || '')}" data-cf="name">
+      <input placeholder="01XXXXXXXXX" inputmode="tel" value="${esc(c.phone || '')}" data-cf="phone">
+      <button type="button" class="iconbtn red" data-delcontact="${i}" title="${T('সরান')}">${icon('trash', 16)}</button></div>`).join('')
+      || `<p class="muted" style="margin:0">${T('এখনো কোনো অতিরিক্ত নম্বর নেই।')}</p>`;
+  }
   function drawVids(form) {
     const box = form.querySelector('[data-vids]'); if (!box) return;
     box.innerHTML = form._videos.map((u, i) => `<div class="vid"><video src="${esc(u)}" controls playsinline preload="metadata"></video>
@@ -325,7 +342,7 @@
     const fd = new FormData(form), v = Object.fromEntries(fd);
     const out = { name: v.name, nameEn: v.nameEn, cat: v.cat, sub: v.sub, about: v.about, aboutEn: v.aboutEn, note: v.note, features: v.features, tags: v.tags, phone: v.phone, phone2: v.phone2,
       web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, mapUrl: v.mapUrl, price: (v.price || '').replace(/[^\d]/g, ''),
-      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, sponsoredUntil: v.sponsoredUntil, images: form._images, videos: form._videos || [] };
+      hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, sponsoredUntil: v.sponsoredUntil, contacts: (form._contacts || []).filter(c => (c.phone || '').trim()), images: form._images, videos: form._videos || [] };
     if ('_paidUntil' in v) out._paidUntil = v._paidUntil;
     ['featured', 'sponsored', 'pin', 'demo', 'hidden', 'halal'].forEach(k => out[k] = !!v[k]);
     return out;
@@ -895,6 +912,8 @@
       for (const l of list) { const nid = slugify(l, taken); taken.add(nid); try { await api(`/admin/listings/${l.id}/rename`, { id: nid }); } catch (er) { toast(er.message, true); } }
       toast(T('লিংক ঠিক করা হয়েছে')); await refreshList(); return route();
     }
+    if ('addcontact' in d) { const f = b.closest('form'); f._contacts.push({}); drawContacts(f); f.querySelector('.crow:last-child input')?.focus(); return; }
+    if (d.delcontact != null) { const f = b.closest('form'); f._contacts.splice(+d.delcontact, 1); return drawContacts(f); }
     if (d.viddel != null) { const f = b.closest('form'); f._videos.splice(+d.viddel, 1); return drawVids(f); }
     if (d.imgdel != null) { const f = b.closest('form'); f._images.splice(+d.imgdel, 1); return drawImgs(f); }
     if (d.imgfirst != null) { const f = b.closest('form'); f._images.unshift(...f._images.splice(+d.imgfirst, 1)); return drawImgs(f); }
@@ -908,6 +927,10 @@
     if (d.deladmin) { if (!confirm(T('এই অ্যাডমিন মুছে যাবে। নিশ্চিত?'))) return; await run(() => api('/admin/admins/' + d.deladmin, undefined, 'DELETE'), 'মুছে ফেলা হয়েছে'); return route(); }
   });
 
+  document.addEventListener('input', e => {
+    const f = e.target.closest?.('[data-cf]') && e.target.closest('form');
+    if (f && f._contacts) f._contacts[+e.target.closest('.crow').dataset.ci][e.target.dataset.cf] = e.target.value;
+  });
   document.addEventListener('paste', e => {
     if (e.target.matches?.('[data-adminmaplink]')) setTimeout(() => e.target.dispatchEvent(new Event('change', { bubbles: true })), 30);
   });

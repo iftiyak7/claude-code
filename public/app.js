@@ -229,6 +229,16 @@
         <div class="rows">${unknown.map(row).join('')}</div>` : ''}
       ${!list.length ? empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।')) : ''}`;
   }
+  // Several role-labelled numbers (OC, duty officer, emergency desk …), each with its own call button.
+  const fmtPhone = p => /^01\d{9}$/.test(p) ? p.slice(0, 5) + '-' + p.slice(5) : p;
+  const contactLines = (it, cls = '') => (it.contacts || []).map(c => `<a class="cline ${cls}" href="tel:${esc(c.phone)}" data-call-track="${esc(it.id)}">
+      <span class="ct"><b>${esc(c.role ? T(c.role) : T('ফোন'))}</b>${c.name ? `<small>${esc(c.name)}</small>` : ''}</span>
+      <em>${num(esc(fmtPhone(c.phone)))}</em><i>${icon('phone', 17)}</i></a>`).join('');
+  function ecard(it) {
+    return `<div class="ecard"><a class="ehead" href="#/p/${esc(it.id)}">${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
+      <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</div></div>${icon('chevR', 18)}</a>
+      <div class="clist">${contactLines(it)}</div></div>`;
+  }
   const halalTag = it => it.halal ? `<span class="tag halal">${icon('halal', 13)}${T('হালাল')}</span>` : '';
   function row(it) {
     const d = km(it);
@@ -300,7 +310,7 @@
     'ফার্মেসি': 'pharmacy', 'ফার্মেসী': 'pharmacy', 'ওষুধ': 'pharmacy', farmesi: 'pharmacy', dentist: 'dental', 'ডেন্টিস্ট': 'dental', 'দাঁত': 'dental',
     'চক্ষু': 'eye', 'চোখ': 'eye', police: 'police', 'পুলিশ': 'police', 'থানা': 'police', thana: 'police', fire: 'fire', 'ফায়ার': 'fire',
     ambulance: 'ambulance', 'অ্যাম্বুলেন্স': 'ambulance', 'এম্বুলেন্স': 'ambulance', 'মসজিদ': 'mosque', masjid: 'mosque', mosque: 'mosque',
-    'নামাজ': 'mosque', namaz: 'mosque', 'ঈদগাহ': 'eidgah', eidgah: 'eidgah', 'হোমিও': 'homeo', 'হোমিওপ্যাথি': 'homeo', 'হোমিওপ্যাথিক': 'homeo',
+    'ওসি': 'police', oc: 'police', 'নামাজ': 'mosque', namaz: 'mosque', 'ঈদগাহ': 'eidgah', eidgah: 'eidgah', 'হোমিও': 'homeo', 'হোমিওপ্যাথি': 'homeo', 'হোমিওপ্যাথিক': 'homeo',
     homeo: 'homeo', homio: 'homeo', homeopathy: 'homeo', homeopathic: 'homeo', 'চেম্বার': 'doctor', chamber: 'doctor' };
   const KINDKEYS = { 'ভাড়া': 'rent', 'বাসা': 'rent', 'ফ্ল্যাট': 'rent', rent: 'rent', flat: 'rent', 'টুলেট': 'rent', tolet: 'rent', mess: 'mess', 'মেস': 'mess', 'সিট': 'mess',
     job: 'job', jobs: 'job', 'চাকরি': 'job', 'চাকরী': 'job', chakri: 'job', 'টিউশন': 'tuition', 'টিউশনি': 'tuition', tuition: 'tuition', tutor: 'tuition',
@@ -328,7 +338,7 @@
     });
     const scored = [];
     for (const it of items()) {
-      const hay = norm([it.name, it.nameEn, it.area, areaName(it.area), it.address, (it.tags || []).join(' '), catOf(it).subs?.[it.sub], catOf(it).subsEn?.[it.sub], it.note].join(' '));
+      const hay = norm([it.name, it.nameEn, it.area, areaName(it.area), it.address, (it.tags || []).join(' '), catOf(it).subs?.[it.sub], catOf(it).subsEn?.[it.sub], it.note, (it.contacts || []).map(c => [c.role, c.name].join(' ')).join(' ')].join(' '));
       let s = 0, nameHit = false;
       if (intent.cats.has(it.cat)) s += 4;
       if (intent.sub && intent.sub === it.sub) s += 4;
@@ -583,7 +593,8 @@
       `<a class="pill sm ${k === sub ? 'on' : ''}" href="#/emergency${k ? '?sub=' + k : ''}">${ic ? icon(ic, 15) : ''}${esc(v ? T(v) : subName(c, k))}</a>`).join('')}</div>
     ${loc(site, 'snakeTip') && (!sub || sub === 'hotline') ? `<div class="note warn">${icon('alert', 16)}<span><b>${T('সাপে কামড়ালে:')}</b> ${esc(loc(site, 'snakeTip'))} <a href="#/search?q=snake" style="color:var(--brand);font-weight:600">${T('হাসপাতাল দেখুন')}</a></span></div>` : ''}
     ${sub === 'blood' ? `<div class="note">${icon('droplet', 16)}<span>${T('রক্তদাতা নেটওয়ার্ক শীঘ্রই আসছে। এখন প্রয়োজনে নিকটস্থ সরকারি হাসপাতালের ব্লাড ব্যাংকে যোগাযোগ করুন।')}</span></div>` : ''}
-    <div class="rows">${list.map(row).join('') || empty(T('এখনো তথ্য যুক্ত হয়নি'), T('যাচাই করে শীঘ্রই যুক্ত করা হবে।'))}</div>
+    ${sub === 'police' ? `<div class="note">${icon('shield', 16)}<span>${T('প্রতিটি থানার ওসি ও অন্যান্য কর্মকর্তার নম্বর — সরাসরি কল করুন। জরুরি হলে আগে ৯৯৯।')}</span></div>` : ''}
+    <div class="rows">${list.map(i => i.contacts?.length ? ecard(i) : row(i)).join('') || empty(T('এখনো তথ্য যুক্ত হয়নি'), T('যাচাই করে শীঘ্রই যুক্ত করা হবে।'))}</div>
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
 
@@ -692,7 +703,8 @@
       return `<div data-rv><div class="boot" style="min-height:120px"><div class="spinner"></div></div></div>`;
     }
     const about = loc(it, 'about') || it.note;
-    return `${about ? `<p class="prose">${esc(about)}</p>` : ''}
+    return `${it.contacts?.length ? `<div class="cbox"><h3>${icon('phone', 16)}${T('নম্বরসমূহ')}</h3>${contactLines(it)}</div>` : ''}
+      ${about ? `<p class="prose">${esc(about)}</p>` : ''}
       ${videoBlock(it.videos)}
       ${it.features?.length ? `<div class="feat">${it.features.map(f => `<span>${icon('check', 15)}${esc(f)}</span>`).join('')}</div>` : ''}
       <div class="info" style="margin-top:16px">${infoRows.slice(0, 3).map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${l}</small>${v}</div></div>`).join('')}</div>

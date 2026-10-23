@@ -752,7 +752,17 @@
    "lng": 89.21379,
    "phone": "01320143180",
    "phone2": "042165034",
-   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)"
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143180"
+    },
+    {
+     "role": "থানার ল্যান্ডলাইন",
+     "phone": "042165034"
+    }
+   ]
   },
   {
    "id": "e-benapole-ps",
@@ -765,7 +775,17 @@
    "status": "pending",
    "phone": "01320143388",
    "address": "বেনাপোল, শার্শা",
-   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)"
+   "note": "ওসির মোবাইল · সূত্র: যশোর জেলা পুলিশ (police.jessore.gov.bd)",
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143388"
+    },
+    {
+     "role": "পরিদর্শক (তদন্ত)",
+     "phone": "01320143389"
+    }
+   ]
   },
   {
    "id": "e-fire-jsr",
@@ -778,7 +798,17 @@
    "status": "pending",
    "phone": "02477761330",
    "phone2": "01901020134",
-   "note": "জেলা দপ্তর · আগুন লাগলে ১০২ বা ৯৯৯ · সূত্র: ফায়ার সার্ভিস যশোর (fireservice.jessore.gov.bd)"
+   "note": "জেলা দপ্তর · আগুন লাগলে ১০২ বা ৯৯৯ · সূত্র: ফায়ার সার্ভিস যশোর (fireservice.jessore.gov.bd)",
+   "contacts": [
+    {
+     "role": "জেলা দপ্তর",
+     "phone": "02477761330"
+    },
+    {
+     "role": "সহকারী পরিচালক (মোবাইল)",
+     "phone": "01901020134"
+    }
+   ]
   },
   {
    "id": "e-amb-gh",
@@ -1545,7 +1575,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143310"
+    }
+   ]
   },
   {
    "id": "e-ps-jhikargachha",
@@ -1565,7 +1601,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143206"
+    }
+   ]
   },
   {
    "id": "e-ps-chougachha",
@@ -1585,7 +1627,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143284"
+    }
+   ]
   },
   {
    "id": "e-ps-abhaynagar",
@@ -1605,7 +1653,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143362"
+    }
+   ]
   },
   {
    "id": "e-ps-bagherpara",
@@ -1625,7 +1679,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143258"
+    }
+   ]
   },
   {
    "id": "e-ps-monirampur",
@@ -1645,7 +1705,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143232"
+    }
+   ]
   },
   {
    "id": "e-ps-keshabpur",
@@ -1665,7 +1731,13 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "ওসি (অফিসার ইনচার্জ)",
+     "phone": "01320143336"
+    }
+   ]
   },
   {
    "id": "e-sp-jsr",
@@ -1683,7 +1755,17 @@
     "পুলিশ"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "পুলিশ সুপারের কার্যালয়",
+     "phone": "02477762688"
+    },
+    {
+     "role": "পুলিশ সুপার (এসপি)",
+     "phone": "01320143100"
+    }
+   ]
   },
   {
    "id": "e-fire-chougachha",
@@ -1702,7 +1784,17 @@
     "আগুন"
    ],
    "status": "pending",
-   "since": 2
+   "since": 2,
+   "contacts": [
+    {
+     "role": "স্টেশন",
+     "phone": "01901022840"
+    },
+    {
+     "role": "স্টেশন অফিসার",
+     "phone": "01901022839"
+    }
+   ]
   },
   {
    "id": "m-jailroad",

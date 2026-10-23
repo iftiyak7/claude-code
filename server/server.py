@@ -177,7 +177,7 @@ def init_db():
             upgrade_seed(c, seed)
 
 
-SEED_VERSION = 4
+SEED_VERSION = 5
 MOVED_KEYS = {4: {'place': ('মসজিদ', 'mosque', 'মন্দির', 'temple')}}   # search words that now belong to another category
 NEW_SUBS = {3: {'hospital': ('doctor', 'homeo')}}     # sub-types added to existing categories, by seed version
 FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
@@ -203,6 +203,16 @@ def upgrade_seed(c, seed):
                     x.setdefault('subsEn', {})[sub] = sc.get('subsEn', {}).get(sub, sub)
             if sc:
                 x['keys'] = list(dict.fromkeys((x.get('keys') or []) + [k for k in sc.get('keys', []) if k not in (x.get('keys') or [])]))
+    if v < 5:                                  # role-labelled numbers (e.g. OC of each police station) for starter entries
+        for it in seed.get('listings', []):
+            if not it.get('contacts'):
+                continue
+            r = c.execute('SELECT doc FROM listings WHERE id=?', (it['id'],)).fetchone()
+            if r:
+                doc = json.loads(r['doc'])
+                if not doc.get('contacts'):
+                    doc['contacts'] = it['contacts']
+                    c.execute('UPDATE listings SET doc=? WHERE id=?', (json.dumps(doc, ensure_ascii=False), it['id']))
     for ver, by_cat in MOVED_KEYS.items():
         if v < ver:
             for x in cats:
@@ -500,6 +510,18 @@ def needs_payment(cat, sub):
     return bool(cat.get('paid')) and sub not in (cat.get('freeSubs') or [])
 
 
+def clean_contacts(v):
+    """Extra numbers with their role, e.g. a police station's OC, investigation officer and duty officer."""
+    out = []
+    for c in v if isinstance(v, list) else []:
+        if not isinstance(c, dict):
+            continue
+        phone = s(re.sub(r'[^\d+]', '', str(c.get('phone') or '').translate(BN_DIGITS)), 20)
+        if phone:
+            out.append({k: x for k, x in (('role', s(c.get('role'), 60)), ('name', s(c.get('name'), 80)), ('phone', phone)) if x})
+    return out[:12] or None
+
+
 def clean_listing(d, admin):
     cats = categories()
     out = {
@@ -507,6 +529,7 @@ def clean_listing(d, admin):
         'nameEn': s(d.get('nameEn'), 120), 'area': s(d.get('area'), 60), 'address': s(d.get('address'), 200),
         'phone': s(re.sub(r'[^\d+]', '', str(d.get('phone') or '').translate(BN_DIGITS)), 20),
         'phone2': s(re.sub(r'[^\d+]', '', str(d.get('phone2') or '').translate(BN_DIGITS)), 20),
+        'contacts': clean_contacts(d.get('contacts')),
         'web': s(d.get('web'), 300) if re.match(r'^https?://', str(d.get('web') or '')) else None,
         'facebook': s(d.get('facebook'), 300) if re.match(r'^https?://', str(d.get('facebook') or '')) else None,
         'hours': s(d.get('hours'), 20) if re.match(r'^(24h|\d\d:\d\d-\d\d:\d\d)$', str(d.get('hours') or '')) else None,
