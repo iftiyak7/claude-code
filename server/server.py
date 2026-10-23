@@ -569,7 +569,7 @@ def clean_listing(d, admin):
         out['sponsoredUntil'] = s(d.get('sponsoredUntil'), 10) if re.match(r'^\d{4}-\d\d-\d\d$', str(d.get('sponsoredUntil') or '')) else None
         if out['status'] == 'verified' and not out['verifiedAt']:
             out['verifiedAt'] = today()
-        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'halal'):
+        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'halal', 'blueTick'):
             out[k] = bool(d.get(k)) or None
     else:
         out['status'] = 'pending'

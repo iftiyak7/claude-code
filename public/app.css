@@ -435,6 +435,11 @@ h4 { font-size: 14px; color: var(--ink-2); margin: 18px 0 10px; }
 :root[data-theme="dark"] .tag.halal { color: #4fd1a1; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.halal { color: #4fd1a1; } }
 .gcard .flag.tag.halal { background: rgba(255, 255, 255, .92); color: #0b8a5f; }
+.bluetick { display: inline-block; vertical-align: -0.18em; flex: none; margin-left: 1px; }
+h1 .bluetick { vertical-align: -0.12em; }
+.nmt { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.nmt .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nmt .bluetick { vertical-align: 0; margin: 0; }
 .ctxbar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; margin: 0 0 12px; }
 .ctxbar .ib { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
 .ctxbar > div { flex: 1; min-width: 0; display: grid; }

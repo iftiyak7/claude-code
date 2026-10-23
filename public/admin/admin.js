@@ -216,7 +216,7 @@
       <form class="toolbar" data-filter><label class="search">${icon('search', 18)}<input name="q" value="${esc(p.get('q') || '')}" placeholder="${T('নাম, এলাকা বা ফোন দিয়ে খুঁজুন')}"></label>
         <select name="cat"><option value="">${T('সব ক্যাটাগরি')}</option>${cats().map(c => `<option value="${c.id}" ${c.id === cat ? 'selected' : ''}>${esc(catName(c))}</option>`).join('')}</select>
         <select name="status"><option value="">${T('সব অবস্থা')}</option>${Object.entries(STATUS).map(([k, [v]]) => `<option value="${k}" ${k === st ? 'selected' : ''}>${T(v)}</option>`).join('')}</select>
-        <select name="flag"><option value="">${T('সব ধরন')}</option>${[['paid', 'পেইড ব্যবসা'], ['featured', 'হোমে জনপ্রিয়'], ['sponsored', 'Sponsored'], ['demo', 'নমুনা'], ['hidden', 'লুকানো']].map(([k, v]) => `<option value="${k}" ${k === flag ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></form>
+        <select name="flag"><option value="">${T('সব ধরন')}</option>${[['paid', 'পেইড ব্যবসা'], ['blueTick', 'ব্লু টিক'], ['featured', 'হোমে জনপ্রিয়'], ['sponsored', 'Sponsored'], ['demo', 'নমুনা'], ['hidden', 'লুকানো']].map(([k, v]) => `<option value="${k}" ${k === flag ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></form>
       <div class="card tablewrap">${list.length ? `<table class="t"><thead><tr><th>${T('নাম')}</th><th>${T('ক্যাটাগরি')}</th><th>${T('অবস্থা')}</th><th>${T('রেটিং')}</th><th>${T('ভিউ / কল')}</th><th></th></tr></thead><tbody>
         ${list.map(l => `<tr><td><a class="name" href="#/listings/${l.id}">${thumb(l)}<span><b>${esc(l.name)}</b><small>${esc(l.area || '')}${l.phone ? ' · ' + esc(l.phone) : ''}</small></span></a></td>
           <td data-l="${T('ক্যাটাগরি')}">${esc(catName(catOf(l.cat)))}<br><small class="muted">${esc(subName(catOf(l.cat), l.sub))}</small></td>
@@ -283,6 +283,7 @@
           ${f('sponsoredUntil', 'Sponsored কবে পর্যন্ত', 'type="date"', 'এই তারিখের পর নিজে থেকে সাধারণ তালিকা হয়ে যাবে। খালি রাখলে বন্ধ না করা পর্যন্ত চলবে।')}
           ${owner() && l._plan ? f('_paidUntil', 'পেইড মেয়াদ শেষ', 'type="date"', 'এই তারিখের পর তালিকাটি অ্যাপে দেখাবে না') : ''}
           ${[['featured', 'হোমপেজে "জনপ্রিয়" অংশে দেখান'], ['sponsored', 'Sponsored (পেইড প্রচার)', 'সব তালিকা ও সার্চের উপরে, হোমপেজের "প্রচারিত" অংশে, "Sponsored" লেবেলসহ'], ['pin', 'জরুরি তালিকায় সবার উপরে'],
+            ['blueTick', 'ব্লু টিক (ভেরিফায়েড প্রতিষ্ঠান)', 'নামের পাশে নীল ভেরিফায়েড চিহ্ন দেখাবে — শুধু যাচাই করা, বিশ্বস্ত বা অফিসিয়াল প্রতিষ্ঠানকে দিন'],
             ['halal', 'হালাল', 'খাবারের দোকান/রেস্টুরেন্টে "হালাল" চিহ্ন ও হালাল ফিল্টারে দেখাবে'], ['demo', 'নমুনা তথ্য', 'অ্যাপে "নমুনা" লেবেল দেখাবে'], ['hidden', 'লুকিয়ে রাখুন', 'অ্যাপে দেখাবে না']].map(([k, t, s]) =>
             `<label class="check"><input type="checkbox" name="${k}" ${l[k] ? 'checked' : ''}><span>${T(t)}${s ? `<small>${T(s)}</small>` : ''}</span></label>`).join('')}
         </div></div>
@@ -344,7 +345,7 @@
       web: v.web, facebook: v.facebook, area: v.area, address: v.address, lat: v.lat, lng: v.lng, mapUrl: v.mapUrl, price: (v.price || '').replace(/[^\d]/g, ''),
       hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), status: v.status, verifiedAt: v.verifiedAt, sponsoredUntil: v.sponsoredUntil, contacts: (form._contacts || []).filter(c => (c.phone || '').trim()), images: form._images, videos: form._videos || [] };
     if ('_paidUntil' in v) out._paidUntil = v._paidUntil;
-    ['featured', 'sponsored', 'pin', 'demo', 'hidden', 'halal'].forEach(k => out[k] = !!v[k]);
+    ['featured', 'sponsored', 'pin', 'demo', 'hidden', 'halal', 'blueTick'].forEach(k => out[k] = !!v[k]);
     return out;
   }
 

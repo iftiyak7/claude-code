@@ -353,6 +353,8 @@ Object.assign(window.I18N_EN, {
   'আপনার থেকে': 'from you',
   '{a} থেকে': 'from {a}',
   'হালাল': 'Halal',
+  'ভেরিফায়েড': 'Verified',
+  'ভেরিফায়েড প্রতিষ্ঠান': 'Verified business',
   'শুধু হালাল': 'Halal only',
   'এলাকা ও লোকেশন': 'Area & location',
   'লোকেশন চালু আছে': 'Location is on',

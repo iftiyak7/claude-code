@@ -199,7 +199,7 @@
   function gcard(it) {
     return `<a class="gcard${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${heart(it.id)}
       ${it.sponsored ? '<span class="flag tag glass">Sponsored</span>' : it.demo ? `<span class="flag tag dark">${T('নমুনা')}</span>` : it.halal ? `<span class="flag tag halal">${icon('halal', 12)}${T('হালাল')}</span>` : ''}
-      <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b>${esc(nameOf(it))}</b>
+      <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b>${nameT(it)}</b>
         <div class="meta"><span>${it.price ? money(it.price) : isOpen(it) === true ? T('এখন খোলা') : ''}</span>${it.rating ? `<span class="rate">${icon('star', 12)}${num(it.rating.toFixed(1))}</span>` : ''}</div></div></a>`;
   }
   /* Paid promotion: sponsored listings take the first slots of every list and search, in an order that rotates
@@ -216,7 +216,7 @@
     const d = km(it);
     return `<div class="nrow${first ? ' nearest' : ''}${it.sponsored ? ' spons' : ''}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>
       <a class="nmain" href="#/p/${esc(it.id)}">${media(it)}<div class="body">${first ? `<span class="tag ok">${icon('nav', 12)}${T('সবচেয়ে কাছে')}</span>` : ''}
-        <b>${esc(nameOf(it))}</b><div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</div>
+        <b>${nameT(it)}</b><div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</div>
         <div class="meta">${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${halalTag(it)}${openTag(it)}</div></div></a>
       <a class="ndist" href="${esc(dirUrl(it))}" target="_blank" rel="noopener" data-map="${esc(it.id)}" aria-label="${T('দিকনির্দেশ')}">
         <b>${kmText(d)}</b><small>${walkText(d)}</small><span>${icon('nav', 13)}${T('পথ দেখুন')}</span></a></div>`;
@@ -235,7 +235,7 @@
       <span class="ct"><b>${esc(c.role ? T(c.role) : T('ফোন'))}</b>${c.name ? `<small>${esc(c.name)}</small>` : ''}</span>
       <em>${num(esc(fmtPhone(c.phone)))}</em><i>${icon('phone', 17)}</i></a>`).join('');
   function ecard(it) {
-    return `<div class="ecard"><a class="ehead" href="#/p/${esc(it.id)}">${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
+    return `<div class="ecard"><a class="ehead" href="#/p/${esc(it.id)}">${media(it)}<div class="body"><b>${nameT(it)}</b>
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</div></div>${icon('chevR', 18)}</a>
       <div class="clist">${contactLines(it)}</div></div>`;
   }
@@ -261,16 +261,23 @@
       box.innerHTML = all.length ? `<h3 class="tk-head">${icon('tag', 16)}${T('অফার ও কুপন')}</h3>${all.map(c => ticket(c, { claimed: mine[c.id] })).join('')}` : '';
     } catch { box.innerHTML = ''; }
   }
+  // Blue tick: a badge the admin gives to trusted / official businesses.
+  const SEAL = (() => { const pts = []; for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 10.2 : 12; pts.push((12 + r * Math.cos(a)).toFixed(2) + ' ' + (12 + r * Math.sin(a)).toFixed(2)); } return 'M' + pts.join('L') + 'Z'; })();
+  const tick = (size = 17) => `<svg class="bluetick" width="${size}" height="${size}" viewBox="0 0 24 24" role="img" aria-label="${T('ভেরিফায়েড')}"><title>${T('ভেরিফায়েড প্রতিষ্ঠান')}</title>
+    <path d="${SEAL}" fill="#1d9bf0" stroke="#1d9bf0" stroke-width="1.6" stroke-linejoin="round"/><path d="m7.6 12.3 3 3 5.8-6.2" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // In one-line spots the name is ellipsized but the tick stays visible; in headings it simply follows the text.
+const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nameOf(it)) + ' ' + tick(size)
+  : `<span class="nmt"><span class="nm">${esc(nameOf(it))}</span>${tick(size)}</span>`;
   const halalTag = it => it.halal ? `<span class="tag halal">${icon('halal', 13)}${T('হালাল')}</span>` : '';
   function row(it) {
     const d = km(it);
     const act = it.phone ? `<span class="act ${it.cat === 'emergency' ? 'red' : ''}" data-call="${esc(it.phone)}" data-id="${esc(it.id)}" role="button" aria-label="${T('কল')}">${icon('phone', 18)}</span>`
       : `<span class="act">${icon('chevR', 18)}</span>`;
-    return `<a class="row${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
+    return `<a class="row${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}<div class="body"><b>${nameT(it)}</b>
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
       <div class="meta">${offerTag(it)}${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
   }
-  const wcard = (it, sp) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${esc(nameOf(it))}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
+  const wcard = (it, sp) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${nameT(it)}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
   function crow(a) {
     const k = KINDS[a.kind];
     const meta = a.kind === 'job' ? [a.company, optLabel('jobType', a.jobType)] : a.kind === 'rent' ? [optLabel('propertyType', a.propertyType), a.rooms && T('{n} রুম', { n: num(a.rooms) })]
@@ -703,7 +710,7 @@
         <div class="hbar"><button class="roundbtn" data-back aria-label="${T('ফিরে যান')}">${icon('back', 20)}</button><button class="roundbtn" data-share="${esc(id)}" aria-label="${T('শেয়ার')}">${icon('share', 19)}</button></div>
         ${imgs.length > 1 ? `<div class="dots" data-dots>${imgs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}</div>
       <div class="sheet-body">
-        <div class="dtitle"><h1>${esc(nameOf(it))}</h1>${it.price ? `<div class="price"><b>${money(it.price)}</b><small>${T(PRICE_UNIT[it.cat] || 'আনুমানিক')}</small></div>` : ''}</div>
+        <div class="dtitle"><h1>${nameT(it, 24)}</h1>${it.price ? `<div class="price"><b>${money(it.price)}</b><small>${T(PRICE_UNIT[it.cat] || 'আনুমানিক')}</small></div>` : ''}</div>
         <div class="dsub">${icon(subIcon(it), 15)}${esc(subLabel(it))}${it.area ? ` · ${esc(areaName(it.area))}` : ''}${it.rating ? ` · ${rateTag(it)}` : ''}</div>
         <div data-coupons></div>
         <div class="dtags">${d != null ? `<a class="tag dist" href="${esc(dirUrl(it))}" target="_blank" rel="noopener" data-map="${esc(id)}">${icon('nav', 12)}${kmText(d)} ${T('দূরে')} · ${walkText(d)}</a>` : ''}${statusTag(it)}${openTag(it)}${halalTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
@@ -735,7 +742,7 @@
       ${it.features?.length ? `<div class="feat">${it.features.map(f => `<span>${icon('check', 15)}${esc(f)}</span>`).join('')}</div>` : ''}
       <div class="info" style="margin-top:16px">${infoRows.slice(0, 3).map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${l}</small>${v}</div></div>`).join('')}</div>
       ${related.length ? `<div class="sechead" style="margin-top:24px"><h2 style="font-size:16px">${T(it.cat === 'place' ? 'কাছাকাছি খাবার ও থাকা' : 'আরও দেখুন')}</h2></div>
-        <div class="related">${related.map(x => `<a href="#/p/${esc(x.id)}">${media(x)}<small>${esc(nameOf(x))}</small></a>`).join('')}</div>` : ''}`;
+        <div class="related">${related.map(x => `<a href="#/p/${esc(x.id)}">${media(x)}<small>${nameT(x, 13)}</small></a>`).join('')}</div>` : ''}`;
   }
 
   async function loadReviews(it) {
