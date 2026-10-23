@@ -31,6 +31,8 @@ import android.widget.TextView;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Jashore360 is a web app; this activity is a thin, fast WebView shell around it.
@@ -46,6 +48,7 @@ public class MainActivity extends Activity {
     private View offline;
     private String home;
     private String host;
+    private final Set<String> hosts = new HashSet<String>();   // the site's own domains (current one plus older ones)
     private ValueCallback<Uri[]> fileCallback;
     private GeolocationPermissions.Callback geoCallback;
     private String geoOrigin;
@@ -57,6 +60,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         home = readUrl();
         host = Uri.parse(home).getHost();
+        if (host != null) addHost(host);
 
         FrameLayout root = new FrameLayout(this);
         web = new WebView(this);
@@ -213,7 +217,8 @@ public class MainActivity extends Activity {
 
     private boolean isOwn(Uri u) {
         String scheme = u.getScheme();
-        return ("https".equals(scheme) || "http".equals(scheme)) && host != null && host.equalsIgnoreCase(u.getHost());
+        String h = u.getHost();
+        return ("https".equals(scheme) || "http".equals(scheme)) && h != null && hosts.contains(h.toLowerCase());
     }
 
     private void openExternal(Uri u) {
@@ -242,11 +247,22 @@ public class MainActivity extends Activity {
             byte[] buf = new byte[in.available()];
             int n = in.read(buf);
             in.close();
-            String url = new JSONObject(new String(buf, 0, Math.max(n, 0), "UTF-8")).optString("url", "");
+            JSONObject cfg = new JSONObject(new String(buf, 0, Math.max(n, 0), "UTF-8"));
+            org.json.JSONArray extra = cfg.optJSONArray("hosts");
+            for (int i = 0; extra != null && i < extra.length(); i++) addHost(extra.optString(i, ""));
+            String url = cfg.optString("url", "");
             if (url.startsWith("https://") || url.startsWith("http://")) return url;
         } catch (Exception ignored) {
         }
         return getString(R.string.app_url);
+    }
+
+    private void addHost(String h) {
+        h = h.trim().toLowerCase();
+        if (h.length() == 0) return;
+        if (h.startsWith("www.")) h = h.substring(4);
+        hosts.add(h);
+        hosts.add("www." + h);
     }
 
     private int versionCode() {

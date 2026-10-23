@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Turn android/base.apk into a signed, installable APK for this server.
 
-    python3 sign_apk.py BASE.apk OUT.apk https://example.com/app/ KEYDIR
+    python3 sign_apk.py BASE.apk OUT.apk https://example.com/app/ KEYDIR [old-domain.com,other.com]
 
-Adds assets/config.json with the site URL, zipaligns, and signs with a key kept in KEYDIR.
+Adds assets/config.json with the site URL (and older domains the app should still treat as its own), zipaligns, and signs with a key kept in KEYDIR.
 The key is created on first run and must stay the same forever: Android only installs an
 update over an existing app when both are signed with the same key.
 """
@@ -35,7 +35,7 @@ def ensure_key(keydir):
     return ks, pw
 
 
-def main(base, out, url, keydir):
+def main(base, out, url, keydir, old_hosts=''):
     ks, pw = ensure_key(keydir)
     tmp = tempfile.mkdtemp()
     try:
@@ -44,7 +44,8 @@ def main(base, out, url, keydir):
         shutil.copy(base, raw)
         with zipfile.ZipFile(raw, 'a') as z:
             if 'assets/config.json' not in z.namelist():
-                z.writestr('assets/config.json', json.dumps({'url': url}))
+                hosts = [h.strip() for h in old_hosts.split(',') if h.strip()]
+                z.writestr('assets/config.json', json.dumps({'url': url, 'hosts': hosts}))
         run('zipalign', '-f', '-p', '4', raw, aligned)
         env = dict(os.environ, J360_KS_PASS=open(pw).read().strip())
         run('apksigner', 'sign', '--ks', ks, '--ks-key-alias', 'jashore360', '--ks-pass', 'env:J360_KS_PASS',
@@ -55,4 +56,4 @@ def main(base, out, url, keydir):
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:5])
+    main(*sys.argv[1:6])

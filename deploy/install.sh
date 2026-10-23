@@ -4,6 +4,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilant-heisenberg-wpt1tp/deploy/install.sh | bash
 #
 # Optional: DOMAIN=example.com (auto-detected from CloudPanel when a site name contains "jashore360").
+# Moving to a new domain: DOMAIN=new.com OLD_DOMAINS=old.com — both are remembered for later runs. Browsers on the old
+# domain are sent to the new one (once its SSL works); the installed Android app keeps working there until updated.
 # Re-run the same command to update. Data (database, uploaded photos) lives in /var/lib/jashore360 and is never touched by updates.
 set -euo pipefail
 
@@ -68,14 +70,26 @@ if [ -f /etc/nginx/sites-enabled/jashore360-ip.conf ]; then rm -f /etc/nginx/sit
 rm -rf /var/www/jashore360
 
 # ---------------------------------------------------------------- web server
+CFG=/etc/jashore360; mkdir -p "$CFG"
+if [ -n "${DOMAIN:-}" ]; then echo "$DOMAIN" > "$CFG/domain"; elif [ -s "$CFG/domain" ]; then DOMAIN=$(cat "$CFG/domain"); fi
+if [ -n "${OLD_DOMAINS:-}" ]; then echo "$OLD_DOMAINS" > "$CFG/old-domains"; elif [ -s "$CFG/old-domains" ]; then OLD_DOMAINS=$(cat "$CFG/old-domains"); fi
+reload_nginx() { systemctl reload nginx 2>/dev/null || nginx -s reload; }
 if command -v clpctl >/dev/null; then
+  CLP=1
   if [ -z "${DOMAIN:-}" ]; then
     D=$(ls -d /home/*/htdocs/*jashore360* 2>/dev/null | head -1 || true)
     DOMAIN=$(basename "${D:-}")
   fi
   [ -n "$DOMAIN" ] || { warn "CloudPanel-এ jashore360 নামের সাইট পাওয়া যায়নি। DOMAIN=yourdomain.com দিয়ে আবার চালান।"; exit 1; }
-  CONF=$(grep -ls "server_name[^;]*[[:space:]]$DOMAIN[[:space:];]" /etc/nginx/sites-enabled/* 2>/dev/null | head -1 || true)
-  [ -n "$CONF" ] || { warn "$DOMAIN এর nginx কনফিগ পাওয়া যায়নি।"; exit 1; }
+  find_conf() { grep -ls "server_name[^;]*[[:space:]]$1[[:space:];]" /etc/nginx/sites-enabled/* 2>/dev/null | head -1 || true; }
+  CONF=$(find_conf "$DOMAIN")
+  if [ -z "$CONF" ]; then
+    say "CloudPanel-এ $DOMAIN সাইট তৈরি করা হচ্ছে"
+    SU=$(echo "$DOMAIN" | tr -cd 'a-z0-9' | cut -c1-24)
+    clpctl site:add:static --domainName="$DOMAIN" --siteUser="$SU" --siteUserPassword="$(openssl rand -hex 10)Aa1" >/dev/null 2>&1 || true
+    CONF=$(find_conf "$DOMAIN")
+  fi
+  [ -n "$CONF" ] || { warn "$DOMAIN এর সাইট পাওয়া যায়নি। CloudPanel → Sites → + Add Site → Create a Static HTML Site → Domain Name: $DOMAIN দিয়ে সাইট বানিয়ে এই কমান্ড আবার চালান।"; exit 1; }
   say "CloudPanel সাইট $DOMAIN অ্যাপের সাথে যুক্ত করা হচ্ছে"
   BK="/root/jashore360-vhost-backup-$(date +%Y%m%d%H%M%S).conf"
   cp "$CONF" "$BK"
@@ -97,10 +111,23 @@ if command -v clpctl >/dev/null; then
   if openssl x509 -in "/etc/nginx/ssl-certificates/$DOMAIN.crt" -noout -issuer 2>/dev/null | grep -qi "let's encrypt" \
      && openssl x509 -in "/etc/nginx/ssl-certificates/$DOMAIN.crt" -noout -checkend 0 >/dev/null 2>&1; then
     python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT" https      # valid certificate: send http visitors to https
-    if nginx -t -q 2>/dev/null; then systemctl reload nginx 2>/dev/null || nginx -s reload; else python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT"; fi
+    if nginx -t -q 2>/dev/null; then reload_nginx; else python3 "$APP/server/cloudpanel_vhost.py" "$CONF" "$PORT"; fi
+    NEW_OK=1
   else
     SSL_WARN="SSL সার্টিফিকেট এখনো ঠিক হয়নি — সাইট ও Android অ্যাপ https ছাড়া ঠিকমতো চলবে না। Hostinger DNS-এ $DOMAIN ও www.$DOMAIN এর A রেকর্ড 72.62.198.94 কি না দেখুন, তারপর CloudPanel → Sites → $DOMAIN → SSL/TLS → Actions → New Let's Encrypt Certificate চাপুন, তারপর এই কমান্ড আবার চালান।"
   fi
+  # Old domains: browsers go to the new domain (only once its SSL works); the installed app is still served.
+  for OD in $(echo "${OLD_DOMAINS:-}" | tr ',' ' '); do
+    [ "$OD" = "$DOMAIN" ] && continue
+    OC=$(find_conf "$OD")
+    [ -n "$OC" ] || { warn "$OD এর সাইট পাওয়া যায়নি — বাদ দেওয়া হলো"; continue; }
+    say "পুরনো ঠিকানা $OD → $DOMAIN"
+    OBK="/root/jashore360-vhost-backup-$OD-$(date +%Y%m%d%H%M%S).conf"
+    cp "$OC" "$OBK"
+    if [ "${NEW_OK:-}" = 1 ]; then python3 "$APP/server/cloudpanel_vhost.py" "$OC" "$PORT" --move-to="$DOMAIN"
+    else python3 "$APP/server/cloudpanel_vhost.py" "$OC" "$PORT" https; warn "$DOMAIN এর SSL ঠিক না হওয়া পর্যন্ত $OD আগের মতোই চলবে"; fi
+    if nginx -t -q 2>/dev/null; then reload_nginx; else cp "$OBK" "$OC"; warn "$OD এর কনফিগ বদলানো যায়নি — আগের অবস্থায় রাখা হলো"; fi
+  done
   URL="https://$DOMAIN"
 else
   command -v nginx >/dev/null || { apt-get update -qq && apt-get install -y -qq nginx; }
@@ -128,7 +155,9 @@ fi
 # ---------------------------------------------------------------- Android app
 # base.apk is built from android/ in the repo; here it gets this site's URL and is signed with a
 # key that is created on this server (/root/jashore360-signing) and never leaves it.
-if [ -f "$APP/android/base.apk" ]; then
+if [ -f "$APP/android/base.apk" ] && [ -n "${CLP:-}" ] && [ "${NEW_OK:-}" != 1 ]; then
+  warn "SSL ঠিক না হওয়া পর্যন্ত নতুন অ্যাপ (APK) বানানো হয়নি — আগের অ্যাপ আগের মতোই চলবে"
+elif [ -f "$APP/android/base.apk" ]; then
   say "অ্যান্ড্রয়েড অ্যাপ (APK)"
   if ! command -v apksigner >/dev/null || ! command -v zipalign >/dev/null || ! command -v keytool >/dev/null; then
     (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apksigner zipalign default-jre-headless) >/dev/null 2>&1 || true
@@ -137,7 +166,7 @@ if [ -f "$APP/android/base.apk" ]; then
   VCODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["versionCode"])' "$APP/android/version.json")
   VNOTES=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("notes",""))' "$APP/android/version.json")
   OUTAPK=$(mktemp --suffix=.apk)
-  if python3 "$APP/server/sign_apk.py" "$APP/android/base.apk" "$OUTAPK" "$URL/app/" /root/jashore360-signing 2>/tmp/jashore360-apk.log; then
+  if python3 "$APP/server/sign_apk.py" "$APP/android/base.apk" "$OUTAPK" "$URL/app/" /root/jashore360-signing "${OLD_DOMAINS:-}" 2>/tmp/jashore360-apk.log; then
     chmod 644 "$OUTAPK"
     sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" import-apk "$OUTAPK" "$VNAME" "$VCODE" "$VNOTES" \
       && systemctl restart "$SVC" || warn "APK যোগ করা যায়নি"
