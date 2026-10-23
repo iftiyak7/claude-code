@@ -21,6 +21,12 @@ curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilan
 - `https://আপনার-ডোমেইন/admin` — অ্যাডমিন প্যানেল
 - `https://আপনার-ডোমেইন/download/jashore360.apk` — সর্বশেষ Android অ্যাপ
 
+**নতুন ডোমেইনে সরানো** (যেমন .cloud থেকে .com): DNS-এ নতুন ডোমেইন ও www এর A রেকর্ড সার্ভারের IP-তে দিন, তারপর
+```bash
+curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilant-heisenberg-wpt1tp/deploy/install.sh | DOMAIN=jashore360.com OLD_DOMAINS=jashore360.cloud bash
+```
+ইনস্টলার নতুন সাইট বানায়, SSL নেয়, তারপর পুরনো ঠিকানায় ব্রাউজারে আসা সবাইকে নতুন ঠিকানায় পাঠায়। আগে ইনস্টল করা Android অ্যাপ পুরনো ঠিকানায় চলতে থাকে এবং "নতুন ভার্সন" দেখায়। পরে শুধু সাধারণ কমান্ড চালালেই হবে — ডোমেইন মনে থাকে।
+
 পাসওয়ার্ড ভুলে গেলে:
 ```bash
 sudo -u j360svc python3 /opt/jashore360/server/server.py --data /var/lib/jashore360 reset-password admin
