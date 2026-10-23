@@ -239,6 +239,28 @@
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</div></div>${icon('chevR', 18)}</a>
       <div class="clist">${contactLines(it)}</div></div>`;
   }
+  /* ---------- coupons ---------- */
+  const offerTag = it => D.offers?.[it.id] ? `<span class="tag offer">${icon('tag', 12)}${T('অফার')}</span>` : '';
+  function ticket(c, { claimed, listingLink } = {}) {
+    const code = claimed?.code;
+    return `<div class="ticket${claimed?.used ? ' used' : ''}"><div class="tk-l">${icon('tag', 24)}</div>
+      <div class="tk-b">${listingLink ? `<a class="tk-shop" href="#/p/${esc(c.listing)}">${esc(c.listingName || '')} ${icon('chevR', 13)}</a>` : ''}
+        <b>${esc(c.title)}</b>${c.details ? `<small>${esc(c.details)}</small>` : ''}
+        <em>${c.ends ? T('{d} পর্যন্ত', { d: fmtDate(c.ends) }) : T('মেয়াদ নেই')}${c.maxClaims ? ' · ' + T('প্রথম {n} জন', { n: num(c.maxClaims) }) : ''}</em>
+        ${code ? `<div class="tk-code"><span>${esc(code)}</span><button class="linkbtn" data-copy="${esc(code)}">${T('কপি')}</button></div>
+          <small class="tk-hint">${claimed.used ? T('ব্যবহার করা হয়েছে') : T('দোকানে কোডটি দেখান')}</small>`
+          : c.full ? `<span class="tag bad">${T('শেষ হয়ে গেছে')}</span>` : `<button class="btn sm" data-claim="${esc(c.id)}">${icon('tag', 15)}${T('কুপন নিন')}</button>`}</div></div>`;
+  }
+  async function loadCoupons(id) {
+    const box = app.querySelector('[data-coupons]'); if (!box) return;
+    try {
+      const r = await api('/listings/' + id + '/coupons');
+      const mine = Object.fromEntries(r.mine.map(m => [m.coupon, m]));
+      const extra = r.mine.filter(m => !r.coupons.some(c => c.id === m.coupon)).map(m => ({ id: m.coupon, title: m.title, details: m.details, ends: m.ends }));
+      const all = [...r.coupons, ...extra];
+      box.innerHTML = all.length ? `<h3 class="tk-head">${icon('tag', 16)}${T('অফার ও কুপন')}</h3>${all.map(c => ticket(c, { claimed: mine[c.id] })).join('')}` : '';
+    } catch { box.innerHTML = ''; }
+  }
   const halalTag = it => it.halal ? `<span class="tag halal">${icon('halal', 13)}${T('হালাল')}</span>` : '';
   function row(it) {
     const d = km(it);
@@ -246,7 +268,7 @@
       : `<span class="act">${icon('chevR', 18)}</span>`;
     return `<a class="row${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}<div class="body"><b>${esc(nameOf(it))}</b>
       <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
-      <div class="meta">${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
+      <div class="meta">${offerTag(it)}${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
   }
   const wcard = (it, sp) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${esc(nameOf(it))}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
   function crow(a) {
@@ -556,6 +578,8 @@
     <section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div>
       <div class="ktiles">${Object.entries(KINDS).map(([k, v]) => `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(counts[k] || 0) })}</small></a>`).join('')}</div></section>
 
+    ${ME?.coupons ? `<a class="note offerbar" href="#/account?tab=coupons" style="margin-top:14px">${icon('tag', 18)}<span><b>${T('আপনার জন্য {n}টি কুপন আছে', { n: num(ME.coupons) })}</b> — ${T('দেখুন')}</span></a>` : ''}
+    ${Object.keys(D.offers || {}).length ? `<a class="bizcta offercta" href="#/offers"><span>${icon('tag', 22)}</span><div><b>${T('অফার ও কুপন')}</b><small>${T('{n}টি প্রতিষ্ঠানে অফার চলছে — কুপন নিয়ে ছাড় পান', { n: num(Object.keys(D.offers).length) })}</small></div>${icon('chevR', 18)}</a>` : ''}
     ${spons.length ? `<section class="sec"><div class="sechead"><h2>${T('প্রচারিত')}</h2><span class="tag ad">Sponsored</span></div>
       <div class="wcards">${spons.map(it => wcard(it, true)).join('')}</div></section>` : ''}
 
@@ -661,6 +685,7 @@
     if (it && it.id !== id) { location.replace('#/p/' + it.id); return ''; }
     if (!it) return `${topbar('')}${empty(T('পাওয়া যায়নি'), T('তথ্যটি সরানো হয়েছে বা লিংক ভুল।'), `<a class="btn sm" href="#/">${T('হোমে ফিরুন')}</a>`)}`;
     if (pages.item.last !== id) { track(id, 'view'); pages.item.last = id; pages.item.tab = 'about'; }
+    if (D.offers?.[it.id] || ME) setTimeout(() => loadCoupons(it.id), 0);
     const c = catOf(it), d = km(it), tab = pages.item.tab || 'about', imgs = it.images || [];
     const rec = ls.get('recent', []).filter(x => x !== id); ls.set('recent', [id, ...rec].slice(0, 12));
     const related = items().filter(x => x.id !== id && (it.cat === 'place' ? ['restaurant', 'hotel'].includes(x.cat) && x.lat != null && it.lat != null : x.cat === it.cat))
@@ -680,6 +705,7 @@
       <div class="sheet-body">
         <div class="dtitle"><h1>${esc(nameOf(it))}</h1>${it.price ? `<div class="price"><b>${money(it.price)}</b><small>${T(PRICE_UNIT[it.cat] || 'আনুমানিক')}</small></div>` : ''}</div>
         <div class="dsub">${icon(subIcon(it), 15)}${esc(subLabel(it))}${it.area ? ` · ${esc(areaName(it.area))}` : ''}${it.rating ? ` · ${rateTag(it)}` : ''}</div>
+        <div data-coupons></div>
         <div class="dtags">${d != null ? `<a class="tag dist" href="${esc(dirUrl(it))}" target="_blank" rel="noopener" data-map="${esc(id)}">${icon('nav', 12)}${kmText(d)} ${T('দূরে')} · ${walkText(d)}</a>` : ''}${statusTag(it)}${openTag(it)}${halalTag(it)}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা তথ্য')}</span>` : ''}</div>
         ${it.demo ? `<div class="note warn">${icon('info', 16)}<span>${T('এটি নমুনা তথ্য, বাস্তব প্রতিষ্ঠান নয়।')}</span></div>` : ''}
         ${!it.phone && it.cat === 'emergency' ? `<div class="note red">${icon('alert', 16)}<span>${T('স্থানীয় নম্বর যাচাই চলছে। জরুরি প্রয়োজনে ৯৯৯ এ কল করুন।')}</span></div>` : ''}
@@ -848,6 +874,7 @@
         <button class="act" style="border:0" data-delad="${a.id}" aria-label="${T('মুছুন')}">${icon('trash', 18)}</button></div>`; }).join('')}</div>
       <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${T('প্রকাশিত বিজ্ঞাপন সম্পাদনা করলে অ্যাডমিন আবার যাচাই করে প্রকাশ করবেন।')}</p>`
       : empty(T('এখনো কোনো বিজ্ঞাপন দেননি'), '', `<a class="btn sm" href="#/add">${T('বিজ্ঞাপন দিন')}</a>`, 'megaphone');
+    if (tab === 'coupons') body = couponsTab();
     if (my && tab === 'settings') body = `<form class="form" data-profile>
       <label class="field"><span>${T('আপনার নাম')}</span><input name="name" value="${esc(ME.name)}" required maxlength="60"></label>
       <label class="field"><span>${T('মোবাইল নম্বর')}</span><input value="${esc(num(ME.phone))}" disabled></label>
@@ -859,10 +886,49 @@
     return `${topbar(T('আমার অ্যাকাউন্ট'))}
       <div class="profilehead"><span class="avatar">${esc(ME.name[0])}</span><div><b>${esc(ME.name)}</b><span class="muted" style="font-size:13px">${esc(num(ME.phone))}</span></div></div>
       ${my ? `<div class="stat3"><div><b>${num(my.listings.length)}</b><small>${T('ব্যবসা')}</small></div><div><b>${num(my.classifieds.length)}</b><small>${T('বিজ্ঞাপন')}</small></div><div><b>${num(my.reviews)}</b><small>${T('রিভিউ')}</small></div></div>` : ''}
-      <div class="seg" style="margin:18px 0">${[['biz', 'আমার ব্যবসা'], ['ads', 'আমার বিজ্ঞাপন'], ['settings', 'সেটিংস']].map(([k, v]) =>
+      <div class="seg" style="margin:18px 0">${[['biz', 'ব্যবসা'], ['ads', 'বিজ্ঞাপন'], ['coupons', 'কুপন'], ['settings', 'সেটিংস']].map(([k, v]) =>
         `<a class="${tab === k ? 'on' : ''}" href="#/account?tab=${k}" style="flex:1;text-align:center">${T(v)}</a>`).join('')}</div>${body}
       <a class="bizcta" href="#/add"><span>${icon('plus', 22)}</span><div><b>${T('নতুন যোগ করুন')}</b><small>${T('ব্যবসা, ফ্রি তথ্য, চাকরি বা ভাড়ার বিজ্ঞাপন')}</small></div>${icon('chevR', 18)}</a>`;
   };
+
+  const CPST = { active: ['চালু', 'ok'], pending: ['অনুমোদনের অপেক্ষায়', 'warn'], paused: ['বন্ধ রাখা', 'bad'], rejected: ['বাতিল', 'bad'] };
+  function couponsTab() {
+    const c = cache.mycp;
+    if (!c || pages.account.cpStale) { pages.account.cpStale = false; api('/my/coupons').then(r => { cache.mycp = r; if (location.hash.includes('tab=coupons')) render(); }).catch(e => toast(e.message)); }
+    if (!c) return '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>';
+    const mine = c.mine.slice().sort((a, b) => (a.used - b.used) || (b.live - a.live));
+    let html = `<h4 style="margin:0 0 10px">${T('আমার কুপন')}</h4>` + (mine.length ? `<div class="tklist">${mine.map(m =>
+      ticket({ id: m.coupon, title: m.title, details: m.details, ends: m.ends, listing: m.listing, listingName: m.listingName }, { claimed: m, listingLink: true })
+        .replace('class="ticket', `class="ticket${!m.live && !m.used ? ' used' : ''}`)).join('')}</div>`
+      : empty(T('এখনো কোনো কুপন নেননি'), '', `<a class="btn sm" href="#/offers">${T('অফার দেখুন')}</a>`, 'tag'));
+    if (c.listings.length) {
+      const cp = pages.account.check;
+      html += `<h4 style="margin:26px 0 10px">${T('কুপন যাচাই (আপনার দোকানে)')}</h4>
+        <form class="form verify" data-cpcheck><div class="locpick"><input name="code" placeholder="J360-XXXXXX" autocapitalize="characters" autocomplete="off" required>
+          <button class="btn sm" type="submit">${T('যাচাই')}</button></div></form>
+        ${cp ? `<div class="cpresult ${cp.state}"><b>${T({ ok: 'বৈধ কুপন ✓', used: 'আগেই ব্যবহৃত', expired: 'মেয়াদ শেষ' }[cp.state])}</b>
+          <div>${esc(cp.title)} · ${esc(cp.code)}</div><small>${T('গ্রাহক')}: ${esc(cp.customer)} (${esc(num(cp.phone))})</small>
+          ${cp.state === 'ok' ? `<button class="btn block" data-cpredeem="${esc(cp.code)}" style="margin-top:10px">${icon('check', 16)}${T('ব্যবহৃত হিসেবে চিহ্নিত করুন')}</button>` : ''}</div>` : ''}
+        <h4 style="margin:26px 0 10px">${T('আমার ব্যবসার অফার')}</h4>
+        ${c.business.map(b => { const [t, k] = CPST[b.status] || CPST.pending;
+          return `<div class="row" style="align-items:flex-start"><span class="media" style="--c:#f59e0b;width:52px;height:52px"><span class="gen"><span class="ring" style="width:70%">${icon('tag', 22)}</span></span></span>
+            <div class="body"><b>${esc(b.title)}</b><div class="sub">${esc(b.listingName || '')}${b.ends ? ' · ' + T('{d} পর্যন্ত', { d: fmtDate(b.ends) }) : ''}</div>
+            <div class="meta"><span class="tag ${k}">${T(t)}</span>${b.audience === 'private' ? `<span class="tag">${T('নির্দিষ্ট গ্রাহক')}</span>` : ''}
+              <span class="muted">${T('{c} জন নিয়েছেন · {u} জন ব্যবহার করেছেন', { c: num(b.claims), u: num(b.used) })}</span></div>
+            ${b.createdBy === 'owner' ? `<div style="display:flex;gap:8px;margin-top:8px">${b.status === 'active' ? `<button class="btn sm ghost" data-cpstatus="${b.id}|paused">${T('বন্ধ রাখুন')}</button>`
+              : b.status === 'paused' ? `<button class="btn sm ghost" data-cpstatus="${b.id}|active">${T('চালু করুন')}</button>` : ''}
+              <button class="btn sm ghost" data-cpstatus="${b.id}|deleted">${T('মুছুন')}</button></div>` : ''}</div></div>`; }).join('') || `<p class="muted">${T('এখনো কোনো অফার দেননি।')}</p>`}
+        <form class="form cpnew" data-cpnew><h4 style="margin:6px 0 0">${T('নতুন অফার দিন')}</h4>
+          <label class="field"><span>${T('প্রতিষ্ঠান')}</span><select name="listing">${c.listings.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('')}</select></label>
+          <label class="field"><span>${T('অফার')} *</span><input name="title" required maxlength="120" placeholder="${T('যেমন: সব খাবারে ২০% ছাড়')}"></label>
+          <label class="field"><span>${T('বিস্তারিত / শর্ত')}</span><input name="details" maxlength="600" placeholder="${T('যেমন: ৫০০ টাকার বেশি অর্ডারে')}"></label>
+          <div class="two"><label class="field"><span>${T('শেষ তারিখ')}</span><input name="ends" type="date"></label>
+            <label class="field"><span>${T('কতজন নিতে পারবে')}</span><input name="maxClaims" inputmode="numeric" placeholder="${T('খালি = সীমা নেই')}"></label></div>
+          <button class="btn block" type="submit">${T('অফার জমা দিন')}</button>
+          <p class="muted" style="font-size:12.5px;margin:0">${T('অ্যাডমিন অনুমোদনের পর আপনার প্রতিষ্ঠানের পেজে দেখাবে।')}</p></form>`;
+    }
+    return html;
+  }
 
   /* ---------------- add / post ---------------- */
   pages.add = () => {
@@ -1070,7 +1136,8 @@
         <div><b style="display:block;font-size:15px">${esc(catName(c))}</b><small class="muted">${T('{n}টি তথ্য', { n: num(counts[c.id] || 0) })}</small></div></a>`).join('')}</div>
       <section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div><div class="ktiles">${Object.entries(KINDS).map(([k, v]) =>
         `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(D.classifiedCounts?.[k] || 0) })}</small></a>`).join('')}</div></section>
-      <section class="sec"><div class="sechead"><h2>${T('শীঘ্রই আসছে')}</h2></div><div class="pills wrap">${[['droplet', 'রক্তদাতা নেটওয়ার্ক'], ['nav', 'যাতায়াত'], ['calendar', 'ইভেন্ট'], ['tag', 'অফার ও কুপন']]
+      <a class="bizcta" href="#/offers" style="margin-top:18px"><span>${icon('tag', 22)}</span><div><b>${T('অফার ও কুপন')}</b><small>${T('{n}টি প্রতিষ্ঠানে অফার চলছে', { n: num(Object.keys(D.offers || {}).length) })}</small></div>${icon('chevR', 18)}</a>
+      <section class="sec"><div class="sechead"><h2>${T('শীঘ্রই আসছে')}</h2></div><div class="pills wrap">${[['droplet', 'রক্তদাতা নেটওয়ার্ক'], ['nav', 'যাতায়াত'], ['calendar', 'ইভেন্ট']]
         .map(([i, t]) => `<span class="pill sm">${icon(i, 15)}${T(t)}</span>`).join('')}</div></section>`;
   };
 
@@ -1100,6 +1167,8 @@
       ${site.contactPhone ? `<a class="li" href="tel:${esc(site.contactPhone)}"><span class="ib">${icon('phone', 18)}</span><div>${T('যোগাযোগ')}<small>${num(site.contactPhone)}</small></div>${icon('chevR', 18)}</a>` : ''}
       ${site.facebook ? `<a class="li" href="${esc(site.facebook)}" target="_blank" rel="noopener"><span class="ib">${icon('facebook', 18)}</span><div>${T('ফেসবুক পেজ')}</div>${icon('external', 16)}</a>` : ''}
       <button class="li" data-notices><span class="ib">${icon('bell', 18)}</span><div>${T('ঘোষণা ও আপডেট')}</div>${icon('chevR', 18)}</button>
+      ${ME ? `<a class="li" href="#/account?tab=coupons"><span class="ib">${icon('tag', 18)}</span><div>${T('আমার কুপন')}${ME.coupons ? `<small>${T('{n}টি ব্যবহার করা বাকি', { n: num(ME.coupons) })}</small>` : ''}</div>${icon('chevR', 18)}</a>` : ''}
+      <a class="li" href="#/offers"><span class="ib">${icon('tag', 18)}</span><div>${T('অফার ও কুপন')}</div>${icon('chevR', 18)}</a>
       <button class="li" data-hardrefresh><span class="ib">${icon('refresh', 18)}</span><div>${T('রিফ্রেশ করুন')}<small>${T('নতুন তথ্য আনুন — যেকোনো পেজের উপরে টেনে নামালেও হয়')}</small></div>${icon('chevR', 18)}</button>
       <a class="li" href="#/terms"><span class="ib">${icon('doc', 18)}</span><div>${T('শর্তাবলি')}</div>${icon('chevR', 18)}</a>
       <a class="li" href="/"><span class="ib">${icon('info', 18)}</span><div>${T('Jashore360 সম্পর্কে')}<small>${esc(loc(site, 'about'))}</small></div>${icon('chevR', 18)}</a>
@@ -1112,6 +1181,16 @@
   pages.terms = () => `${topbar(T('শর্তাবলি'))}
     <div class="prose terms">${termsHtml() || `<p>${T('শর্তাবলি এখনো যোগ করা হয়নি।')}</p>`}</div>
     ${D.terms?.updated ? `<p class="muted" style="font-size:13px">${T('সর্বশেষ আপডেট')}: ${esc(fmtDate(D.terms.updated))}</p>` : ''}`;
+
+  pages.offers = () => {
+    if (!cache.offers) api('/coupons').then(r => { cache.offers = r; if (location.hash.startsWith('#/offers')) render(); }).catch(e => toast(e.message));
+    const list = cache.offers;
+    return `${topbar(T('অফার ও কুপন'))}
+      <div class="note">${icon('tag', 18)}<span>${T('কুপন নিন, দোকানে কোডটি দেখান — ছাড় পাবেন। নেওয়া কুপন "আমার অ্যাকাউন্ট → কুপন"-এ থাকে।')}</span></div>
+      ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>'
+        : list.length ? `<div class="tklist">${list.map(c => ticket(c, { listingLink: true })).join('')}</div>`
+        : empty(T('এখন কোনো অফার নেই'), T('নতুন অফার এলে এখানে দেখাবে।'), '', 'tag')}`;
+  };
 
   pages.notfound = () => `${topbar('')}${empty(T('পাওয়া যায়নি'), '', `<a class="btn sm" href="#/">${T('হোমে ফিরুন')}</a>`)}`;
 
@@ -1178,8 +1257,8 @@
   /* ---------------- router ---------------- */
   const routes = [[/^$/, 'home'], [/^emergency$/, 'emergency'], [/^c\/([\w-]+)$/, 'browse'], [/^search$/, 'browse'], [/^p\/([\w-]+)$/, 'item'],
     [/^explore$/, 'explore'], [/^saved$/, 'saved'], [/^add$/, 'add'], [/^profile$/, 'profile'], [/^login$/, 'login'], [/^account$/, 'account'],
-    [/^post\/(\w+)$/, 'post'], [/^pay\/([\w-]+)$/, 'pay'], [/^ads\/(\w+)$/, 'ads'], [/^ad\/(\w+)$/, 'ad'], [/^edit\/(listing|ad)\/([\w-]+)$/, 'edit'], [/^terms$/, 'terms']];
-  const navKey = { home: 'home', browse: 'explore', explore: 'explore', emergency: 'home', saved: 'saved', add: 'add', post: 'add', pay: 'add', edit: 'profile', terms: 'profile',
+    [/^post\/(\w+)$/, 'post'], [/^pay\/([\w-]+)$/, 'pay'], [/^ads\/(\w+)$/, 'ads'], [/^ad\/(\w+)$/, 'ad'], [/^edit\/(listing|ad)\/([\w-]+)$/, 'edit'], [/^terms$/, 'terms'], [/^offers$/, 'offers']];
+  const navKey = { home: 'home', browse: 'explore', explore: 'explore', emergency: 'home', saved: 'saved', add: 'add', post: 'add', pay: 'add', edit: 'profile', terms: 'profile', offers: 'explore',
     profile: 'profile', account: 'profile', login: 'profile', ads: 'explore' };
   let lastPath = null;
   const go = h => { location.hash = h; };
@@ -1263,12 +1342,28 @@
     if (ds.call) { e.preventDefault(); track(ds.id, 'call'); location.href = 'tel:' + ds.call; return; }
     if (ds.callTrack) return track(ds.callTrack, 'call');
     if (ds.map) return track(ds.map, 'map');
-    if (ds.copy) { try { await navigator.clipboard.writeText(ds.copy); toast(T('নম্বর কপি হয়েছে')); } catch {} return; }
+    if (ds.copy) { try { await navigator.clipboard.writeText(ds.copy); toast(T('কপি হয়েছে')); } catch {} return; }
     if ('close' in ds) return closeSheet();
     if ('back' in ds) return history.length > 1 ? history.back() : go('#/');
     if ('filter' in ds) { const [, q = ''] = location.hash.split('?'); const p = new URLSearchParams(q); const m = location.hash.match(/#\/c\/([\w-]+)/); if (m) p.set('cat', m[1]); return filterSheet(p); }
     if ('notices' in ds) return noticesSheet();
     if ('hardrefresh' in ds) return hardRefresh();
+    if (ds.claim) {
+      if (!requireLogin()) return;
+      try { const r = await api(`/coupons/${ds.claim}/claim`, {}); toast(T('কুপন নেওয়া হয়েছে — কোড: {c}', { c: r.code })); cache.mycp = null; ME.coupons = (ME.coupons || 0) + 1;
+        loadCoupons(location.hash.split('/')[2]?.split('?')[0]); if (location.hash.startsWith('#/offers')) { cache.offers = null; render(); } } catch (er) { toast(er.message); }
+      return;
+    }
+    if (ds.cpstatus) {
+      const [id, st] = ds.cpstatus.split('|');
+      if (st === 'deleted' && !confirm(T('মুছে ফেলবেন?'))) return;
+      try { await api('/my/coupons/' + id, { status: st }, 'PUT'); pages.account.cpStale = true; render(); } catch (er) { toast(er.message); }
+      return;
+    }
+    if (ds.cpredeem) {
+      try { pages.account.check = await api('/my/coupons/check', { code: ds.cpredeem, redeem: true }); toast(T('কুপন ব্যবহৃত হিসেবে চিহ্নিত হয়েছে')); pages.account.cpStale = true; render(); } catch (er) { toast(er.message); }
+      return;
+    }
     if ('areasheet' in ds) return areaSheet();
     if ('clrarea' in ds) { ls.set('area', ''); originCache = null; cache.ads = {}; return render(); }
     if ('locate' in ds) return doLocate();
@@ -1368,6 +1463,15 @@
         if (f.dataset.auth === 'login' && ls.get('termsV', 0) >= (D.terms?.version || 0)) api('/my/terms', {}).catch(() => {});
         toast(T('স্বাগতম, {name}!', { name: ME.name }));
         return go('#' + (new URLSearchParams(location.hash.split('?')[1] || '').get('next') || '/account'));
+      }
+      if (f.dataset.cpcheck != null) {
+        try { pages.account.check = await api('/my/coupons/check', { code: toLatin(f.code.value) }); } catch (er) { pages.account.check = null; toast(er.message); }
+        return render();
+      }
+      if (f.dataset.cpnew != null) {
+        const v = Object.fromEntries(new FormData(f));
+        await api('/my/coupons', { ...v, maxClaims: toLatin(v.maxClaims || '') });
+        toast(T('অফার জমা হয়েছে — অনুমোদনের পর দেখাবে')); pages.account.cpStale = true; return render();
       }
       if (f.dataset.profile != null) {
         const v = Object.fromEntries(new FormData(f));
