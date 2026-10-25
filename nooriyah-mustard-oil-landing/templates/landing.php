@@ -203,6 +203,19 @@ foreach ( nmo_lines( 'section_order' ) as $nmo_section ) :
 			<?php if ( nmo_get( 'hero_badge' ) ) : ?><span class="badge" data-r><?php echo esc_html( nmo_get( 'hero_badge' ) ); ?></span><?php endif; ?>
 			<h1 data-r style="--d:1"><?php echo esc_html( nmo_get( 'hero_title' ) ); ?> <span class="shine"><?php echo esc_html( nmo_get( 'hero_highlight' ) ); ?></span></h1>
 			<p class="hero-sub" data-r style="--d:2"><?php echo esc_html( nmo_get( 'hero_sub' ) ); ?></p>
+			<?php
+			$nmo_hp = isset( $nmo_packages[ $nmo_default - 1 ] ) ? $nmo_packages[ $nmo_default - 1 ] : null;
+			if ( $nmo_hp && nmo_get( 'hero_price_show' ) ) :
+				?>
+				<div class="hero-price" data-r style="--d:3">
+					<span class="hprice-name"><?php echo esc_html( $nmo_hp['weight'] ); ?></span>
+					<b class="hprice-now"><?php echo esc_html( nmo_price( $nmo_hp['price'] ) ); ?></b>
+					<?php if ( $nmo_hp['old'] > $nmo_hp['price'] ) : ?>
+						<del><?php echo esc_html( nmo_price( $nmo_hp['old'] ) ); ?></del>
+						<span class="save"><?php echo esc_html( nmo_num( $nmo_hp['old'] - $nmo_hp['price'] ) . nmo_get( 'currency' ) ); ?> সাশ্রয়</span>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
 			<ul class="ticks" data-r style="--d:3">
 				<?php foreach ( nmo_lines( 'hero_points' ) as $pt ) : ?><li><?php echo esc_html( $pt ); ?></li><?php endforeach; ?>
 			</ul>
@@ -362,7 +375,7 @@ foreach ( nmo_lines( 'section_order' ) as $nmo_section ) :
 		<div class="cmp" data-r>
 			<div class="cmp-row cmp-head"><span></span><span class="us"><?php echo esc_html( nmo_get( 'compare_us' ) ); ?></span><span><?php echo esc_html( nmo_get( 'compare_them' ) ); ?></span></div>
 			<?php foreach ( $nmo_rows as $row ) : ?>
-				<div class="cmp-row"><span><?php echo esc_html( $row[0] ); ?></span><span class="us">✔ <?php echo esc_html( $row[1] ); ?></span><span class="them">✖ <?php echo esc_html( $row[2] ); ?></span></div>
+				<div class="cmp-row"><span><?php echo esc_html( $row[0] ); ?></span><span class="us" data-l="<?php echo esc_attr( nmo_get( 'compare_us' ) ); ?>">✔ <?php echo esc_html( $row[1] ); ?></span><span class="them" data-l="<?php echo esc_attr( nmo_get( 'compare_them' ) ); ?>">✖ <?php echo esc_html( $row[2] ); ?></span></div>
 			<?php endforeach; ?>
 		</div>
 	</div>
@@ -546,14 +559,15 @@ endforeach;
 </footer>
 
 <?php if ( $nmo_wa_link ) : ?>
-<a class="wa-float" href="<?php echo esc_url( $nmo_wa_link ); ?>" target="_blank" rel="noopener" aria-label="WhatsApp">
+<a class="wa-float<?php echo nmo_get( 'sticky_bar' ) ? ' has-sticky' : ''; ?>" href="<?php echo esc_url( $nmo_wa_link ); ?>" target="_blank" rel="noopener" aria-label="WhatsApp">
 	<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="#fff" d="M16 3a13 13 0 0 0-11.1 19.7L3 29l6.5-1.7A13 13 0 1 0 16 3zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7zm5.9-8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.3 1.4 3.5c.2.2 2.4 3.7 5.8 5.1 2.2.9 3 1 4.1.8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5-.1-.2-.3-.2-.6-.4z"/></svg>
 </a>
 <?php endif; ?>
 
 <?php if ( nmo_get( 'sticky_bar' ) ) : ?>
 <div class="sticky-bar" aria-hidden="true">
-	<?php if ( $nmo_phone ) : ?><a class="sb-call" href="tel:<?php echo esc_attr( $nmo_phone ); ?>" tabindex="-1">📞 কল</a><?php endif; ?>
+	<?php if ( $nmo_phone ) : ?><a class="sb-call" href="tel:<?php echo esc_attr( $nmo_phone ); ?>" tabindex="-1" aria-label="কল করুন">📞</a><?php endif; ?>
+	<?php if ( $nmo_wa_link ) : ?><a class="sb-wa" href="<?php echo esc_url( $nmo_wa_link ); ?>" target="_blank" rel="noopener" tabindex="-1" aria-label="WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="#fff" d="M16 3a13 13 0 0 0-11.1 19.7L3 29l6.5-1.7A13 13 0 1 0 16 3zm5.9 15.7c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.3 1.4 3.5c.2.2 2.4 3.7 5.8 5.1 2.2.9 3 1 4.1.8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5-.1-.2-.3-.2-.6-.4z"/></svg></a><?php endif; ?>
 	<a class="btn btn-cta sb-order" href="#order" tabindex="-1" data-cta><?php echo esc_html( nmo_get( 'sticky_text' ) ); ?> — <?php echo esc_html( nmo_price( $nmo_min ) ); ?> থেকে</a>
 </div>
 <?php endif; ?>
