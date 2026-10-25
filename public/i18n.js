@@ -579,5 +579,17 @@ Object.assign(window.I18N_EN, {
   'এই কোডের কোনো কুপন নেই': 'No coupon with this code',
   'এই কুপন আপনার প্রতিষ্ঠানের নয়': 'This coupon is not for your business',
   'এই কুপন ব্যবহার করা যাবে না (আগেই ব্যবহৃত বা মেয়াদ শেষ)': 'This coupon cannot be used (already used or expired)',
-  'প্রতিষ্ঠান বেছে নিন': 'Choose a business'
+  'প্রতিষ্ঠান বেছে নিন': 'Choose a business',
+  'ব্লু টিক (ভেরিফায়েড প্রতিষ্ঠান)': 'Blue tick (verified business)',
+  'নামের পাশে নীল ভেরিফায়েড চিহ্ন দেখাবে — শুধু যাচাই করা, বিশ্বস্ত বা অফিসিয়াল প্রতিষ্ঠানকে দিন': 'Shows a blue verified mark next to the name — give it only to checked, trusted or official businesses',
+  'ব্লু টিক': 'Blue tick',
+  'Jashore360 এখন নতুন ঠিকানায়': 'Jashore360 has a new address',
+  'আপনার অ্যাপটি পুরনো ঠিকানা থেকে চলছে, যা শীঘ্রই বন্ধ হয়ে যাবে। নতুন ভার্সনটি নামিয়ে ইনস্টল করুন — এটি এই অ্যাপের উপরেই আপডেট হবে।': 'Your app is running from the old address, which will stop working soon. Download and install the new version — it updates this app in place.',
+  'নতুন অ্যাপ নামান': 'Download the new app',
+  'আপডেটের পর একবার লগইন করে নিন। সমস্যা হলে Play Protect-এ "Install anyway" চাপুন।': 'Log in once after updating. If Play Protect warns you, tap "Install anyway".',
+  'পরে করব': 'Later',
+  'পুরনো ঠিকানায় এখনো অ্যাপ চলছে: আজ {a}টি ফোন, গত ৭ দিনে এক দিনে সর্বোচ্চ {b}টি।': 'The app still opens the old address: {a} phones today, at most {b} a day in the last 7 days.',
+  'এরা অ্যাপ খুললেই আপডেট করতে বলা হচ্ছে। সংখ্যাটা টানা ১৪ দিন ০ থাকলে পুরনো ঠিকানা মুছে ফেলা নিরাপদ।': 'They are asked to update whenever they open the app. Once this stays at 0 for 14 days in a row, the old address is safe to remove.',
+  'গত ১৪ দিনে পুরনো ঠিকানায় কোনো অ্যাপ আসেনি।': 'No app has opened the old address in the last 14 days.',
+  'এখন পুরনো ঠিকানা মুছে ফেলা নিরাপদ।': 'The old address is now safe to remove.'
 });

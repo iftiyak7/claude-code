@@ -6,6 +6,7 @@
 # Optional: DOMAIN=example.com (auto-detected from CloudPanel when a site name contains "jashore360").
 # Moving to a new domain: DOMAIN=new.com OLD_DOMAINS=old.com — both are remembered for later runs. Browsers on the old
 # domain are sent to the new one (once its SSL works); the installed Android app keeps working there until updated.
+# When the admin dashboard shows no phones on the old address any more, finish with REMOVE_OLD=1 to delete the old site.
 # Re-run the same command to update. Data (database, uploaded photos) lives in /var/lib/jashore360 and is never touched by updates.
 set -euo pipefail
 
@@ -116,6 +117,25 @@ if command -v clpctl >/dev/null; then
   else
     SSL_WARN="SSL সার্টিফিকেট এখনো ঠিক হয়নি — সাইট ও Android অ্যাপ https ছাড়া ঠিকমতো চলবে না। Hostinger DNS-এ $DOMAIN ও www.$DOMAIN এর A রেকর্ড 72.62.198.94 কি না দেখুন, তারপর CloudPanel → Sites → $DOMAIN → SSL/TLS → Actions → New Let's Encrypt Certificate চাপুন, তারপর এই কমান্ড আবার চালান।"
   fi
+  # REMOVE_OLD=1: the move is finished (the admin dashboard shows no phones on the old address) — delete the old sites.
+  if [ "${REMOVE_OLD:-}" = 1 ] && [ -n "${OLD_DOMAINS:-}" ]; then
+    if [ "${NEW_OK:-}" != 1 ]; then
+      warn "$DOMAIN এর SSL এখনো ঠিক হয়নি — পুরনো ঠিকানা মোছা হলো না"
+    else
+      for OD in $(echo "$OLD_DOMAINS" | tr ',' ' '); do
+        [ "$OD" = "$DOMAIN" ] && continue
+        say "পুরনো ঠিকানা $OD মুছে ফেলা হচ্ছে"
+        OC=$(find_conf "$OD")
+        [ -n "$OC" ] && cp "$OC" "/root/jashore360-vhost-backup-$OD-$(date +%Y%m%d%H%M%S).conf"
+        clpctl site:delete --domainName="$OD" --force >/dev/null 2>&1 || true
+        if [ -n "$(find_conf "$OD")" ]; then
+          LEFT=1; warn "$OD নিজে থেকে মোছা গেল না — CloudPanel → Sites → $OD → Delete থেকে মুছে দিন, তারপর এই কমান্ড আবার চালান"
+        fi
+      done
+      nginx -t -q 2>/dev/null && reload_nginx || true
+      if [ -z "${LEFT:-}" ]; then OLD_DOMAINS=""; rm -f "$CFG/old-domains"; REMOVED=1; fi
+    fi
+  fi
   # Old domains: browsers go to the new domain (only once its SSL works); the installed app is still served.
   for OD in $(echo "${OLD_DOMAINS:-}" | tr ',' ' '); do
     [ "$OD" = "$DOMAIN" ] && continue
@@ -180,6 +200,7 @@ fi
 
 echo
 [ -n "${SSL_WARN:-}" ] && warn "$SSL_WARN"
+[ "${REMOVED:-}" = 1 ] && say "পুরনো ঠিকানা সার্ভার থেকে বাদ দেওয়া হয়েছে — এখন শুধু $DOMAIN চলছে। Hostinger-এ পুরনো ডোমেইনের auto-renew বন্ধ করে দিতে পারেন।"
 echo "════════════════════════════════════════════"
 echo " ✅ Jashore360 চালু হয়েছে"
 echo "    অ্যাপ:          $URL"

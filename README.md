@@ -25,7 +25,13 @@ curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilan
 ```bash
 curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilant-heisenberg-wpt1tp/deploy/install.sh | DOMAIN=jashore360.com OLD_DOMAINS=jashore360.cloud bash
 ```
-ইনস্টলার নতুন সাইট বানায়, SSL নেয়, তারপর পুরনো ঠিকানায় ব্রাউজারে আসা সবাইকে নতুন ঠিকানায় পাঠায়। আগে ইনস্টল করা Android অ্যাপ পুরনো ঠিকানায় চলতে থাকে এবং "নতুন ভার্সন" দেখায়। পরে শুধু সাধারণ কমান্ড চালালেই হবে — ডোমেইন মনে থাকে।
+ইনস্টলার নতুন সাইট বানায়, SSL নেয়, তারপর পুরনো ঠিকানায় ব্রাউজারে আসা সবাইকে নতুন ঠিকানায় পাঠায়। আগে ইনস্টল করা Android অ্যাপ পুরনো ঠিকানায় চলতে থাকে, তবে খুললেই পুরো পর্দায় "নতুন ঠিকানায় — নতুন অ্যাপ নামান" দেখায়। পরে শুধু সাধারণ কমান্ড চালালেই হবে — ডোমেইন মনে থাকে।
+
+অ্যাডমিন ড্যাশবোর্ডে দেখায় প্রতিদিন কয়টি ফোন এখনো পুরনো ঠিকানায় অ্যাপ খুলছে। সংখ্যাটা টানা ১৪ দিন ০ থাকলে পুরনো ঠিকানা পুরোপুরি মুছে ফেলুন:
+```bash
+curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilant-heisenberg-wpt1tp/deploy/install.sh | REMOVE_OLD=1 bash
+```
+এটি CloudPanel থেকে পুরনো সাইট মুছে দেয় (ডাটা, ছবি, অ্যাকাউন্ট সব আগের মতো থাকে)। তারপর রেজিস্ট্রারে পুরনো ডোমেইনের auto-renew বন্ধ করে দিতে পারেন।
 
 পাসওয়ার্ড ভুলে গেলে:
 ```bash

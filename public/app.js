@@ -1202,7 +1202,30 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
   pages.notfound = () => `${topbar('')}${empty(T('পাওয়া যায়নি'), '', `<a class="btn sm" href="#/">${T('হোমে ফিরুন')}</a>`)}`;
 
   /* ---------------- welcome ---------------- */
+  /* ---------------- old address: the installed app still opens a domain the site has moved away from ---------------- */
+  function movedApp() {
+    const host = location.hostname.replace(/^www\./, '');
+    return APP_UA && D.home && D.app?.file && host !== D.home && !/^[\d.]+$|^localhost$/.test(host) && D.app.versionCode > +APP_UA[1];
+  }
+  function moved() {
+    if (!movedApp() || document.querySelector('.welcome') || sessionStorage.getItem('j360.movedLater')) return !!movedApp();
+    const w = document.createElement('div');
+    w.className = 'welcome moved';
+    const base = 'https://' + D.home;
+    w.innerHTML = `<div class="art"><div class="blob"><div class="core">${LOGO.replace('<svg', '<svg width="64" height="64"')}</div></div></div>
+      <div class="card"><h1>${T('Jashore360 এখন নতুন ঠিকানায়')}</h1>
+        <p>${T('আপনার অ্যাপটি পুরনো ঠিকানা থেকে চলছে, যা শীঘ্রই বন্ধ হয়ে যাবে। নতুন ভার্সনটি নামিয়ে ইনস্টল করুন — এটি এই অ্যাপের উপরেই আপডেট হবে।')}</p>
+        <p class="newaddr">${esc(D.home)}</p>
+        <a class="btn block" href="${base}/download/jashore360.apk">${icon('download', 20)}${T('নতুন অ্যাপ নামান')} (v${esc(D.app.versionName)})</a>
+        <p class="hint">${T('আপডেটের পর একবার লগইন করে নিন। সমস্যা হলে Play Protect-এ "Install anyway" চাপুন।')}</p>
+        <button class="linkbtn" data-later>${T('পরে করব')}</button></div>`;
+    document.body.appendChild(w);
+    w.querySelector('[data-later]').addEventListener('click', () => { try { sessionStorage.setItem('j360.movedLater', '1'); } catch {} w.remove(); });
+    return true;
+  }
+
   function welcome() {
+    if (moved()) return;
     const tv = D.terms?.version || 0, again = ls.get('welcomed', false);
     if ((again && ls.get('termsV', 0) >= tv) || document.querySelector('.welcome') || location.hash.startsWith('#/terms')) return;
     const w = document.createElement('div');

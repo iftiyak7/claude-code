@@ -143,6 +143,11 @@
     const tiles = [['list', s.listings, 'প্রকাশিত তালিকা', T('{n}টি যাচাইকৃত', { n: num(s.verified) })], ['users', s.users, 'ব্যবহারকারী', ''],
       ['msg', s.reviews, 'মোট রিভিউ', T('এই সপ্তাহে {n}টি', { n: num(s.reviewsWeek) })], ['megaphone', s.classifiedsLive, 'চলমান বিজ্ঞাপন', ''],
       ['eye', s.views, 'মোট ভিউ', ''], ['phone', s.calls, 'মোট কল', '']];
+    // Phones whose installed app still opens an old address (see "jashore360.cloud → .com" in the README)
+    const old = s.series.oldapp || [], oldToday = old[old.length - 1] || 0, oldPeak = Math.max(0, ...old.slice(-7)), oldEver = old.some(n => n);
+    const oldNote = !oldEver ? '' : old.slice(-14).some(n => n)
+      ? `<div class="note">${icon('alert', 20)}<div><b>${T('পুরনো ঠিকানায় এখনো অ্যাপ চলছে: আজ {a}টি ফোন, গত ৭ দিনে এক দিনে সর্বোচ্চ {b}টি।', { a: num(oldToday), b: num(oldPeak) })}</b> ${T('এরা অ্যাপ খুললেই আপডেট করতে বলা হচ্ছে। সংখ্যাটা টানা ১৪ দিন ০ থাকলে পুরনো ঠিকানা মুছে ফেলা নিরাপদ।')}</div></div>`
+      : `<div class="note info">${icon('check', 20)}<div><b>${T('গত ১৪ দিনে পুরনো ঠিকানায় কোনো অ্যাপ আসেনি।')}</b> ${T('এখন পুরনো ঠিকানা মুছে ফেলা নিরাপদ।')}</div></div>`;
     shell('dashboard', T('ড্যাশবোর্ড'), `<a class="btn" href="#/listings/new">${icon('plus', 18)}<span class="hide-sm">${T('নতুন তালিকা')}</span></a>`, `
       <section class="hello"><div><small>${esc(new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' }))}</small>
         <h2>${greet}, ${esc(S.me.username)}</h2><p>${T('আজ আপনার জন্য যা অপেক্ষা করছে')}</p></div>
@@ -150,6 +155,7 @@
       <div class="todo">${todo.map(([to, ic, c, n, t]) => `<a href="#/${to}" class="card ${n ? 'hot' : ''}" style="--c:${c}"><span class="ib">${icon(ic, 22)}</span>
         <div><b>${num(n)}</b><small>${T(t)}</small></div>${icon('chevR', 18)}</a>`).join('')}</div>
       ${s.demo ? `<div class="note">${icon('alert', 20)}<div><b>${T('{n}টি নমুনা তথ্য প্রকাশিত আছে।', { n: num(s.demo) })}</b> ${T('লঞ্চের আগে আসল তথ্য যোগ করে নমুনাগুলো মুছে ফেলুন।')}</div><a class="btn sm dark" href="#/listings?flag=demo">${T('দেখুন')}</a></div>` : ''}
+      ${oldNote}
       <div class="kpis">${tiles.map(([ic, v, t, sub]) => `<div class="card kpi"><span class="ib">${icon(ic, 20)}</span><div><b>${compact(v)}</b><small>${T(t)}</small>${sub ? `<em>${sub}</em>` : ''}</div></div>`).join('')}</div>
       <div class="card chartcard"><div class="chead"><div><b>${T(METRICS.find(m => m[0] === metric)[1])}</b><small class="muted"> · ${T('গত ৩০ দিন')}</small></div>
         <div class="tabs" style="margin:0">${METRICS.map(([k, t]) => `<button class="${k === metric ? 'on' : ''}" data-metric="${k}">${T(t)}</button>`).join('')}</div></div>

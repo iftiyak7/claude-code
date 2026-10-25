@@ -289,6 +289,17 @@ def inc(c, metric, n=1):
 
 _version = [int(time.time())]
 _boot_cache = {}
+DOMAIN_FILE = os.environ.get('J360_DOMAIN_FILE', '/etc/jashore360/domain')   # written by the installer
+
+
+def home_domain():
+    # The site's one real address; the app on any other (old) address is asked to update.
+    try:
+        d = open(DOMAIN_FILE).read().strip().lower()
+    except OSError:
+        return None
+    d = d[4:] if d.startswith('www.') else d
+    return d if re.match(r'^[a-z0-9.-]+\.[a-z]+$', d) else None
 _static_cache = {}
 _lock = threading.Lock()
 
@@ -305,8 +316,8 @@ def live_ads(ads):
 
 
 def bootstrap_payload():
-    v, t = _version[0], today()
-    hit = _boot_cache.get((v, t))                  # per day too: paid listings and popups expire by date
+    v, t, home = _version[0], today(), home_domain()
+    hit = _boot_cache.get((v, t, home))            # per day too: paid listings and popups expire by date
     if hit:
         return hit
     with db() as c:
@@ -342,11 +353,12 @@ def bootstrap_payload():
     out['classifiedCounts'] = counts
     out['aliases'] = aliases
     out['offers'] = offers
+    out['home'] = home
     out['v'] = v
     raw = json.dumps(out, ensure_ascii=False, separators=(',', ':')).encode()
-    entry = (raw, gzip.compress(raw, 6), '"b%d-%s"' % (v, t))
+    entry = (raw, gzip.compress(raw, 6), '"b%d-%s-%s"' % (v, t, home or ''))
     _boot_cache.clear()
-    _boot_cache[(v, t)] = entry
+    _boot_cache[(v, t, home)] = entry
     return entry
 
 
@@ -903,9 +915,35 @@ class Handler(BaseHTTPRequestHandler):
 
 # ---------------------------------------------------------------- public API
 
+_old_seen = {}
+
+
+def count_old_app(h):
+    # Phones whose installed app still opens an old address: one per device per day, so the admin knows when it is safe to drop it.
+    home = home_domain()
+    if not home or 'Jashore360App' not in (h.headers.get('User-Agent') or ''):
+        return
+    host = (h.headers.get('Host') or '').split(':')[0].lower()
+    if host.startswith('www.'):
+        host = host[4:]
+    if not host or host == home or host in ('127.0.0.1', 'localhost') or re.match(r'^[\d.]+$', host):
+        return
+    t = today()
+    if _old_seen.get('day') != t:
+        _old_seen.clear()
+        _old_seen['day'] = t
+        _old_seen['ids'] = set()
+    key = h.device()
+    if key in _old_seen['ids']:
+        return
+    _old_seen['ids'].add(key)
+    with db() as c:
+        inc(c, 'oldapp')
+
 @route('GET', '/bootstrap')
 def api_bootstrap(h):
     h.device()
+    count_old_app(h)
     raw, gz, etag = bootstrap_payload()
     if h.headers.get('If-None-Match') == etag and not h._set_cookies:
         h.send_response(304)
@@ -1684,7 +1722,7 @@ def adm_summary(h):
         for r in c.execute("SELECT id, doc, views, calls, maps FROM listings WHERE review='approved' ORDER BY views+calls*3 DESC LIMIT 6"):
             top.append({'id': r['id'], 'name': json.loads(r['doc'])['name'], 'views': r['views'], 'calls': r['calls'], 'maps': r['maps']})
         days = [time.strftime('%Y-%m-%d', time.localtime(time.time() - i * 86400)) for i in range(29, -1, -1)]
-        series = {m: [0] * 30 for m in ('views', 'calls', 'maps', 'signups', 'reviews', 'submissions', 'classifieds', 'downloads', 'adclicks')}
+        series = {m: [0] * 30 for m in ('views', 'calls', 'maps', 'signups', 'reviews', 'submissions', 'classifieds', 'downloads', 'adclicks', 'oldapp')}
         idx = {d: i for i, d in enumerate(days)}
         for r in c.execute('SELECT day, metric, n FROM daily WHERE day>=?', (days[0],)):
             if r['metric'] in series and r['day'] in idx:
@@ -1705,7 +1743,7 @@ def adm_summary(h):
             'revenueTotal': one("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='verified'"),
             'views': one('SELECT COALESCE(SUM(views),0) FROM listings'),
             'calls': one('SELECT COALESCE(SUM(calls),0) FROM listings'),
-            'days': days, 'series': series, 'top': top,
+            'days': days, 'series': series, 'top': top, 'home': home_domain(),
             'audit': [dict(r) for r in c.execute('SELECT admin, action, target, at FROM audit ORDER BY id DESC LIMIT 10')],
         }
     h.json(out)
