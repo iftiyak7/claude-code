@@ -365,7 +365,7 @@
     shell('submissions', T('নতুন জমা'), '', `<p class="muted" style="margin-top:0">${T('ব্যবহারকারী ও ব্যবসায়ীরা অ্যাপ থেকে যে তথ্য পাঠিয়েছেন। যাচাই করে প্রকাশ করুন। পেইড ব্যবসা পেমেন্ট যাচাইয়ের পর এখানে আসে।')}</p>
       <div class="tabs">${[['pending', 'অনুমোদনের অপেক্ষায়', pend.length], ['unpaid', 'পেমেন্ট বাকি', unpaid.length], ['rejected', 'বাতিল', rej.length]].map(([k, t, n]) =>
         `<a class="${tab === k ? 'on' : ''}" href="#/submissions?tab=${k}">${T(t)} (${num(n)})</a>`).join('')}</div>
-      <div class="card">${list.map(l => `<div class="item" style="align-items:flex-start">${thumb(l)}<div class="body"><b>${esc(l.name)}</b>
+      <div class="card">${list.map(l => `<div class="item" style="align-items:flex-start">${thumb(l)}<div class="body"><b>${esc(l.name)}${l.nameEn ? ` <span class="muted" style="font-weight:400">· ${esc(l.nameEn)}</span>` : ''}</b>
         <small>${esc(catName(catOf(l.cat)))} › ${esc(subName(catOf(l.cat), l.sub))} · ${esc(l.area || '')} · ${esc(l.phone || T('ফোন নেই'))}</small>
         ${l.about ? `<p>${esc(l.about)}</p>` : ''}<small>${T('জমাদাতা')}: ${esc(l._owner ? `${l._owner.name} (${l._owner.phone})` : l._contact || '—')} · ${date(l._created)}</small>
         <div class="tags" style="margin-top:6px">${l.editedAt ? `<span class="tag warn">${T('সম্পাদিত — আবার দেখুন')}</span>` : ''}${l.videos?.length ? `<span class="tag">${icon('video', 13)} ${num(l.videos.length)}</span>` : ''}

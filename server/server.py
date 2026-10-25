@@ -581,10 +581,11 @@ def clean_listing(d, admin):
         out['sponsoredUntil'] = s(d.get('sponsoredUntil'), 10) if re.match(r'^\d{4}-\d\d-\d\d$', str(d.get('sponsoredUntil') or '')) else None
         if out['status'] == 'verified' and not out['verifiedAt']:
             out['verifiedAt'] = today()
-        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'halal', 'blueTick'):
+        for k in ('demo', 'sponsored', 'featured', 'pin', 'hidden', 'blueTick'):
             out[k] = bool(d.get(k)) or None
     else:
         out['status'] = 'pending'
+    out['halal'] = bool(d.get('halal')) or None       # an owner's claim; the admin checks it before approving
     return {k: v for k, v in out.items() if v is not None}
 
 
@@ -1346,8 +1347,8 @@ def user_media(h, b, keep=()):
     return {'images': imgs or None, 'videos': m['videos']}
 
 
-USER_LISTING_FIELDS = ('name', 'area', 'address', 'phone', 'phone2', 'hours', 'price', 'web', 'facebook', 'about', 'note', 'images', 'videos',
-                       'lat', 'lng', 'mapUrl')
+USER_LISTING_FIELDS = ('name', 'nameEn', 'area', 'address', 'phone', 'phone2', 'contacts', 'hours', 'off', 'price', 'web', 'facebook', 'about', 'aboutEn',
+                       'note', 'features', 'tags', 'halal', 'images', 'videos', 'lat', 'lng', 'mapUrl')
 
 
 @route('GET', r'/my/listings/([\w-]+)', auth='user')

@@ -591,5 +591,18 @@ Object.assign(window.I18N_EN, {
   'পুরনো ঠিকানায় এখনো অ্যাপ চলছে: আজ {a}টি ফোন, গত ৭ দিনে এক দিনে সর্বোচ্চ {b}টি।': 'The app still opens the old address: {a} phones today, at most {b} a day in the last 7 days.',
   'এরা অ্যাপ খুললেই আপডেট করতে বলা হচ্ছে। সংখ্যাটা টানা ১৪ দিন ০ থাকলে পুরনো ঠিকানা মুছে ফেলা নিরাপদ।': 'They are asked to update whenever they open the app. Once this stays at 0 for 14 days in a row, the old address is safe to remove.',
   'গত ১৪ দিনে পুরনো ঠিকানায় কোনো অ্যাপ আসেনি।': 'No app has opened the old address in the last 14 days.',
-  'এখন পুরনো ঠিকানা মুছে ফেলা নিরাপদ।': 'The old address is now safe to remove.'
+  'এখন পুরনো ঠিকানা মুছে ফেলা নিরাপদ।': 'The old address is now safe to remove.',
+  'নাম (বাংলা)': 'Name (Bangla)',
+  'যেমন: যশোর কাচ্চি ঘর': 'e.g. যশোর কাচ্চি ঘর',
+  'ইংরেজি ভাষার অ্যাপে ও খোঁজায় দেখায়': 'Shown in the English app and in search',
+  'যেমন: শুক্রবার জুমার পর খোলে': 'e.g. Opens after Jumu\'ah on Fridays',
+  'তালিকায় নামের নিচে দেখায়': 'Shown under the name in lists',
+  'পার্কিং, হোম ডেলিভারি': 'Parking, home delivery',
+  'কমা দিয়ে আলাদা করুন': 'Separate with commas',
+  'মানুষ যে শব্দে খুঁজবে': 'Words people will search for',
+  'হালাল খাবার': 'Halal food',
+  'রেস্টুরেন্ট বা খাবারের দোকান হলে': 'For restaurants and food shops',
+  'যেমন ম্যানেজার, রিসেপশন, জরুরি বিভাগ, হোয়াটসঅ্যাপ': 'e.g. manager, reception, emergency, WhatsApp',
+  'ছবি ও ভিডিও': 'Photos & videos',
+  'পদবি': 'Role'
 });

@@ -991,18 +991,38 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       return `${topbar(T(edit ? 'তথ্য সম্পাদনা' : mode === 'paid' ? 'ব্যবসা যুক্ত করুন' : 'ফ্রি তথ্য যোগ করুন'))}
       ${editNote || `<div class="note">${icon(mode === 'paid' ? 'store' : 'landmark', 18)}<span>${T(mode === 'paid' ? 'তথ্য দিন, প্যাকেজ বাছুন, তারপর বিকাশ/নগদে পেমেন্ট করুন। যাচাইয়ের পর প্রকাশিত হবে।' : 'সরকারি, জনসেবামূলক বা দর্শনীয় স্থানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>`}
       <form class="form" data-addlisting="${mode}"${editAttr}>
-        <label class="field"><span>${T('প্রতিষ্ঠান/স্থানের নাম')} *</span><input name="name" required maxlength="120"></label>
+        <h3 class="fsec">${T('মৌলিক তথ্য')}</h3>
+        <label class="field"><span>${T('নাম (বাংলা)')} *</span><input name="name" required maxlength="120" placeholder="${T('যেমন: যশোর কাচ্চি ঘর')}"></label>
+        <label class="field"><span>${T('নাম (English)')}</span><input name="nameEn" maxlength="120" placeholder="e.g. Jashore Kacchi Ghor" autocapitalize="words"><em>${T('ইংরেজি ভাষার অ্যাপে ও খোঁজায় দেখায়')}</em></label>
         ${edit ? `<label class="field"><span>${T('ধরন')}</span><input value="${esc(subLabel(edit))}" disabled></label>`
           : `<label class="field"><span>${T('ধরন')} *</span><select name="catsub" required>${groups.map(g => `<optgroup label="${esc(catName(g.c))}">${g.subs.map(s => `<option value="${g.c.id}|${s}">${esc(subName(g.c, s))}</option>`).join('')}</optgroup>`).join('')}</select></label>`}
         <div class="two"><label class="field"><span>${T('এলাকা')} *</span>${areaSel}</label>
           <label class="field"><span>${T('ফোন')}</span><input name="phone" inputmode="tel" placeholder="01XXXXXXXXX" value="${mode === 'paid' ? esc(ME.phone) : ''}"></label></div>
+        <label class="field"><span>${T('বিবরণ')}</span><textarea name="about" maxlength="3000" placeholder="${T('সেবা, বিশেষত্ব, সুবিধা…')}"></textarea></label>
+        <label class="field"><span>${T('বিবরণ (English)')}</span><textarea name="aboutEn" maxlength="3000" placeholder="${T('ঐচ্ছিক')}"></textarea></label>
+        <label class="field"><span>${T('ছোট নোট')}</span><input name="note" maxlength="400" placeholder="${T('যেমন: শুক্রবার জুমার পর খোলে')}"><em>${T('তালিকায় নামের নিচে দেখায়')}</em></label>
+        <div class="two"><label class="field"><span>${T('সুবিধা')}</span><input name="features" maxlength="400" placeholder="${T('পার্কিং, হোম ডেলিভারি')}"><em>${T('কমা দিয়ে আলাদা করুন')}</em></label>
+          <label class="field"><span>${T('সার্চ কীওয়ার্ড')}</span><input name="tags" maxlength="400" placeholder="kacchi, তেহারি, biryani"><em>${T('মানুষ যে শব্দে খুঁজবে')}</em></label></div>
+        <label class="switch"><span>${icon('halal', 16)} ${T('হালাল খাবার')}<small>${T('রেস্টুরেন্ট বা খাবারের দোকান হলে')}</small></span><input type="checkbox" name="halal"></label>
+
+        <h3 class="fsec">${T('যোগাযোগ ও অবস্থান')}</h3>
+        <label class="field"><span>${T('বিকল্প ফোন')}</span><input name="phone2" inputmode="tel" placeholder="01XXXXXXXXX"></label>
+        <div class="field"><span>${T('আরও নম্বর (পদবিসহ)')}</span><div class="crows" data-crows>${(edit?.contacts || []).map(c => contactRow(c)).join('')}</div>
+          <datalist id="croles">${CROLES.map(r => `<option value="${esc(T(r))}">`).join('')}</datalist>
+          <button type="button" class="btn sm ghost" data-addcrow style="align-self:flex-start">${icon('plus', 16)}${T('নম্বর যোগ করুন')}</button>
+          <em>${T('যেমন ম্যানেজার, রিসেপশন, জরুরি বিভাগ, হোয়াটসঅ্যাপ')}</em></div>
+        <div class="two"><label class="field"><span>${T('ওয়েবসাইট')}</span><input name="web" type="url" placeholder="https://"></label>
+          <label class="field"><span>${T('ফেসবুক পেজ')}</span><input name="facebook" type="url" placeholder="https://facebook.com/…"></label></div>
         <label class="field"><span>${T('ঠিকানা')}</span><input name="address" maxlength="200" placeholder="${T('রাস্তা, ল্যান্ডমার্ক')}"></label>
         ${locField()}
-        <div class="two"><label class="field"><span>${T('খোলে')}</span><input name="open" type="time"></label><label class="field"><span>${T('বন্ধ হয়')}</span><input name="close" type="time"></label></div>
+
+        <h3 class="fsec">${T('সময় ও দাম')}</h3>
         <label class="switch"><span>${T('২৪ ঘণ্টা খোলা')}</span><input type="checkbox" name="h24"></label>
-        <div class="two"><label class="field"><span>${T('আনুমানিক খরচ (৳)')}</span><input name="price" inputmode="numeric"></label>
-          <label class="field"><span>${T('ফেসবুক/ওয়েবসাইট')}</span><input name="web" type="url" placeholder="https://"></label></div>
-        <label class="field"><span>${T('বিবরণ')}</span><textarea name="about" maxlength="1500" placeholder="${T('সেবা, বিশেষত্ব, সুবিধা…')}"></textarea></label>
+        <div class="two"><label class="field"><span>${T('খোলে')}</span><input name="open" type="time"></label><label class="field"><span>${T('বন্ধ হয়')}</span><input name="close" type="time"></label></div>
+        <div class="field"><span>${T('সাপ্তাহিক বন্ধ')}</span><div class="days">${WDAYS.map((d, i) => `<label><input type="checkbox" name="off" value="${i}"><span>${T(d)}</span></label>`).join('')}</div></div>
+        <label class="field"><span>${T('আনুমানিক খরচ (৳)')}</span><input name="price" inputmode="numeric"><em>${T('রেস্টুরেন্টে জনপ্রতি, হোটেলে প্রতি রাত, সার্ভিসে শুরুর দাম')}</em></label>
+
+        <h3 class="fsec">${T('ছবি ও ভিডিও')}</h3>
         ${mediaField()}
         ${mode === 'paid' && !edit ? `<div class="field"><span>${T('প্যাকেজ বাছুন')} *</span>${planCards(D.plans?.[0]?.id)}</div>` : ''}
         <label class="check"><input type="checkbox" required><span>${T('আমি নিশ্চিত করছি তথ্যগুলো সঠিক এবং প্রকাশের অনুমতি আছে।')}</span></label>
@@ -1049,6 +1069,14 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
         <label class="check"><input type="checkbox" required><span>${T('আমি নিশ্চিত করছি বিজ্ঞাপনের তথ্য সঠিক।')}</span></label>
         <button class="btn block" type="submit">${T(edit ? 'পরিবর্তন জমা দিন' : 'বিজ্ঞাপন জমা দিন')}</button></form>`;
   };
+  const WDAYS = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
+  const CROLES = ['ম্যানেজার', 'রিসেপশন', 'অফিস', 'জরুরি বিভাগ', 'অ্যাম্বুলেন্স', 'হোয়াটসঅ্যাপ', 'ওসি (অফিসার ইনচার্জ)', 'ডিউটি অফিসার'];
+  const contactRow = (c = {}) => `<div class="cedit"><input placeholder="${T('পদবি')}" list="croles" maxlength="60" value="${esc(c.role || '')}" data-cf="role">
+    <input placeholder="${T('নাম (ঐচ্ছিক)')}" maxlength="60" value="${esc(c.name || '')}" data-cf="name">
+    <input placeholder="01XXXXXXXXX" inputmode="tel" maxlength="20" value="${esc(c.phone || '')}" data-cf="phone">
+    <button type="button" class="iconbtn" data-rmcrow aria-label="${T('সরান')}">${icon('x', 16)}</button></div>`;
+  const readCrows = f => [...f.querySelectorAll('.cedit')].map(r => Object.fromEntries([...r.querySelectorAll('[data-cf]')].map(i => [i.dataset.cf, i.dataset.cf === 'phone' ? toLatin(i.value.trim()) : i.value.trim()])))
+    .filter(c => c.phone);
   const locField = () => `<div class="field"><span>${T('ম্যাপে লোকেশন (ঐচ্ছিক)')}</span>
       <div class="locpick"><input name="mapUrl" type="url" inputmode="url" placeholder="${T('Google Maps লিংক পেস্ট করুন')}" data-maplink>
         <button type="button" class="btn sm ghost" data-gpsfill>${icon('nav', 16)}${T('আমি এখানেই আছি')}</button></div>
@@ -1103,9 +1131,11 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
   }
   const mediaBody = () => ({ images: MEDIA.images.filter(m => m.url).map(m => m.url), videos: MEDIA.videos.filter(m => m.url).map(m => m.url) });
   function fillForm(f, d) {
-    const v = { ...d, web: d.web || d.facebook, open: /^\d/.test(d.hours || '') ? d.hours.split('-')[0] : '', close: /^\d/.test(d.hours || '') ? d.hours.split('-')[1] : '' };
+    const v = { ...d, features: (d.features || []).join(', '), tags: (d.tags || []).join(', '), open: /^\d/.test(d.hours || '') ? d.hours.split('-')[0] : '', close: /^\d/.test(d.hours || '') ? d.hours.split('-')[1] : '' };
     [...f.elements].forEach(el => { if (el.name && !['checkbox', 'radio', 'file'].includes(el.type) && v[el.name] != null) el.value = String(v[el.name]); });
     if (f.h24) f.h24.checked = d.hours === '24h';
+    if (f.halal) f.halal.checked = !!d.halal;
+    f.querySelectorAll('[name=off]').forEach(el => { el.checked = (d.off || []).includes(+el.value); });
     if (f.lat && d.lat != null) setLoc(f, d.lat, d.lng);
   }
 
@@ -1369,6 +1399,8 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
     const el = e.target.closest('button, [data-call], [data-call-track], [data-map], [data-copy]');
     if (!el || el.closest('.welcome')) return;
     const ds = el.dataset;
+    if ('addcrow' in ds) { const box = el.closest('form').querySelector('[data-crows]'); box.insertAdjacentHTML('beforeend', contactRow()); box.lastElementChild.querySelector('input').focus(); return; }
+    if ('rmcrow' in ds) { el.closest('.cedit').remove(); return; }
     if (ds.call) { e.preventDefault(); track(ds.id, 'call'); location.href = 'tel:' + ds.call; return; }
     if (ds.callTrack) return track(ds.callTrack, 'call');
     if (ds.map) return track(ds.map, 'map');
@@ -1508,10 +1540,12 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
         await api('/my/profile', v, 'PUT'); ME.name = v.name; toast(T('সংরক্ষণ হয়েছে')); return render();
       }
       if (f.dataset.addlisting) {
-        const v = Object.fromEntries(new FormData(f)), [cat, sub] = (v.catsub || '|').split('|');
-        const body = { name: v.name, cat, sub, area: v.area, address: v.address, phone: toLatin(v.phone || ''),
-          hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, price: toLatin(v.price || '').replace(/\D/g, ''),
-          web: /facebook\.com/.test(v.web) ? null : v.web, facebook: /facebook\.com/.test(v.web) ? v.web : null, about: v.about, plan: v.plan, mapUrl: v.mapUrl, lat: v.lat, lng: v.lng, ...mediaBody() };
+        const fd = new FormData(f), v = Object.fromEntries(fd), [cat, sub] = (v.catsub || '|').split('|');
+        const fb = /facebook\.com|fb\.com/i;
+        const body = { name: v.name, nameEn: v.nameEn, cat, sub, area: v.area, address: v.address, phone: toLatin(v.phone || ''), phone2: toLatin(v.phone2 || ''), contacts: readCrows(f),
+          hours: v.h24 ? '24h' : v.open && v.close ? `${v.open}-${v.close}` : null, off: fd.getAll('off').map(Number), price: toLatin(v.price || '').replace(/\D/g, ''),
+          web: fb.test(v.web) && !v.facebook ? null : v.web, facebook: v.facebook || (fb.test(v.web) ? v.web : null), about: v.about, aboutEn: v.aboutEn, note: v.note,
+          features: v.features, tags: v.tags, halal: !!v.halal, plan: v.plan, mapUrl: v.mapUrl, lat: v.lat, lng: v.lng, ...mediaBody() };
         if (f.dataset.edit) {
           await api('/my/listings/' + f.dataset.edit, body, 'PUT');
           cache.my = null; cache.edit = null; toast(T('পরিবর্তন জমা হয়েছে — যাচাইয়ের পর প্রকাশিত হবে')); return go('#/account');
