@@ -128,6 +128,13 @@ function nmo_render_settings() {
 									</tr>
 								<?php endforeach; ?>
 							</table>
+							<?php if ( 'colors' === $sid ) : ?>
+								<div class="nmo-brand-box">
+									<p><b>🎨 ব্র্যান্ড কালার অটো সেট করুন:</b> “সাধারণ ও ব্র্যান্ড” ট্যাবে আপনার লোগো আপলোড করে নিচের বাটন চাপুন — লোগোর রং থেকে পুরো পেজের রং তৈরি হবে। তারপর “সেভ করুন” চাপুন।</p>
+									<button type="button" class="button button-secondary" id="nmo-from-logo">লোগো থেকে ব্র্যান্ড কালার নিন</button>
+									<span class="nmo-swatches" aria-live="polite"></span>
+								</div>
+							<?php endif; ?>
 						</section>
 					<?php endforeach; ?>
 				</div>
@@ -163,8 +170,8 @@ function nmo_render_field( $key, $f ) {
 		case 'image':
 			$preview = nmo_img_url( $key, 'thumbnail' );
 			printf(
-				'<div class="nmo-image"><input type="hidden" id="%1$s" name="%2$s" value="%3$s"><img src="%4$s" class="%5$s" alt=""><button type="button" class="button nmo-image-pick">ছবি বাছুন</button> <button type="button" class="button-link-delete nmo-image-clear">মুছুন</button></div>',
-				esc_attr( $id ), esc_attr( $name ), esc_attr( $value ), esc_url( $preview ), $preview ? '' : 'hidden'
+				'<div class="nmo-image" data-full="%6$s"><input type="hidden" id="%1$s" name="%2$s" value="%3$s"><img src="%4$s" class="%5$s" alt=""><button type="button" class="button nmo-image-pick">ছবি বাছুন</button> <button type="button" class="button-link-delete nmo-image-clear">মুছুন</button></div>',
+				esc_attr( $id ), esc_attr( $name ), esc_attr( $value ), esc_url( $preview ), $preview ? '' : 'hidden', esc_url( nmo_img_url( $key, 'full' ) )
 			);
 			break;
 		case 'textarea':

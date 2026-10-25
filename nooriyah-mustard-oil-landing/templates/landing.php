@@ -45,7 +45,7 @@ $nmo_jar_svg = function ( $class = '' ) {
 	<defs>
 		<linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd84d"/><stop offset=".5" stop-color="#f2a900"/><stop offset="1" stop-color="#b86e00"/></linearGradient>
 		<linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".25" stop-color="#fff" stop-opacity=".05"/><stop offset=".8" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
-		<linearGradient id="cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#40c057"/><stop offset="1" stop-color="#1b6b2d"/></linearGradient>
+		<linearGradient id="cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent)" stop-opacity=".75"/></linearGradient>
 		<clipPath id="jarClip"><path d="M140 150 Q140 128 168 124 L292 124 Q320 128 320 150 L330 380 Q330 410 300 410 L160 410 Q130 410 130 380 Z"/></clipPath>
 		<filter id="jsh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity=".4"/></filter>
 	</defs>
@@ -62,14 +62,14 @@ $nmo_jar_svg = function ( $class = '' ) {
 		</g>
 		<path d="M140 150 Q140 128 168 124 L292 124 Q320 128 320 150 L330 380 Q330 410 300 410 L160 410 Q130 410 130 380 Z" fill="url(#glass)" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
 		<rect x="190" y="92" width="80" height="36" rx="6" fill="url(#cap)"/>
-		<rect x="186" y="84" width="88" height="14" rx="5" fill="#2f9e44"/>
-		<path d="M196 92 V126 M210 92 V126 M224 92 V126 M238 92 V126 M252 92 V126 M264 92 V126" stroke="#145a24" stroke-width="2" opacity=".5"/>
-		<rect x="152" y="210" width="156" height="150" rx="14" fill="#fffbea" stroke="#2a1a0c" stroke-width="3"/>
-		<rect x="160" y="218" width="140" height="134" rx="10" fill="none" stroke="#f2b705" stroke-width="2" stroke-dasharray="4 4"/>
-		<text x="230" y="246" text-anchor="middle" font-size="19" font-weight="700" fill="#2a1a0c"><?php echo esc_html( $brand ); ?></text>
-		<text x="230" y="272" text-anchor="middle" font-size="17" font-weight="600" fill="#2b8a3e">সরিষার তেল</text>
-		<text x="230" y="312" text-anchor="middle" font-size="34" font-weight="700" fill="#c25700">৫ লিটার</text>
-		<text x="230" y="338" text-anchor="middle" font-size="12.5" font-weight="600" fill="#5c4422">কাঠের ঘানি • ১ম চাপ</text>
+		<rect x="186" y="84" width="88" height="14" rx="5" style="fill:var(--accent)"/>
+		<path d="M196 92 V126 M210 92 V126 M224 92 V126 M238 92 V126 M252 92 V126 M264 92 V126" stroke="#000" stroke-width="2" opacity=".25"/>
+		<rect x="152" y="210" width="156" height="150" rx="14" style="fill:var(--cream);stroke:var(--dark)" stroke-width="3"/>
+		<rect x="160" y="218" width="140" height="134" rx="10" fill="none" style="stroke:var(--gold)" stroke-width="2" stroke-dasharray="4 4"/>
+		<text x="230" y="246" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--dark)"><?php echo esc_html( $brand ); ?></text>
+		<text x="230" y="272" text-anchor="middle" font-size="17" font-weight="600" style="fill:var(--accent)">সরিষার তেল</text>
+		<text x="230" y="312" text-anchor="middle" font-size="34" font-weight="700" style="fill:var(--accent)">৫ লিটার</text>
+		<text x="230" y="338" text-anchor="middle" font-size="12.5" font-weight="600" style="fill:var(--text)">কাঠের ঘানি • ১ম চাপ</text>
 		<rect x="146" y="140" width="10" height="250" rx="5" fill="#fff" opacity=".35"/>
 	</g>
 	<?php

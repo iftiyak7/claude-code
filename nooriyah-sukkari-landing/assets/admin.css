@@ -18,3 +18,8 @@
 .nsl-submit{position:sticky;bottom:0;background:#f0f0f1;padding:12px 0;display:flex;gap:20px;align-items:center;max-width:1200px}
 .nsl-reset{color:#b32d2e}
 @media(max-width:900px){.nsl-tabs{flex-direction:column}.nsl-tab-nav{position:static;width:100%;flex:none}}
+.nsl-brand-box{margin:10px 0 6px;padding:14px 16px;background:#fff8ec;border:1px dashed #d4a017;border-radius:6px}
+.nsl-brand-box p{margin:0 0 10px}
+.nsl-swatches{display:inline-flex;gap:6px;vertical-align:middle;margin-left:10px}
+.nsl-swatches i{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}
+.nsl-swatches em{font-style:normal;color:#b32d2e}
