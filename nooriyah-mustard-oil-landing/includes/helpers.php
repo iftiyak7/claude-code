@@ -130,3 +130,23 @@ function nmo_normalize_phone( $phone ) {
 	}
 	return preg_match( '/^01[3-9][0-9]{8}$/', $p ) ? $p : '';
 }
+
+/**
+ * Lighten (positive) or darken (negative) a hex colour by a percentage.
+ */
+function nmo_shade( $hex, $pct ) {
+	$hex = ltrim( (string) $hex, '#' );
+	if ( 3 === strlen( $hex ) ) {
+		$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+	}
+	if ( ! preg_match( '/^[0-9a-f]{6}$/i', $hex ) ) {
+		return '#f2a900';
+	}
+	$out = '#';
+	foreach ( str_split( $hex, 2 ) as $c ) {
+		$v    = hexdec( $c );
+		$v    = $pct > 0 ? $v + ( 255 - $v ) * $pct / 100 : $v * ( 100 + $pct ) / 100;
+		$out .= str_pad( dechex( (int) round( max( 0, min( 255, $v ) ) ) ), 2, '0', STR_PAD_LEFT );
+	}
+	return $out;
+}

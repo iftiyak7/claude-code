@@ -38,42 +38,52 @@ $nmo_cta = function ( $label = '', $extra = '' ) {
 $nmo_jar_svg = function ( $class = '' ) {
 	static $n = 0;
 	$n++;
-	$brand = nmo_get( 'brand_name' );
+	$brand = nmo_get( 'jar_label_brand' ) ? nmo_get( 'jar_label_brand' ) : nmo_get( 'brand_name' );
+	$oil   = nmo_get( 'jar_oil_color' );
+	$cap   = nmo_get( 'jar_cap_color' );
+	// Shrink a label line's font when the text is longer than the label is wide.
+	$fit = function ( $text, $base, $chars ) {
+		$len = max( 1, mb_strlen( $text ) );
+		return $len <= $chars ? $base : max( 10, round( $base * $chars / $len, 1 ) );
+	};
 	ob_start();
 	?>
-<svg class="jar-art <?php echo esc_attr( $class ); ?>" viewBox="0 0 460 460" role="img" aria-label="<?php echo esc_attr( $brand ); ?> সরিষার তেল ৫ লিটার">
+<svg class="jar-art <?php echo esc_attr( $class ); ?>" viewBox="0 0 460 460" role="img" aria-label="<?php echo esc_attr( $brand . ' ' . nmo_get( 'jar_label_product' ) . ' ' . nmo_get( 'jar_label_size' ) ); ?>">
 	<defs>
-		<linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd84d"/><stop offset=".5" stop-color="#f2a900"/><stop offset="1" stop-color="#b86e00"/></linearGradient>
+		<linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="<?php echo esc_attr( nmo_shade( $oil, 45 ) ); ?>"/><stop offset=".5" stop-color="<?php echo esc_attr( $oil ); ?>"/><stop offset="1" stop-color="<?php echo esc_attr( nmo_shade( $oil, -30 ) ); ?>"/></linearGradient>
 		<linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".25" stop-color="#fff" stop-opacity=".05"/><stop offset=".8" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
-		<linearGradient id="cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent)" stop-opacity=".75"/></linearGradient>
+		<linearGradient id="cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="<?php echo esc_attr( nmo_shade( $cap, 20 ) ); ?>"/><stop offset="1" stop-color="<?php echo esc_attr( nmo_shade( $cap, -30 ) ); ?>"/></linearGradient>
 		<clipPath id="jarClip"><path d="M140 150 Q140 128 168 124 L292 124 Q320 128 320 150 L330 380 Q330 410 300 410 L160 410 Q130 410 130 380 Z"/></clipPath>
 		<filter id="jsh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity=".4"/></filter>
 	</defs>
 	<ellipse cx="230" cy="420" rx="150" ry="16" fill="#000" opacity=".28"/>
 	<g filter="url(#jsh)">
+		<?php if ( nmo_get( 'jar_handle' ) ) : ?>
 		<path d="M318 150 Q372 150 372 210 Q372 262 326 262" fill="none" stroke="#e9e2cf" stroke-width="18" stroke-linecap="round" opacity=".9"/>
+		<?php endif; ?>
 		<path d="M140 150 Q140 128 168 124 L292 124 Q320 128 320 150 L330 380 Q330 410 300 410 L160 410 Q130 410 130 380 Z" fill="#fff8de" opacity=".55"/>
 		<g clip-path="url(#jarClip)">
 			<rect x="120" y="170" width="230" height="250" fill="url(#oil)"/>
-			<path class="oil-wave" d="M60 172 Q90 160 120 172 T180 172 T240 172 T300 172 T360 172 T420 172 V200 H60 Z" fill="#ffe27a" opacity=".85"/>
+			<path class="oil-wave" d="M60 172 Q90 160 120 172 T180 172 T240 172 T300 172 T360 172 T420 172 V200 H60 Z" fill="<?php echo esc_attr( nmo_shade( $oil, 55 ) ); ?>" opacity=".85"/>
 			<circle class="bubble" cx="170" cy="390" r="4" fill="#fff" opacity=".5"/>
 			<circle class="bubble b2" cx="290" cy="395" r="3" fill="#fff" opacity=".5"/>
 			<circle class="bubble b3" cx="230" cy="400" r="5" fill="#fff" opacity=".4"/>
 		</g>
 		<path d="M140 150 Q140 128 168 124 L292 124 Q320 128 320 150 L330 380 Q330 410 300 410 L160 410 Q130 410 130 380 Z" fill="url(#glass)" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
 		<rect x="190" y="92" width="80" height="36" rx="6" fill="url(#cap)"/>
-		<rect x="186" y="84" width="88" height="14" rx="5" style="fill:var(--accent)"/>
+		<rect x="186" y="84" width="88" height="14" rx="5" fill="<?php echo esc_attr( $cap ); ?>"/>
 		<path d="M196 92 V126 M210 92 V126 M224 92 V126 M238 92 V126 M252 92 V126 M264 92 V126" stroke="#000" stroke-width="2" opacity=".25"/>
-		<rect x="152" y="210" width="156" height="150" rx="14" style="fill:var(--cream);stroke:var(--dark)" stroke-width="3"/>
+		<rect x="152" y="210" width="156" height="150" rx="14" fill="<?php echo esc_attr( nmo_get( 'jar_label_bg' ) ); ?>" style="stroke:var(--dark)" stroke-width="3"/>
 		<rect x="160" y="218" width="140" height="134" rx="10" fill="none" style="stroke:var(--gold)" stroke-width="2" stroke-dasharray="4 4"/>
-		<text x="230" y="246" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--dark)"><?php echo esc_html( $brand ); ?></text>
-		<text x="230" y="272" text-anchor="middle" font-size="17" font-weight="600" style="fill:var(--accent)">সরিষার তেল</text>
-		<text x="230" y="312" text-anchor="middle" font-size="34" font-weight="700" style="fill:var(--accent)">৫ লিটার</text>
-		<text x="230" y="338" text-anchor="middle" font-size="12.5" font-weight="600" style="fill:var(--text)">কাঠের ঘানি • ১ম চাপ</text>
+		<text x="230" y="246" text-anchor="middle" font-size="<?php echo esc_attr( $fit( $brand, 19, 12 ) ); ?>" font-weight="700" style="fill:var(--dark)"><?php echo esc_html( $brand ); ?></text>
+		<text x="230" y="272" text-anchor="middle" font-size="<?php echo esc_attr( $fit( nmo_get( 'jar_label_product' ), 17, 13 ) ); ?>" font-weight="600" style="fill:var(--accent)"><?php echo esc_html( nmo_get( 'jar_label_product' ) ); ?></text>
+		<text x="230" y="312" text-anchor="middle" font-size="<?php echo esc_attr( $fit( nmo_get( 'jar_label_size' ), 34, 7 ) ); ?>" font-weight="700" style="fill:var(--accent)"><?php echo esc_html( nmo_get( 'jar_label_size' ) ); ?></text>
+		<text x="230" y="338" text-anchor="middle" font-size="<?php echo esc_attr( $fit( nmo_get( 'jar_label_sub' ), 12.5, 20 ) ); ?>" font-weight="600" style="fill:var(--text)"><?php echo esc_html( nmo_get( 'jar_label_sub' ) ); ?></text>
 		<rect x="146" y="140" width="10" height="250" rx="5" fill="#fff" opacity=".35"/>
 	</g>
 	<?php
-	foreach ( array( array( 90, 392, 1 ), array( 58, 360, .8 ), array( 380, 395, 1.1 ), array( 408, 358, .75 ), array( 110, 345, .6 ) ) as $i => $f ) {
+	$flowers = nmo_get( 'jar_flowers' ) ? array( array( 90, 392, 1 ), array( 58, 360, .8 ), array( 380, 395, 1.1 ), array( 408, 358, .75 ), array( 110, 345, .6 ) ) : array();
+	foreach ( $flowers as $i => $f ) {
 		printf( '<g class="flower f%4$d" transform="translate(%1$d %2$d) scale(%3$s)"><g>', (int) $f[0], (int) $f[1], esc_attr( $f[2] ), (int) $i );
 		for ( $p = 0; $p < 4; $p++ ) {
 			printf( '<ellipse cx="0" cy="-13" rx="8" ry="13" fill="#ffd43b" stroke="#e6a700" stroke-width="1" transform="rotate(%d)"/>', (int) ( $p * 90 + 45 ) );
@@ -207,9 +217,11 @@ foreach ( nmo_lines( 'section_order' ) as $nmo_section ) :
 			<?php endif; ?>
 		</div>
 		<div class="hero-visual" data-r style="--d:2">
-			<div class="ring" aria-hidden="true"></div>
-			<div class="glow" aria-hidden="true"></div>
-			<div class="hero-img">
+			<?php if ( nmo_get( 'hero_ring' ) ) : ?>
+				<div class="ring" aria-hidden="true"></div>
+				<div class="glow" aria-hidden="true"></div>
+			<?php endif; ?>
+			<div class="hero-img" style="width:<?php echo esc_attr( max( 40, min( 100, (float) nmo_get( 'hero_img_width' ) ) ) ); ?>%">
 				<?php
 				$nmo_hero = nmo_img( 'hero_image', 'large', array( 'loading' => 'eager', 'fetchpriority' => 'high', 'alt' => nmo_get( 'hero_highlight' ) ) );
 				if ( $nmo_hero ) {
