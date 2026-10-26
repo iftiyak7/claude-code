@@ -228,13 +228,14 @@ function nmo_handle_order() {
 		'total'    => $total,
 		'status'   => 'new',
 		'ip'       => $ip,
+		'wc_product' => $pkg['wc'],
 	);
 	foreach ( $meta as $k => $v ) {
 		update_post_meta( $order_id, '_nmo_' . $k, $v );
 	}
 	set_transient( $rate_key, $hits + 1, 10 * MINUTE_IN_SECONDS );
 
-	$wc_id = nmo_maybe_create_wc_order( $pkg, $qty, $zone, $shipping, $meta );
+	$wc_id = nmo_create_wc_order( $meta );
 	if ( $wc_id ) {
 		update_post_meta( $order_id, '_nmo_wc_order', $wc_id );
 	}
@@ -248,47 +249,108 @@ function nmo_handle_order() {
 	) );
 }
 
-function nmo_maybe_create_wc_order( $pkg, $qty, $zone, $shipping, $meta ) {
-	if ( ! nmo_get( 'wc_orders' ) || ! $pkg['wc'] || ! function_exists( 'wc_create_order' ) ) {
+/**
+ * Mirror a landing order into WooCommerce (Cash on Delivery).
+ * Linked to the real product when the package has a WooCommerce product ID,
+ * otherwise added as a named line item so the order still appears there.
+ */
+function nmo_create_wc_order( $meta ) {
+	if ( ! nmo_get( 'wc_orders' ) || ! function_exists( 'wc_create_order' ) ) {
 		return 0;
 	}
-	$product = wc_get_product( $pkg['wc'] );
-	if ( ! $product ) {
-		return 0;
-	}
+	$qty      = max( 1, (int) $meta['qty'] );
+	$subtotal = (float) $meta['subtotal'];
+	$name     = trim( $meta['package'] . ( $meta['weight'] ? ' (' . $meta['weight'] . ')' : '' ) );
+	$product  = ! empty( $meta['wc_product'] ) ? wc_get_product( (int) $meta['wc_product'] ) : null;
+
 	try {
-		$order = wc_create_order();
-		$order->add_product( $product, $qty, array(
-			'subtotal' => $pkg['price'] * $qty,
-			'total'    => $pkg['price'] * $qty,
-		) );
+		$order = wc_create_order( array( 'created_via' => 'nmo-landing' ) );
+		if ( $product ) {
+			$order->add_product( $product, $qty, array(
+				'subtotal' => $subtotal,
+				'total'    => $subtotal,
+			) );
+		} else {
+			$item = new WC_Order_Item_Product();
+			$item->set_name( $name );
+			$item->set_quantity( $qty );
+			$item->set_subtotal( $subtotal );
+			$item->set_total( $subtotal );
+			$order->add_item( $item );
+		}
+
 		$address = array(
 			'first_name' => $meta['name'],
 			'phone'      => $meta['phone'],
 			'address_1'  => $meta['address'],
-			'city'       => $zone['name'],
+			'city'       => $meta['zone'],
 			'country'    => 'BD',
 		);
 		$order->set_address( $address, 'billing' );
 		$order->set_address( $address, 'shipping' );
 
 		$ship = new WC_Order_Item_Shipping();
-		$ship->set_method_title( 'ডেলিভারি: ' . $zone['name'] );
-		$ship->set_total( $shipping );
+		$ship->set_method_title( 'ডেলিভারি: ' . $meta['zone'] );
+		$ship->set_method_id( 'flat_rate' );
+		$ship->set_total( (float) $meta['shipping'] );
 		$order->add_item( $ship );
 
 		$order->set_payment_method( 'cod' );
 		$order->set_payment_method_title( 'Cash on Delivery' );
-		if ( $meta['note'] ) {
+		if ( ! empty( $meta['note'] ) ) {
 			$order->set_customer_note( $meta['note'] );
 		}
 		$order->calculate_totals( false );
-		$order->update_status( 'processing', 'Mustard oil landing page order.' );
+		$order->update_status( 'processing', 'Landing page order.' );
 		return $order->get_id();
 	} catch ( Exception $e ) {
 		return 0;
 	}
 }
+
+/* ---------- Send existing landing orders to WooCommerce ---------- */
+
+add_filter( 'bulk_actions-edit-nmo_order', function ( $actions ) {
+	if ( function_exists( 'wc_create_order' ) ) {
+		$actions['nmo_to_wc'] = 'WooCommerce এ পাঠান';
+	}
+	return $actions;
+} );
+
+add_filter( 'handle_bulk_actions-edit-nmo_order', function ( $redirect, $action, $ids ) {
+	if ( 'nmo_to_wc' !== $action || ! current_user_can( 'edit_posts' ) ) {
+		return $redirect;
+	}
+	$sent = 0;
+	foreach ( $ids as $id ) {
+		if ( get_post_meta( $id, '_nmo_wc_order', true ) ) {
+			continue; // Already in WooCommerce.
+		}
+		$meta = array();
+		foreach ( array( 'name', 'phone', 'address', 'note', 'zone', 'package', 'weight', 'qty', 'subtotal', 'shipping', 'wc_product' ) as $k ) {
+			$meta[ $k ] = get_post_meta( $id, '_nmo_' . $k, true );
+		}
+		if ( ! $meta['wc_product'] ) {
+			foreach ( nmo_packages() as $p ) {
+				if ( $p['name'] === $meta['package'] ) {
+					$meta['wc_product'] = $p['wc'];
+				}
+			}
+		}
+		$wc_id = nmo_create_wc_order( $meta );
+		if ( $wc_id ) {
+			update_post_meta( $id, '_nmo_wc_order', $wc_id );
+			$sent++;
+		}
+	}
+	return add_query_arg( 'nmo_wc_sent', $sent, $redirect );
+}, 10, 3 );
+
+add_action( 'admin_notices', function () {
+	if ( isset( $_GET['nmo_wc_sent'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		printf( '<div class="notice notice-success is-dismissible"><p>%d টি অর্ডার WooCommerce এ পাঠানো হয়েছে। (আগে থেকে পাঠানো অর্ডার আবার পাঠানো হয় না।)</p></div>', absint( $_GET['nmo_wc_sent'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+	}
+} );
 
 function nmo_notify_admin( $order_id, $meta ) {
 	$to = nmo_get( 'notify_email' );

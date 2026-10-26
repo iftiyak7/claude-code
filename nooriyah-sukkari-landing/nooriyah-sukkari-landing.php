@@ -3,7 +3,7 @@
  * Plugin Name:       Nooriyah Sukkari Landing Page
  * Plugin URI:        https://nooriyah.com.bd
  * Description:       সুক্কারি মুফাত্তাল খেজুরের জন্য সুপার-ফাস্ট, মোশন গ্রাফিক্স সহ হাই-কনভার্টিং ল্যান্ডিং পেজ। সব লেখা, ছবি, দাম, রং ও অর্ডার ফর্ম ড্যাশবোর্ড থেকে এডিট করা যায়।
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Nooriyah
@@ -15,12 +15,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NSL_VERSION', '1.0.0' );
+define( 'NSL_VERSION', '1.1.0' );
 define( 'NSL_FILE', __FILE__ );
 define( 'NSL_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NSL_URL', plugin_dir_url( __FILE__ ) );
 define( 'NSL_OPTION', 'nsl_settings' );
 define( 'NSL_TEMPLATE', 'nsl-sukkari-landing.php' );
+
+// Works with WooCommerce's High-Performance Order Storage.
+add_action( 'before_woocommerce_init', function () {
+	if ( class_exists( '\\Automattic\\WooCommerce\\Utilities\\FeaturesUtil' ) ) {
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+	}
+} );
 
 require_once NSL_DIR . 'includes/fields.php';
 require_once NSL_DIR . 'includes/helpers.php';

@@ -145,7 +145,7 @@ function nsl_fields() {
 				'success_text'   => array( 'textarea', 'সফল অর্ডারের মেসেজ', 'খুব শীঘ্রই আমাদের প্রতিনিধি আপনাকে কল করে অর্ডার কনফার্ম করবেন। জরুরি প্রয়োজনে WhatsApp এ যোগাযোগ করুন।' ),
 				'thankyou_url'   => array( 'text', 'অর্ডারের পর অন্য পেজে পাঠাতে চাইলে URL (ঐচ্ছিক)', '' ),
 				'notify_email'   => array( 'text', 'নতুন অর্ডারের ইমেইল যাবে (খালি = অ্যাডমিন ইমেইল)', '' ),
-				'wc_orders'      => array( 'toggle', 'WooCommerce চালু থাকলে অর্ডার WooCommerce এ-ও তৈরি হবে (প্যাকেজে প্রোডাক্ট ID দিলে)', '1' ),
+				'wc_orders'      => array( 'toggle', 'অর্ডার WooCommerce → Orders এ-ও তৈরি হবে (WooCommerce চালু থাকলে; প্যাকেজে প্রোডাক্ট ID দিলে স্টকও কমবে)', '1' ),
 			),
 		),
 		'faq'          => array(

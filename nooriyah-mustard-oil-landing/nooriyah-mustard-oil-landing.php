@@ -3,7 +3,7 @@
  * Plugin Name:       Nooriyah Mustard Oil Landing Page
  * Plugin URI:        https://nooriyah.com.bd
  * Description:       নুরিয়াহ কাঠের ঘানিতে ভাঙানো ১ম চাপের দেশি সরিষার তেল (৫ লিটার) এর জন্য সুপার-ফাস্ট, মোশন গ্রাফিক্স সহ হাই-কনভার্টিং ল্যান্ডিং পেজ। সব লেখা, ছবি, দাম, রং ও অর্ডার ফর্ম ড্যাশবোর্ড থেকে এডিট করা যায়।
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Nooriyah
@@ -15,12 +15,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NMO_VERSION', '1.0.0' );
+define( 'NMO_VERSION', '1.1.0' );
 define( 'NMO_FILE', __FILE__ );
 define( 'NMO_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NMO_URL', plugin_dir_url( __FILE__ ) );
 define( 'NMO_OPTION', 'nmo_settings' );
 define( 'NMO_TEMPLATE', 'nmo-mustard-oil-landing.php' );
+
+// Works with WooCommerce's High-Performance Order Storage.
+add_action( 'before_woocommerce_init', function () {
+	if ( class_exists( '\\Automattic\\WooCommerce\\Utilities\\FeaturesUtil' ) ) {
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+	}
+} );
 
 require_once NMO_DIR . 'includes/fields.php';
 require_once NMO_DIR . 'includes/helpers.php';
