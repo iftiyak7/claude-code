@@ -186,6 +186,8 @@ def init_db():
 SEED_VERSION = 5
 MOVED_KEYS = {4: {'place': ('মসজিদ', 'mosque', 'মন্দির', 'temple')}}   # search words that now belong to another category
 NEW_SUBS = {3: {'hospital': ('doctor', 'homeo')}}     # sub-types added to existing categories, by seed version
+NEW_COORDS = {6: ('m-busstand', 'm-khoyertola')}   # starter entries that got a map position later, by seed version
+NO_COORDS_NOTE = 'ম্যাপে সঠিক অবস্থান এখনো যোগ হয়নি'
 FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
 
 
@@ -219,6 +221,11 @@ def upgrade_seed(c, seed):
                 if not doc.get('contacts'):
                     doc['contacts'] = it['contacts']
                     c.execute('UPDATE listings SET doc=? WHERE id=?', (json.dumps(doc, ensure_ascii=False), it['id']))
+    if v >= 2:                                 # new starter entries (e.g. mosques from OpenStreetMap): added once, never brought back
+        add_new_listings(c, seed, v)
+    for ver, ids in NEW_COORDS.items():
+        if v < ver:
+            fill_coords(c, seed, ids)
     for ver, by_cat in MOVED_KEYS.items():
         if v < ver:
             for x in cats:
@@ -226,6 +233,33 @@ def upgrade_seed(c, seed):
                     x['keys'] = [k for k in x['keys'] if k not in by_cat[x['id']]]
     c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
     c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
+
+
+def add_new_listings(c, seed, v):
+    """Insert starter entries newer than this install's seed. Older ones the admin deleted stay deleted."""
+    now = int(time.time())
+    for it in seed.get('listings', []):
+        if it.get('since', 1) <= v:
+            continue
+        it = {k: x for k, x in it.items() if k != 'since'}
+        c.execute('INSERT OR IGNORE INTO listings (id, doc, review, source, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+                  (it['id'], json.dumps(it, ensure_ascii=False), 'approved', 'seed', now, now))
+
+
+def fill_coords(c, seed, ids):
+    """Give a starter entry its map position, only if the admin has not set one."""
+    by_id = {x['id']: x for x in seed.get('listings', [])}
+    for lid in ids:
+        it, r = by_id.get(lid), c.execute('SELECT doc FROM listings WHERE id=?', (lid,)).fetchone()
+        if not it or it.get('lat') is None or not r:
+            continue
+        doc = json.loads(r['doc'])
+        if doc.get('lat') is not None or doc.get('lng') is not None:
+            continue
+        doc['lat'], doc['lng'] = it['lat'], it['lng']
+        if doc.get('note') == NO_COORDS_NOTE and it.get('note'):
+            doc['note'] = it['note']
+        c.execute('UPDATE listings SET doc=? WHERE id=?', (json.dumps(doc, ensure_ascii=False), lid))
 
 
 def upgrade_v2(c, seed, v):

@@ -115,7 +115,12 @@ android/           Android WebView অ্যাপ (base.apk, build.sh)
 server/sign_apk.py VPS-এ APK সাইন করে
 server/server.py   HTTP সার্ভার + JSON API + SQLite
 server/seed.json   প্রথম চালুতে ডেটাবেসে বসানো প্রাথমিক তথ্য
+server/osm_mosques.py  OpenStreetMap থেকে যশোর পৌরসভার মসজিদ seed.json-এ যোগ করে
 deploy/install.sh  VPS ইনস্টল/আপডেট স্ক্রিপ্ট
 ```
+
+## কৃতজ্ঞতা
+
+কিছু স্থানের (যেমন মসজিদ) নাম ও ম্যাপ-অবস্থান [OpenStreetMap](https://www.openstreetmap.org/copyright) থেকে নেওয়া — © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/) লাইসেন্সে। এসব তালিকার নোটে "অবস্থান: OpenStreetMap" লেখা থাকে।
 
 > Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম, সরকারি অ্যাপ নয়, এবং নিজে কোনো জরুরি সেবা দেয় না।
