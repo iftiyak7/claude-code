@@ -15,6 +15,7 @@ class UpgradeTest(unittest.TestCase):
         try:
             srv.proc.terminate()
             srv.proc.wait(10)
+            srv.proc.stderr.close()
             db = sqlite3.connect(os.path.join(srv.data, 'jashore360.db'))
             areas = json.loads(db.execute("SELECT value FROM settings WHERE key='areas'").fetchone()[0])
             old = [a for a in areas if a not in ('হাইকোর্ট মোড়', 'মণিহার', 'খড়কি')] + ['আমার নিজের এলাকা']
@@ -42,6 +43,40 @@ class UpgradeTest(unittest.TestCase):
             self.assertLess(areas.index('হাইকোর্ট মোড়'), areas.index('ঝিকরগাছা'))
             self.assertNotIn('h-general', {l['id'] for l in d['listings']})
             self.assertTrue(os.listdir(os.path.join(srv.data, 'backups')))
+        finally:
+            srv.stop()
+
+
+class OldUsersTableTest(unittest.TestCase):
+    def test_users_from_before_google_keep_working(self):
+        srv = Server()
+        try:
+            c = srv.client()
+            c.register()
+            uid = c.get('/auth/me')[1]['id']
+            srv.proc.terminate()
+            srv.proc.wait(10)
+            srv.proc.stderr.close()
+            db = sqlite3.connect(os.path.join(srv.data, 'jashore360.db'))
+            db.executescript('''ALTER TABLE users RENAME TO u2;
+                CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT UNIQUE NOT NULL, pass TEXT NOT NULL,
+                  banned INTEGER NOT NULL DEFAULT 0, created_at INTEGER, terms_v INTEGER, terms_at INTEGER);
+                INSERT INTO users SELECT id, name, phone, pass, banned, created_at, terms_v, terms_at FROM u2; DROP TABLE u2;''')
+            db.close()
+            srv.proc = subprocess.Popen([sys.executable, SERVER, '--data', srv.data, '--port', str(srv.port)],
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=srv.env)
+            import time
+            for _ in range(100):
+                try:
+                    me = c.get('/auth/me')[1]
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            self.assertEqual(me['id'], uid)                              # still signed in, same account
+            fresh = srv.client()
+            self.assertEqual(fresh.post('/auth/login', {'phone': c.phone, 'password': c.password})[0], 200)
+            cols = [r[1] for r in sqlite3.connect(os.path.join(srv.data, 'jashore360.db')).execute('PRAGMA table_info(users)')]
+            self.assertIn('google_sub', cols)
         finally:
             srv.stop()
 

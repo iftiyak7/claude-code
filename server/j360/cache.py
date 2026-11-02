@@ -54,6 +54,7 @@ def bootstrap_payload():
                 d['rating'], d['reviews'] = ratings[r['id']]
             listings.append(d)
         out = {k: get_setting(c, k) for k in SETTING_KEYS}
+        out['google'] = get_setting(c, 'google')
         aliases = {r['old']: r['new'] for r in c.execute('SELECT old, new FROM aliases')}
         offers = {}
         for r in c.execute("SELECT listing_id, COUNT(*) FROM coupons WHERE status='active' AND audience='public' AND (starts IS NULL OR starts<=?) "
@@ -72,6 +73,8 @@ def bootstrap_payload():
     out['classifiedCounts'] = counts
     out['aliases'] = aliases
     out['offers'] = offers
+    g = out.pop('google', None) or {}
+    out['googleLogin'] = bool(g.get('enabled') and g.get('clientId') and g.get('clientSecret'))   # never the keys themselves
     out['home'] = home
     out['v'] = v
     raw = json.dumps(out, ensure_ascii=False, separators=(',', ':')).encode()

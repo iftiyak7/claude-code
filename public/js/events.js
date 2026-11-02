@@ -155,7 +155,8 @@ export function init() {
       }
       if (f.dataset.profile != null) {
         const v = Object.fromEntries(new FormData(f));
-        await api('/my/profile', v, 'PUT'); S.ME.name = v.name; toast(T('সংরক্ষণ হয়েছে')); return render();
+        if (v.phone) v.phone = toLatin(v.phone);
+        await api('/my/profile', v, 'PUT'); S.ME = await api('/auth/me'); toast(T('সংরক্ষণ হয়েছে')); return render();
       }
       if (f.dataset.addlisting) {
         const fd = new FormData(f), v = Object.fromEntries(fd), [cat, sub] = (v.catsub || '|').split('|');

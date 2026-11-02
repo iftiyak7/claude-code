@@ -229,7 +229,7 @@ def adm_users(h):
             counts.setdefault(r[0], {})['classifieds'] = r[1]
         for r in c.execute('SELECT user_id, COUNT(*) FROM reviews WHERE user_id IS NOT NULL GROUP BY user_id'):
             counts.setdefault(r[0], {})['reviews'] = r[1]
-        rows = [dict(r, **counts.get(r['id'], {})) for r in c.execute('SELECT id, name, phone, banned, created_at FROM users ORDER BY id DESC LIMIT 2000')]
+        rows = [dict(r, **counts.get(r['id'], {})) for r in c.execute('SELECT id, name, phone, email, google_sub IS NOT NULL AS google, banned, created_at FROM users ORDER BY id DESC LIMIT 2000')]
     h.json(rows)
 
 

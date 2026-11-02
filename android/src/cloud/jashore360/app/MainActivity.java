@@ -31,6 +31,8 @@ import android.widget.TextView;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -42,6 +44,7 @@ import java.util.Set;
 public class MainActivity extends Activity {
     private static final int REQ_FILE = 1;
     private static final int REQ_LOCATION = 2;
+    private static final String PREFS = "jashore360";
 
     private WebView web;
     private ProgressBar bar;
@@ -83,6 +86,7 @@ public class MainActivity extends Activity {
         setupWeb();
         if (state != null) web.restoreState(state);
         Uri link = getIntent().getData();
+        if (finishGoogleSignIn(link)) return;
         if (state == null || web.getUrl() == null) web.loadUrl(link != null && isOwn(link) ? link.toString() : home);
     }
 
@@ -104,6 +108,10 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Uri u = Uri.parse(url);
+                if (isOwn(u) && u.getPath() != null && u.getPath().startsWith("/api/auth/google/start")) {
+                    startGoogleSignIn(u);
+                    return true;
+                }
                 if (isOwn(u) && !u.getPath().startsWith("/download/")) return false;
                 openExternal(u);
                 return true;
@@ -215,6 +223,47 @@ public class MainActivity extends Activity {
         return box;
     }
 
+    /*
+     * Google does not allow signing in inside a WebView, so sign-in runs in the phone's browser. A random secret is kept here;
+     * the server only learns its SHA-256, and when the browser sends us back a one-time code we redeem it together with the
+     * secret. Another app that catches the jashore360:// link cannot use the code without the secret.
+     */
+    private void startGoogleSignIn(Uri start) {
+        byte[] raw = new byte[32];
+        new SecureRandom().nextBytes(raw);
+        String secret = hex(raw);
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString("gsecret", secret).apply();
+        openExternal(start.buildUpon().appendQueryParameter("app", sha256(secret)).build());
+    }
+
+    private boolean finishGoogleSignIn(Uri link) {
+        if (link == null || !"jashore360".equals(link.getScheme()) || !"auth".equals(link.getHost())) return false;
+        String code = link.getQueryParameter("code");
+        String secret = getSharedPreferences(PREFS, MODE_PRIVATE).getString("gsecret", null);
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().remove("gsecret").apply();
+        Uri base = Uri.parse(home);
+        if (code == null || secret == null) {
+            web.loadUrl(home);
+            return true;
+        }
+        web.loadUrl(base.getScheme() + "://" + base.getAuthority() + "/api/auth/google/finish?code=" + Uri.encode(code) + "&s=" + secret);
+        return true;
+    }
+
+    private static String sha256(String s) {
+        try {
+            return hex(MessageDigest.getInstance("SHA-256").digest(s.getBytes("UTF-8")));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String hex(byte[] b) {
+        StringBuilder sb = new StringBuilder();
+        for (byte x : b) sb.append(String.format("%02x", x & 0xff));
+        return sb.toString();
+    }
+
     private boolean isOwn(Uri u) {
         String scheme = u.getScheme();
         String h = u.getHost();
@@ -302,6 +351,7 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         Uri link = intent.getData();
+        if (finishGoogleSignIn(link)) return;
         if (link != null && isOwn(link)) web.loadUrl(link.toString());
     }
 

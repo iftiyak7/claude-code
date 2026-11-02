@@ -64,6 +64,11 @@ class Server:
         return c
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kw):
+        return None
+
+
 class Client:
     """Keeps cookies like a browser. Each client looks like a different visitor (its own address)."""
 
@@ -71,11 +76,13 @@ class Client:
         self.base, self.ip = base, ip
         self.jar = http.cookiejar.CookieJar()
         self.op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar), urllib.request.ProxyHandler({}))
+        self.nofollow = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar), urllib.request.ProxyHandler({}), NoRedirect)
 
-    def raw(self, method, path, data=None, headers=None):
+    def raw(self, method, path, data=None, headers=None, follow=True):
         req = urllib.request.Request(self.base + path, data=data, method=method, headers={'X-Real-IP': self.ip, **(headers or {})})
+        op = self.op if follow else self.nofollow
         try:
-            with self.op.open(req, timeout=20) as r:
+            with op.open(req, timeout=20) as r:
                 return r.status, r.read(), r.headers
         except urllib.error.HTTPError as e:
             return e.code, e.read(), e.headers

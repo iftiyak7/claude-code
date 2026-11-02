@@ -28,8 +28,11 @@ CREATE TABLE IF NOT EXISTS admins (id INTEGER PRIMARY KEY, username TEXT UNIQUE 
 CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, admin_id INTEGER NOT NULL, expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, admin TEXT, action TEXT, target TEXT, at INTEGER);
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT UNIQUE NOT NULL, pass TEXT NOT NULL,
-  banned INTEGER NOT NULL DEFAULT 0, created_at INTEGER);
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT UNIQUE, pass TEXT,
+  banned INTEGER NOT NULL DEFAULT 0, created_at INTEGER, terms_v INTEGER, terms_at INTEGER, google_sub TEXT UNIQUE, email TEXT);
+CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, verifier TEXT NOT NULL, mode TEXT NOT NULL, user_id INTEGER,
+  app_hash TEXT, terms INTEGER, created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS oauth_codes (code TEXT PRIMARY KEY, user_id INTEGER NOT NULL, app_hash TEXT NOT NULL, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS usessions (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY, user_id INTEGER, listing_id TEXT, plan_id TEXT, amount INTEGER, method TEXT, trx TEXT, sender TEXT,
@@ -55,6 +58,19 @@ MIGRATIONS = [('listings', 'owner_id', 'INTEGER'), ('listings', 'plan', 'TEXT'),
               ('admins', 'totp', 'TEXT')]
 
 
+def users_allow_google(c):
+    """Older installs require a phone number and a password for every user; a Google account may have neither.
+    SQLite cannot drop NOT NULL, so the table is copied once into the new shape (ids, sessions and everything else stay)."""
+    cols = {r[1]: r for r in c.execute('PRAGMA table_info(users)')}
+    if not cols['phone'][3] and 'google_sub' in cols:
+        return
+    keep = [k for k in ('id', 'name', 'phone', 'pass', 'banned', 'created_at', 'terms_v', 'terms_at') if k in cols]
+    c.execute('ALTER TABLE users RENAME TO users_old')
+    c.executescript(SCHEMA)
+    c.execute(f'INSERT INTO users ({", ".join(keep)}) SELECT {", ".join(keep)} FROM users_old')
+    c.execute('DROP TABLE users_old')
+
+
 def init_db():
     for d in (config.DATA, config.UPLOADS, config.DOWNLOADS):
         os.makedirs(d, exist_ok=True)
@@ -62,6 +78,7 @@ def init_db():
     with db() as c:
         c.execute('PRAGMA journal_mode=WAL')
         c.executescript(SCHEMA)
+        users_allow_google(c)
         for table, col, decl in MIGRATIONS:
             if not any(r[1] == col for r in c.execute(f'PRAGMA table_info({table})')):
                 c.execute(f'ALTER TABLE {table} ADD COLUMN {col} {decl}')

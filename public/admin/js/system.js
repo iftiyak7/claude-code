@@ -19,7 +19,7 @@ export const AUDIT = { login: 'লগইন', 'listing.create': 'নতুন �
   'settings.site': 'সেটিংস পরিবর্তন', 'settings.areas': 'এলাকা পরিবর্তন', 'settings.categories': 'ক্যাটাগরি পরিবর্তন', 'settings.ads': 'বিজ্ঞাপন পরিবর্তন',
   'settings.notices': 'ঘোষণা পরিবর্তন', 'settings.plans': 'প্যাকেজ পরিবর্তন', 'settings.payment': 'পেমেন্ট নম্বর পরিবর্তন', 'admin.add': 'নতুন অ্যাডমিন',
   'admin.delete': 'অ্যাডমিন মুছে ফেলা', 'admin.password': 'পাসওয়ার্ড পরিবর্তন',
-  'admin.2fa.on': '2FA চালু', 'admin.2fa.off': '2FA বন্ধ', 'login.fail': '⚠ ভুল লগইন চেষ্টা', 'payment.verify': 'পেমেন্ট যাচাই', 'payment.reject': 'পেমেন্ট বাতিল',
+  'admin.2fa.on': '2FA চালু', 'settings.google': 'Google লগইন সেটিং', 'admin.2fa.off': '2FA বন্ধ', 'login.fail': '⚠ ভুল লগইন চেষ্টা', 'payment.verify': 'পেমেন্ট যাচাই', 'payment.reject': 'পেমেন্ট বাতিল',
   'classified.approved': 'বিজ্ঞাপন অনুমোদন', 'classified.rejected': 'বিজ্ঞাপন বাতিল', 'classified.delete': 'বিজ্ঞাপন মুছে ফেলা', 'user.ban': 'ব্যবহারকারী বন্ধ',
   'user.unban': 'ব্যবহারকারী চালু', 'user.reset': 'ব্যবহারকারীর পাসওয়ার্ড রিসেট', 'app.release': 'নতুন অ্যাপ ভার্সন' };
 
@@ -51,7 +51,7 @@ export function init() {
   /* ---------------- settings & admins ---------------- */
   pages.settings = async () => {
     await load();
-    const s = S.settings.site || {};
+    const s = S.settings.site || {}, g = owner() ? await api('/admin/google') : null;
     const F = [['name', 'text', 'অ্যাপের নাম'], ['tagline', 'text', 'ট্যাগলাইন'], ['taglineEn', 'text', 'ট্যাগলাইন (English)'], ['headline', 'text', 'হোমপেজের শিরোনাম'],
       ['headlineEn', 'text', 'হোমপেজের শিরোনাম (English)'], ['hotline', 'text', 'প্রধান জরুরি নম্বর', 'হোম ও জরুরি পেজের বড় কল বাটন'], ['hotlineNote', 'text', 'জরুরি নম্বরের বিবরণ'],
       ['hotlineNoteEn', 'text', 'জরুরি নম্বরের বিবরণ (English)'], ['contactPhone', 'text', 'যোগাযোগের ফোন'], ['contactEmail', 'text', 'যোগাযোগের ইমেইল'], ['facebook', 'text', 'ফেসবুক পেজ লিংক'],
@@ -67,9 +67,20 @@ export function init() {
         <textarea name="areas" rows="16">${esc((S.settings.areas || []).map(a => S.settings.areaGeo?.[a] ? `${a} = ${S.settings.areaGeo[a].join(', ')}` : a).join('\n'))}</textarea>
         <em>${T('চাইলে এলাকার কেন্দ্রের লোকেশন দিন: নিউমার্কেট = 23.1712, 89.2143 — এলাকা বাছলে দূরত্ব এখান থেকে মাপা হবে। না দিলে সেই এলাকার তালিকাগুলোর গড় অবস্থান ধরা হয়।')}</em>
         <em>${T('শহরের এলাকায় (যেমন হাইকোর্ট মোড়) লোকেশন দিলে, এলাকা না লেখা থাকলেও ১.২ কিমির মধ্যের সব তথ্য সেই এলাকায় দেখাবে। Google Maps-এ জায়গায় রাইট-ক্লিক করলে সংখ্যা দুটো পাবেন।')}</em></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
+        ${g ? `<form class="card" data-google><h3>${T('Google দিয়ে লগইন')}</h3><div class="cbody form">
+          <ol class="steps"><li>${T('console.cloud.google.com → নতুন প্রজেক্ট → APIs & Services → OAuth consent screen পূরণ করুন (অ্যাপের নাম, ইমেইল, লোগো)।')}</li>
+            <li>${T('Credentials → Create credentials → OAuth client ID → Web application।')}</li>
+            <li>${T('"Authorized redirect URIs"-এ ঠিক এটি দিন:')}<p class="bigpw" style="font-size:13px;letter-spacing:0;user-select:all">${esc(g.redirectUri)}</p></li>
+            <li>${T('Client ID ও Client Secret নিচে বসিয়ে চালু করুন।')}</li></ol>
+          <label class="field"><span>Client ID</span><input name="clientId" value="${esc(g.clientId)}" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false"></label>
+          <label class="field"><span>Client Secret</span><input name="clientSecret" type="password" autocomplete="new-password" placeholder="${g.hasSecret ? T('বসানো আছে — বদলাতে নতুনটি দিন') : ''}"></label>
+          <label class="check"><input type="checkbox" name="enabled" ${g.enabled ? 'checked' : ''}><span>${T('অ্যাপ ও ওয়েবসাইটে "Google দিয়ে লগইন" দেখান')}</span></label>
+          <div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>` : ''}
         <div class="card"><h3>${T('ব্যাকআপ')}</h3><div class="cbody"><p class="muted" style="margin-top:0">${T('সব তালিকা, রিভিউ, পেমেন্ট, ব্যবহারকারী ও সেটিংস একটি ফাইলে ডাউনলোড করুন। নিয়মিত ব্যাকআপ রাখুন।')}</p>
           <p class="muted">${icon('shield', 14)} ${T('সার্ভার নিজেও প্রতিদিন ডাটাবেসের একটি কপি রাখে (শেষ ১৪ দিনের)।')}</p>
           <a class="btn dark" href="/api/admin/export">${icon('download', 18)}${T('ব্যাকআপ ডাউনলোড')}</a></div></div></div></div>`);
+    const gf = root.querySelector('[data-google]');
+    if (gf) gf.onsubmit = async e => { e.preventDefault(); await run(() => api('/admin/google', { clientId: gf.clientId.value.trim(), clientSecret: gf.clientSecret.value.trim(), enabled: gf.enabled.checked }, 'PUT'), 'সংরক্ষণ হয়েছে'); route(); };
     root.querySelector('[data-site]').onsubmit = async e => { e.preventDefault(); await saveSetting('site', { ...s, ...readFields(e.target, F) }); };
     root.querySelector('[data-areas]').onsubmit = async e => {
       e.preventDefault();

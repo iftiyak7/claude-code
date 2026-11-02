@@ -81,9 +81,17 @@ def my_profile(h):
         raise ApiError(400, 'নাম দিন')
     with db() as c:
         c.execute('UPDATE users SET name=? WHERE id=?', (name, h.me['id']))
+        if b.get('phone') and not h.me['phone']:          # an account made with Google adds its mobile number once
+            phone = norm_phone(b.get('phone'))
+            if not phone:
+                raise ApiError(400, 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)')
+            try:
+                c.execute('UPDATE users SET phone=? WHERE id=?', (phone, h.me['id']))
+            except sqlite3.IntegrityError:
+                raise ApiError(409, 'এই নম্বরে আরেকটি অ্যাকাউন্ট আছে')
         if b.get('newPassword'):
             u = c.execute('SELECT pass FROM users WHERE id=?', (h.me['id'],)).fetchone()
-            if not check_pw(str(b.get('password') or ''), u['pass']):
+            if u['pass'] and not check_pw(str(b.get('password') or ''), u['pass']):    # Google-only accounts have none yet
                 raise ApiError(400, 'বর্তমান পাসওয়ার্ড ভুল')
             weak_password(str(b['newPassword']), h.me['phone'])
             c.execute('UPDATE users SET pass=? WHERE id=?', (hash_pw(b['newPassword']), h.me['id']))

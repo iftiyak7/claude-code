@@ -568,3 +568,11 @@ html, body { overscroll-behavior-y: contain; }
 .cedit input { min-height: 44px !important; padding: 10px 12px !important; font-size: 14px !important; }
 .cedit input[data-cf="phone"] { grid-column: 1 / 3; }
 .cedit [data-rmcrow] { grid-row: 1 / 3; grid-column: 3; align-self: center; width: 40px; height: 40px; border-radius: 12px; border: 0; background: var(--bg); color: var(--muted); display: grid; place-items: center; }
+
+/* Google sign-in */
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 52px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font-weight: 600; font-size: 15px; text-decoration: none; margin: 0 0 14px; }
+.gbtn:active { transform: scale(.99); }
+.ordiv { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; margin: 4px 0 16px; }
+.ordiv::before, .ordiv::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.gline { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }

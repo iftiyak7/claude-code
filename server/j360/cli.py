@@ -5,7 +5,7 @@ import secrets
 import threading
 import time
 from http.server import ThreadingHTTPServer
-from . import api_account, api_admin_auth, api_admin_content, api_admin_system, api_coupons, api_public
+from . import api_account, api_admin_auth, api_admin_content, api_admin_system, api_coupons, api_google, api_public
 from . import config
 from .api_admin_system import store_apk
 from .backup import backup_loop, make_backup
@@ -17,7 +17,7 @@ from .web import Handler
 
 
 # Importing the API modules registers their routes.
-API = (api_public, api_account, api_coupons, api_admin_auth, api_admin_content, api_admin_system)
+API = (api_public, api_account, api_google, api_coupons, api_admin_auth, api_admin_content, api_admin_system)
 
 
 def main():

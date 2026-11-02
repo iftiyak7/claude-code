@@ -104,6 +104,9 @@ class Handler(BaseHTTPRequestHandler):
         if not self._head:
             self.wfile.write(body)
 
+    def redirect(self, location):
+        self.send(302, b'', 'text/plain', {'Location': location, 'Cache-Control': 'no-store'})
+
     def json(self, obj, status=200, headers=None):
         raw = json.dumps(obj, ensure_ascii=False, separators=(',', ':')).encode()
         h = {'Cache-Control': 'no-store'}
@@ -160,7 +163,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def user(self):
         u = self.session_lookup('j360u', 'usessions', 'user_id', 'users')
-        return {'id': u['id'], 'name': u['name'], 'phone': u['phone']} if u and not u['banned'] else None
+        return {'id': u['id'], 'name': u['name'], 'phone': u['phone'], 'email': u['email'], 'google': bool(u['google_sub']),
+                'hasPassword': bool(u['pass'])} if u and not u['banned'] else None
 
     def start_session(self, table, col, uid, cookie, same_site):
         tok = secrets.token_urlsafe(32)
