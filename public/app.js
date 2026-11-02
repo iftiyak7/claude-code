@@ -177,7 +177,7 @@
     if (!o || it.lat == null || it.lng == null) return null;
     return dist(o, it);
   }
-  const fromWhere = () => { const o = origin(); return !o ? '' : o.gps ? T('আপনার থেকে') : T('{a} থেকে', { a: areaName(o.area) }); };
+  const fromWhere = () => { const o = origin(); return !o ? '' : o.gps ? T('আপনার থেকে') : T('{a} থেকে', { a: esc(areaName(o.area)) }); };
   const kmText = k => k == null ? '' : k < 1 ? T('{n} মি.', { n: num(Math.round(k * 20) * 50) }) : T('{n} কিমি', { n: num(k.toFixed(k < 10 ? 1 : 0)) });
   const mq = it => encodeURIComponent([it.nameEn || it.name, it.address, it.area, 'Jashore', 'Bangladesh'].filter(Boolean).join(', '));
   const ll = it => it.lat != null && it.lng != null ? `${it.lat},${it.lng}` : null;
@@ -311,15 +311,17 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
   function adImpressions() {
     app.querySelectorAll('[data-ad]').forEach(el => { const id = el.dataset.ad; if (!seenAds.has(id)) { seenAds.add(id); beacon('/adtrack', { id, type: 'imp' }); } });
   }
+  // Ad links may only point into the app, to a phone number or to a web page.
+  const safeLink = l => /^(#\/|tel:\+?[\d-]+$|https?:\/\/)/.test(l || '') ? l : '#/';
   function adCard(a, cls = 'banner') {
-    const ext = /^https?:/.test(a.link || '');
-    const tgt = `data-ad="${esc(a.id)}" href="${esc(a.link || '#/')}" ${ext ? 'target="_blank" rel="noopener sponsored"' : ''}`;
+    const link = safeLink(a.link), ext = /^https?:/.test(link);
+    const tgt = `data-ad="${esc(a.id)}" href="${esc(link)}" ${ext ? 'target="_blank" rel="noopener sponsored"' : ''}`;
     if (a.image && (a.layout === 'full' || a.layout === 'fulltext')) {
       return `<a class="${cls} full ${a.layout}" ${tgt}><img src="${esc(a.image)}" alt="${esc(loc(a, 'title'))}" loading="lazy">
         ${a.layout === 'fulltext' ? `<div class="btext">${loc(a, 'kicker') ? `<small>${esc(loc(a, 'kicker'))}</small>` : ''}<h3>${esc(loc(a, 'title'))}</h3>${loc(a, 'subtitle') ? `<p>${esc(loc(a, 'subtitle'))}</p>` : ''}</div>
         ${loc(a, 'cta') ? `<span class="bcta">${esc(loc(a, 'cta'))}</span>` : ''}` : ''}</a>`;
     }
-    return `<a class="${cls} ${esc(a.theme || 'dark')}" data-ad="${esc(a.id)}" href="${esc(a.link || '#/')}" ${ext ? 'target="_blank" rel="noopener sponsored"' : ''}>
+    return `<a class="${cls} ${esc(a.theme || 'dark')}" ${tgt}>
       ${a.image ? `<img class="bimg" src="${esc(a.image)}" alt="" loading="lazy">` : `<span class="deco">${icon(a.link?.startsWith('tel:') ? 'phone' : a.link === '#/add' ? 'store' : 'sparkle', 150)}</span>`}
       <div class="btext">${loc(a, 'kicker') ? `<small>${esc(loc(a, 'kicker'))}</small>` : ''}<h3>${esc(loc(a, 'title'))}</h3>${loc(a, 'subtitle') ? `<p>${esc(loc(a, 'subtitle'))}</p>` : ''}</div>
       ${loc(a, 'cta') ? `<span class="bcta">${esc(loc(a, 'cta'))}</span>` : ''}</a>`;
@@ -492,7 +494,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
   const ctxbar = (shown, total, nearMode) => {
     const a = ls.get('area', '');
     return `<div class="ctxbar"><span class="ib">${icon(here ? 'nav' : 'pin', 17)}</span><div><b>${esc(here && nearMode ? T('আপনার লোকেশন') : a ? areaName(a) : T('পুরো যশোর'))}</b>
-      <small>${nearMode ? (here ? T('আপনার লোকেশন থেকে দূরত্ব — কাছেরগুলো আগে') : T('{a} থেকে দূরত্ব — কাছেরগুলো আগে', { a: areaName(a) })) : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
+      <small>${nearMode ? (here ? T('আপনার লোকেশন থেকে দূরত্ব — কাছেরগুলো আগে') : T('{a} থেকে দূরত্ব — কাছেরগুলো আগে', { a: esc(areaName(a)) })) : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
       ${a ? `<button class="linkbtn" data-clrarea>${T('সব এলাকা')}</button>` : ''}<button class="chipbtn" data-areasheet>${T(a ? 'বদলান' : 'এলাকা বাছুন')}</button></div>`;
   };
 
@@ -613,7 +615,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
 
     ${adStrip('inline')}
 
-    <section class="sec"><div class="sechead"><h2>${o && !o.gps ? T('{a}-এর কাছাকাছি', { a: areaName(o.area) }) : T('আপনার কাছাকাছি')}</h2>${here ? `<button class="linkbtn" data-locate>${icon('refresh', 14)} ${T('রিফ্রেশ')}</button>` : ''}</div>
+    <section class="sec"><div class="sechead"><h2>${o && !o.gps ? T('{a}-এর কাছাকাছি', { a: esc(areaName(o.area)) }) : T('আপনার কাছাকাছি')}</h2>${here ? `<button class="linkbtn" data-locate>${icon('refresh', 14)} ${T('রিফ্রেশ')}</button>` : ''}</div>
       <div class="nearchips">${nearChips.map(([c, sub, ic, t]) => `<a href="#/c/${c}?${sub ? 'sub=' + sub + '&' : ''}sort=near"><span>${icon(ic, 20)}</span>${T(t)}</a>`).join('')}</div>
       ${o ? `<div class="rows">${near.map(row).join('')}</div>` :
         `<div class="locask"><button class="row" style="border:0;text-align:left" data-locate><span class="media" style="--c:#0e9f6e;width:52px;height:52px"><span class="gen"><span class="ring" style="width:70%">${icon('nav', 24)}</span></span></span>
@@ -815,7 +817,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       <div class="count"><span>${T('{n}টি বিজ্ঞাপন', { n: num(rows.length) })}</span>
         <select data-adsort aria-label="${T('সাজানো')}">${[['', 'নতুন আগে'], ['low', 'কম দাম আগে'], ['high', 'বেশি দাম আগে'], ['near', 'কাছাকাছি']].map(([x, v]) => `<option value="${x}" ${x === sort ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
       ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>' : `<div class="rows">${rows.map(crow).join('') ||
-        (area && list.length ? empty(T('{a}-এ এখনো কোনো বিজ্ঞাপন নেই', { a: areaName(area) }), T('অন্য এলাকা বা পুরো যশোর দেখুন।'), `<button class="btn sm" data-clrarea>${T('পুরো যশোর দেখুন')}</button>`, k.icon)
+        (area && list.length ? empty(T('{a}-এ এখনো কোনো বিজ্ঞাপন নেই', { a: esc(areaName(area)) }), T('অন্য এলাকা বা পুরো যশোর দেখুন।'), `<button class="btn sm" data-clrarea>${T('পুরো যশোর দেখুন')}</button>`, k.icon)
         : empty(T('এখনো কোনো বিজ্ঞাপন নেই'), T('প্রথম বিজ্ঞাপনটি আপনিই দিন — সম্পূর্ণ ফ্রি।'), `<a class="btn sm" href="#/post/${kind}">${T('বিজ্ঞাপন দিন')}</a>`, k.icon))}</div>`}
       ${list?.length ? disclaimer('classified') : ''}
       <a class="bizcta" href="#/post/${kind}"><span>${icon('megaphone', 22)}</span><div><b>${T('ফ্রি বিজ্ঞাপন দিন')}</b><small>${T('অ্যাডমিন যাচাইয়ের পর {n} দিন দেখাবে', { n: num(30) })}</small></div>${icon('chevR', 18)}</a>`;

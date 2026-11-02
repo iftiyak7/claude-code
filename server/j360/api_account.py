@@ -257,6 +257,8 @@ def my_get_listing(h, lid):
 def my_edit_listing(h, lid):
     """Owners can edit any time. A published (or rejected) listing goes back to the admin for approval."""
     b = h.body()
+    if not rate_ok('edit:%d' % h.me['id'], 60, 86400):
+        raise ApiError(429, 'আজ অনেকবার সম্পাদনা হয়েছে, পরে চেষ্টা করুন')
     with db() as c:
         r = c.execute('SELECT * FROM listings WHERE id=? AND owner_id=?', (lid, h.me['id'])).fetchone()
     if not r:
@@ -279,6 +281,8 @@ def my_edit_listing(h, lid):
 def my_edit_classified(h, cid):
     """Edit before or after approval; every edit needs the admin's approval again."""
     b = h.body()
+    if not rate_ok('edit:%d' % h.me['id'], 60, 86400):
+        raise ApiError(429, 'আজ অনেকবার সম্পাদনা হয়েছে, পরে চেষ্টা করুন')
     with db() as c:
         r = c.execute('SELECT * FROM classifieds WHERE id=? AND user_id=?', (cid, h.me['id'])).fetchone()
     if not r:

@@ -31,9 +31,17 @@ def route(method, pattern, auth=None):
     return deco
 
 
+def content_length(headers):
+    try:
+        return max(0, int(headers.get('Content-Length') or 0))
+    except ValueError:
+        return -1
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = 'Jashore360'
     protocol_version = 'HTTP/1.1'
+    timeout = 30                    # a connection that sends nothing for this long is closed (no thread is held forever)
 
     def log_message(self, fmt, *args):
         if os.environ.get('J360_LOG'):
@@ -119,7 +127,9 @@ class Handler(BaseHTTPRequestHandler):
         return getattr(self, '_device', d)
 
     def body(self):
-        n = int(self.headers.get('Content-Length') or 0)
+        n = content_length(self.headers)
+        if n < 0:
+            raise ApiError(400, 'অনুরোধ সঠিক নয়')
         if n > MAX_BODY:
             raise ApiError(413, 'অনুরোধ অনেক বড়')
         self._consumed = True
@@ -186,6 +196,8 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(url.path)
         self.query = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
+            if path.startswith('/api/') and method != 'GET' and not self.same_origin():
+                raise ApiError(403, 'অনুমোদিত নয়')
             if path.startswith('/api/'):
                 for m, rx, auth, fn in ROUTES:
                     mt = rx.match(path[4:])
@@ -221,12 +233,22 @@ class Handler(BaseHTTPRequestHandler):
                 pass
         finally:
             # Unread request bodies would be parsed as the start of the next request on a kept-alive connection.
-            n = int(self.headers.get('Content-Length') or 0)
-            if n and not self._consumed:
+            n = content_length(self.headers)
+            if n < 0:
+                self.close_connection = True
+            elif n and not self._consumed:
                 if n <= MAX_BODY:
                     self.rfile.read(n)
                 else:
                     self.close_connection = True
+
+    def same_origin(self):
+        # Browsers say which site a request comes from. Changes are only accepted from this site's own pages
+        # (cookies are SameSite as well; this is the second lock on the same door). Apps and scripts send no Origin.
+        origin = self.headers.get('Origin')
+        if not origin or origin == 'null' and not self.headers.get('Cookie'):
+            return True
+        return urlparse(origin).netloc.lower() == (self.headers.get('Host') or '').lower()
 
     def download_apk(self):
         with db() as c:
@@ -268,6 +290,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Accept-Ranges', 'bytes')
         self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
         self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "default-src 'none'; sandbox")    # an upload is only ever shown, never run
         if status == 206:
             self.send_header('Content-Range', 'bytes %d-%d/%d' % (start, end, size))
         self.end_headers()

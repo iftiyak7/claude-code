@@ -11,7 +11,7 @@ from .maps import coords_from_text, map_host_ok, resolve_map_link
 from .media import save_image
 from .records import classified_out, review_row
 from .security import rate_ok
-from .store import db, inc, resolve_lid
+from .store import db, get_setting, inc, resolve_lid
 from .util import ApiError, new_id, s, to_int, today
 from .web import route
 
@@ -151,6 +151,8 @@ def api_adtrack(h):
     aid = s(b.get('id'), 40)
     if col and aid and rate_ok(f'ad:{h.who()}:{aid}:{col}', 20 if col == 'imps' else 5, 3600):
         with db() as c:
+            if aid not in {a.get('id') for a in get_setting(c, 'ads') or []}:
+                return h.json({'ok': True})        # only real ads are counted
             c.execute(f'INSERT INTO adstats (id, {col}) VALUES (?,1) ON CONFLICT(id) DO UPDATE SET {col}={col}+1', (aid,))
             if col == 'clicks':
                 inc(c, 'adclicks')

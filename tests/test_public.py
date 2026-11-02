@@ -52,6 +52,22 @@ class PublicTest(ServerTest):
         st, _, _ = c.raw('POST', '/api/my/listings', b'name=x&cat=place', {'Content-Type': 'application/x-www-form-urlencoded'})
         self.assertIn(st, (400, 415))
 
+    def test_other_sites_cannot_send_changes(self):
+        c = self.srv.client()
+        c.register()
+        st, _ = c.call('POST', '/auth/logout', {}, {'Origin': 'https://evil.example'})
+        self.assertEqual(st, 403)
+        self.assertIsNotNone(self.ok(c.get('/auth/me')))         # still signed in
+        host = c.base.split('//')[1]
+        self.ok(c.call('POST', '/auth/logout', {}, {'Origin': 'http://' + host}))
+
+    def test_bad_request_sizes(self):
+        c = self.srv.client()
+        for bad in ('-1', 'abc'):
+            st, _, _ = c.raw('POST', '/api/reports', b'{}', {'Content-Type': 'application/json', 'Content-Length': bad})
+            self.assertIn(st, (400, 411, 413), bad)
+        self.ok(c.get('/bootstrap'))                              # the server is still fine
+
     def test_reviews_need_an_account(self):
         st, _ = self.srv.client().post('/reviews', {'listing': 'h-general', 'stars': 5})
         self.assertEqual(st, 401)

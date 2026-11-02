@@ -54,6 +54,9 @@ _hits = {}
 def rate_ok(key, limit, window):
     now = time.time()
     with _lock:
+        if len(_hits) > 50000:         # forget finished windows so many different keys cannot fill the memory
+            for k in [k for k, q in _hits.items() if not q or now - q[-1] > 86400]:
+                del _hits[k]
         q = [t for t in _hits.get(key, []) if now - t < window]
         ok = len(q) < limit
         if ok:

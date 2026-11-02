@@ -137,6 +137,8 @@ def check_code(c, code, owner_uid=None):
 @route('POST', '/my/coupons/check', auth='user')
 def my_check(h):
     b = h.body()
+    if not rate_ok('cpcheck:%d' % h.me['id'], 60, 3600):      # codes cannot be guessed by trying many
+        raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, পরে আবার চেষ্টা করুন')
     with db() as c:
         r, info = check_code(c, b.get('code'), h.me['id'])
         if b.get('redeem'):
