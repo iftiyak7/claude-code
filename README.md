@@ -118,14 +118,31 @@ python3 server/server.py --data ./data ensure-admin   # প্রথম অ্�
 ## কাঠামো
 
 ```
-public/            ল্যান্ডিং (index.html, landing.*), অ্যাপ (app.html, app.js, app.css, i18n.js, sw.js) ও admin/
-android/           Android WebView অ্যাপ (base.apk, build.sh)
-server/sign_apk.py VPS-এ APK সাইন করে
-server/server.py   HTTP সার্ভার + JSON API + SQLite
-server/seed.json   প্রথম চালুতে ডেটাবেসে বসানো প্রাথমিক তথ্য
-server/osm_mosques.py  OpenStreetMap থেকে যশোর পৌরসভার মসজিদ seed.json-এ যোগ করে
-deploy/install.sh  VPS ইনস্টল/আপডেট স্ক্রিপ্ট
+public/index.html, landing.*   ল্যান্ডিং পেজ
+public/app.html, app.css       অ্যাপ; কোড public/js/ — প্রতিটি অংশ আলাদা মডিউল:
+  util, data, components, ads, search, sheets      ভিত্তি ও উপাদান
+  pages, page_classifieds, page_account, page_post পেজগুলো
+  gates, router, events, boot, main               শুরু, রাউটিং, ইভেন্ট
+public/admin/                  অ্যাডমিন প্যানেল; কোড public/admin/js/ (shell, dashboard, listings, submissions, classifieds,
+                               coupons, people, collections, system, router, events, boot)
+public/i18n.js, icons.js, sw.js  English লেখা, আইকন, অফলাইন ক্যাশ
+server/server.py               সার্ভার চালু করে; কোড server/j360/:
+  config, util, store, migrate, cache            সেটিং, ডাটাবেস, আপডেট-মাইগ্রেশন, ক্যাশ
+  security, media, maps, validate, records       নিরাপত্তা, ছবি/ভিডিও, ম্যাপ লিংক, ইনপুট যাচাই, উত্তর তৈরি
+  web                                            HTTP: রাউটিং, সেশন, স্ট্যাটিক ফাইল
+  api_public, api_account, api_coupons,          প্রতিটি API অংশ আলাদা ফাইলে
+  api_admin_auth, api_admin_content, api_admin_system
+  backup, cli                                    দৈনিক ব্যাকআপ, কমান্ড
+server/seed.json               প্রথম চালুতে বসানো প্রাথমিক তথ্য
+server/osm_mosques.py          OpenStreetMap থেকে যশোর পৌরসভার মসজিদ seed.json-এ যোগ করে
+server/sign_apk.py             VPS-এ APK সাইন করে
+android/                       Android অ্যাপ (base.apk, build.sh)
+deploy/install.sh              VPS ইনস্টল/আপডেট স্ক্রিপ্ট
+tests/                         স্বয়ংক্রিয় টেস্ট — `tests/run.sh` চালালে সব যাচাই হয়
 ```
+
+নিয়ম: নিচের স্তর কখনো উপরের স্তরকে import করে না (config → util → store → … → web → api_*)। প্রতিটি পরিবর্তনের পর `tests/run.sh` পাস করতে হবে —
+এতে সার্ভারের API, নিরাপত্তা, আপডেট-মাইগ্রেশন আর ব্রাউজারে অ্যাপ ও অ্যাডমিনের প্রতিটি পেজ পরীক্ষা হয়।
 
 ## কৃতজ্ঞতা
 
