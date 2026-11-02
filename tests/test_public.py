@@ -64,6 +64,8 @@ class PublicTest(ServerTest):
         for url in ('http://127.0.0.1:22/', 'http://169.254.169.254/latest/meta-data', 'https://google.com.evil.example/maps'):
             st, r = c.post('/maplink', {'url': url})
             self.assertFalse(st == 200 and r and r.get('lat'), url)
+        # a short Google link is followed; without internet (as in tests) that fails cleanly, never with a crash
+        self.assertIn(c.post('/maplink', {'url': 'https://maps.app.goo.gl/AbCdEf123'})[0], (200, 400, 502))
 
 
 if __name__ == '__main__':
