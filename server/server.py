@@ -1390,7 +1390,8 @@ def my_add_classified(h):
 @route('DELETE', r'/my/classifieds/(\w+)', auth='user')
 def my_del_classified(h, cid):
     with db() as c:
-        c.execute('DELETE FROM classifieds WHERE id=? AND user_id=?', (cid, h.me['id']))
+        if not c.execute('DELETE FROM classifieds WHERE id=? AND user_id=?', (cid, h.me['id'])).rowcount:
+            raise ApiError(404, 'পাওয়া যায়নি')
     bump()
     h.json({'ok': True})
 
@@ -1398,7 +1399,8 @@ def my_del_classified(h, cid):
 @route('DELETE', r'/my/listings/([\w-]+)', auth='user')
 def my_del_listing(h, lid):
     with db() as c:
-        c.execute("DELETE FROM listings WHERE id=? AND owner_id=? AND review IN ('unpaid','pending','rejected')", (lid, h.me['id']))
+        if not c.execute("DELETE FROM listings WHERE id=? AND owner_id=? AND review IN ('unpaid','pending','rejected')", (lid, h.me['id'])).rowcount:
+            raise ApiError(404, 'পাওয়া যায়নি')
     h.json({'ok': True})
 
 
