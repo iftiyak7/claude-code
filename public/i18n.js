@@ -3,7 +3,8 @@ window.AREA_EN = {
   'চাঁচড়া': 'Chanchra', 'উপশহর': 'Upashahar', 'কাশিমপুর': 'Kashimpur', 'আরবপুর': 'Arabpur', 'কারবালা': 'Karbala', 'জেল রোড': 'Jail Road', 'মুড়লী': 'Murli', 'নওয়াপাড়া': 'Noapara',
   'যশোর সদর': 'Jashore Sadar', 'দড়াটানা': 'Daratana', 'চিত্রামোড়': 'Chitra More', 'পালবাড়ি': 'Palbari', 'ঘোপ': 'Ghop', 'রেলরোড': 'Rail Road',
   'নিউমার্কেট': 'New Market', 'বেজপাড়া': 'Bejpara', 'শংকরপুর': 'Shankarpur', 'খড়কি': 'Kharki', 'ঝিকরগাছা': 'Jhikargachha', 'চৌগাছা': 'Chougachha',
-  'মনিরামপুর': 'Monirampur', 'কেশবপুর': 'Keshabpur', 'অভয়নগর': 'Abhaynagar', 'বাঘারপাড়া': 'Bagherpara', 'শার্শা': 'Sharsha', 'বেনাপোল': 'Benapole'
+  'মনিরামপুর': 'Monirampur', 'কেশবপুর': 'Keshabpur', 'অভয়নগর': 'Abhaynagar', 'বাঘারপাড়া': 'Bagherpara', 'শার্শা': 'Sharsha', 'বেনাপোল': 'Benapole',
+  'হাইকোর্ট মোড়': 'High Court More', 'মণিহার': 'Monihar', 'পুরাতন কসবা': 'Puraton Kasba', 'বকচর': 'Bakchar', 'খোলাডাঙ্গা': 'Kholadanga', 'শেখহাটি': 'Shekhhati', 'বারান্দীপাড়া': 'Barandipara', 'ষষ্ঠীতলা': 'Shoshthitola', 'লোন অফিসপাড়া': 'Loan Office Para', 'পোস্ট অফিসপাড়া': 'Post Office Para', 'মুজিব সড়ক': 'Mujib Sarak', 'চৌরাস্তা': 'Chourasta', 'বড়বাজার': 'Boro Bazar', 'ধর্মতলা': 'Dharmatala', 'কাজীপাড়া': 'Kazipara', 'নীলগঞ্জ': 'Nilganj', 'স্টেডিয়ামপাড়া': 'Stadium Para', 'মিশনপাড়া': 'Mission Para', 'রায়পাড়া': 'Raypara', 'পুলিশ লাইন': 'Police Line', 'খয়েরতলা': 'Khoyertola', 'টালিখোলা': 'Talikhola', 'মাইকপট্টি': 'Maikpatti', 'গাড়িখানা': 'Garikhana', 'আশ্রম রোড': 'Ashram Road', 'খালধার রোড': 'Khaldhar Road', 'নাজির শংকরপুর': 'Nazir Shankarpur', 'সিটি কলেজপাড়া': 'City College Para', 'রেলগেট': 'Railgate', 'হামিদপুর': 'Hamidpur', 'বাহাদুরপুর': 'Bahadurpur', 'ঝুমঝুমপুর': 'Jhumjhumpur', 'সুজলপুর': 'Sujalpur', 'পুলেরহাট': 'Pulerhat', 'ক্যান্টনমেন্ট': 'Cantonment', 'বিমানবন্দর': 'Airport'
 };
 window.I18N_EN = Object.assign(window.I18N_EN || {}, {
   /* ---- app ---- */
@@ -604,5 +605,42 @@ Object.assign(window.I18N_EN, {
   'রেস্টুরেন্ট বা খাবারের দোকান হলে': 'For restaurants and food shops',
   'যেমন ম্যানেজার, রিসেপশন, জরুরি বিভাগ, হোয়াটসঅ্যাপ': 'e.g. manager, reception, emergency, WhatsApp',
   'ছবি ও ভিডিও': 'Photos & videos',
-  'পদবি': 'Role'
+  'পদবি': 'Role',
+  'যশোর শহরের আরও': 'More in Jashore town',
+  '{a}-তে এখনো যোগ হয়নি — যশোর শহরের অন্যগুলো': 'Nothing listed in {a} yet — elsewhere in Jashore town',
+  'শহরের এলাকায় (যেমন হাইকোর্ট মোড়) লোকেশন দিলে, এলাকা না লেখা থাকলেও ১.২ কিমির মধ্যের সব তথ্য সেই এলাকায় দেখাবে। Google Maps-এ জায়গায় রাইট-ক্লিক করলে সংখ্যা দুটো পাবেন।': 'For a town locality (e.g. High Court More), set its location and everything within 1.2 km shows in that area even if the area is not filled in. Right-click the spot in Google Maps to get the two numbers.',
+  'সার্ভার নিজেও প্রতিদিন ডাটাবেসের একটি কপি রাখে (শেষ ১৪ দিনের)।': 'The server also keeps a daily copy of the database (last 14 days).',
+  'অথেনটিকেটর অ্যাপের কোড': 'Authenticator app code',
+  'অথেনটিকেটর অ্যাপের ৬ সংখ্যার কোড দিন': 'Enter the 6-digit code from your authenticator app',
+  'কোড ভুল বা মেয়াদ শেষ — অ্যাপে নতুন কোড দেখে আবার দিন': 'Wrong or expired code — enter the new code shown in the app',
+  'কোড মেলেনি — অ্যাপে দেখানো এখনকার কোডটি দিন': 'Code did not match — enter the code the app shows now',
+  'কোড মেলেনি': 'Code did not match',
+  'পাসওয়ার্ড ভুল': 'Wrong password',
+  'দুই ধাপের লগইন (2FA)': 'Two-step login (2FA)',
+  'চালু আছে।': 'On.',
+  'বন্ধ আছে।': 'Off.',
+  'লগইনে পাসওয়ার্ডের পর ফোনের অথেনটিকেটর অ্যাপের কোড লাগে।': 'Signing in needs a code from the authenticator app on your phone after the password.',
+  'চালু করলে কেউ পাসওয়ার্ড জেনে গেলেও আপনার ফোন ছাড়া ঢুকতে পারবে না।': 'Once on, nobody can get in without your phone, even with your password.',
+  '2FA চালু': '2FA on',
+  '2FA বন্ধ': '2FA off',
+  'দুই ধাপের লগইন চালু করুন': 'Turn on two-step login',
+  '2FA বন্ধ করুন': 'Turn off 2FA',
+  'ফোনে Google Authenticator বা Microsoft Authenticator অ্যাপ নামান।': 'Install Google Authenticator or Microsoft Authenticator on your phone.',
+  'অ্যাপে + চাপুন → "Enter a setup key" → নাম দিন Jashore360, আর নিচের কী-টি লিখুন:': 'In the app tap + → "Enter a setup key" → name it Jashore360 and type this key:',
+  'ফোনেই এই পেজ খোলা থাকলে': 'If this page is open on your phone,',
+  'এখানে চাপুন': 'tap here',
+  'অ্যাপে দেখানো ৬ সংখ্যার কোড আর আপনার পাসওয়ার্ড দিন।': 'Enter the 6-digit code shown in the app and your password.',
+  'অ্যাপের কোড': 'App code',
+  '2FA চালু হয়েছে': '2FA is on',
+  '2FA বন্ধ হয়েছে': '2FA is off',
+  'বন্ধ করলে শুধু পাসওয়ার্ড দিয়েই লগইন হবে।': 'When off, the password alone signs in.',
+  'পরিবর্তনের পর অন্য সব ডিভাইস থেকে লগআউট হয়ে যাবে।': 'Changing it signs you out on every other device.',
+  '⚠ ভুল লগইন চেষ্টা': '⚠ Failed sign-in',
+  'পাসওয়ার্ডটি সহজে অনুমান করা যায় — অন্য একটি দিন': 'That password is easy to guess — choose another',
+  'তালিকা ও সার্চের ফলাফলের মাঝে': 'Inside lists and search results',
+  'প্রতিষ্ঠানের পেজে (বিবরণের নিচে)': 'On business pages (below the details)',
+  'অফার ও কুপন পেজের উপরে': 'Top of the offers page',
+  'ক্যাটাগরি পেজ, তালিকার মাঝে ও প্রতিষ্ঠানের পেজে — শুধু এই ক্যাটাগরিতে দেখাবে': 'On category pages, inside lists and on business pages — shown only for this category',
+  'কোন এলাকার মানুষ দেখবে': 'Which areas see it',
+  'কিছু না বাছলে সবাই দেখবে। বাছলে শুধু যারা অ্যাপে সেই এলাকা বেছেছেন (বা লোকেশন কাছাকাছি) তারা দেখবেন — এলাকার দোকানের বিজ্ঞাপনের জন্য ভালো। "যশোর সদর" বাছলে শহরের সব এলাকা।': 'Leave empty for everyone. When chosen, only people who picked one of these areas in the app (or are nearby) see it — good for local shops. "Jashore Sadar" covers every town area.'
 });

@@ -143,10 +143,18 @@
   const UPAZILAS = ['যশোর সদর', 'ঝিকরগাছা', 'চৌগাছা', 'মনিরামপুর', 'কেশবপুর', 'অভয়নগর', 'বাঘারপাড়া', 'শার্শা'];
   const PARENT = { 'বেনাপোল': 'শার্শা', 'নওয়াপাড়া': 'অভয়নগর' };
   const isTown = a => a && !UPAZILAS.includes(a) && !PARENT[a];
+  const AREA_KM = 1.2;      // with a map point set for a town locality, places this close count as being in it
   function inArea(it, a) {
     if (!a) return true;
     const ia = it.area || '';
-    return ia === a || (a === 'যশোর সদর' && isTown(ia)) || PARENT[ia] === a || !!(it.address && it.address.includes(a));
+    if (ia === a || (a === 'যশোর সদর' && isTown(ia)) || PARENT[ia] === a || !!(it.address && it.address.includes(a))) return true;
+    const g = isTown(a) && D.areaGeo?.[a];
+    return !!g && it.lat != null && it.lng != null && dist({ lat: +g[0], lng: +g[1] }, it) <= AREA_KM;
+  }
+  function dist(o, p) {
+    const r = x => x * Math.PI / 180, dLa = r(p.lat - o.lat), dLo = r(p.lng - o.lng);
+    const a = Math.sin(dLa / 2) ** 2 + Math.cos(r(o.lat)) * Math.cos(r(p.lat)) * Math.sin(dLo / 2) ** 2;
+    return 12742 * Math.asin(Math.sqrt(a));
   }
   // Distances are measured from the phone's location, or else from the centre of the chosen area.
   let originCache = null;
@@ -167,9 +175,7 @@
   function km(it) {
     const o = origin();
     if (!o || it.lat == null || it.lng == null) return null;
-    const r = x => x * Math.PI / 180, dLa = r(it.lat - o.lat), dLo = r(it.lng - o.lng);
-    const a = Math.sin(dLa / 2) ** 2 + Math.cos(r(o.lat)) * Math.cos(r(it.lat)) * Math.sin(dLo / 2) ** 2;
-    return 12742 * Math.asin(Math.sqrt(a));
+    return dist(o, it);
   }
   const fromWhere = () => { const o = origin(); return !o ? '' : o.gps ? T('আপনার থেকে') : T('{a} থেকে', { a: areaName(o.area) }); };
   const kmText = k => k == null ? '' : k < 1 ? T('{n} মি.', { n: num(Math.round(k * 20) * 50) }) : T('{n} কিমি', { n: num(k.toFixed(k < 10 ? 1 : 0)) });
@@ -292,7 +298,15 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
   const topbar = (title, right = '<span class="spacer"></span>') => `<header class="topbar"><button class="roundbtn" data-back aria-label="${T('ফিরে যান')}">${icon('back', 20)}</button><h1>${esc(title)}</h1>${right}</header>`;
 
   /* ---------------- ads (managed by the main admin) ---------------- */
-  const adsFor = (placement, cat) => (D.ads || []).filter(a => (a.placement || 'home') === placement && (!a.category || !cat || a.category === cat));
+  // An ad may target areas: it then shows to people who chose one of them (or whose location is close to one).
+  function adAreaOk(a) {
+    if (!a.areas?.length) return true;
+    const cur = ls.get('area', '');
+    if (cur && a.areas.some(t => t === cur || PARENT[cur] === t || (t === 'যশোর সদর' && isTown(cur)))) return true;
+    return !!here && a.areas.some(t => { const g = D.areaGeo?.[t]; return g && dist({ lat: +g[0], lng: +g[1] }, here) <= 2; });
+  }
+  const adsFor = (placement, cat) => (D.ads || []).filter(a => (a.placement || 'home') === placement && (!a.category || !cat || a.category === cat) && adAreaOk(a))
+    .sort((x, y) => (!!(y.areas?.length) - !!(x.areas?.length)) || rot(x.id + placement) - rot(y.id + placement));   // local ads first, then a fair rotation
   const seenAds = new Set();
   function adImpressions() {
     app.querySelectorAll('[data-ad]').forEach(el => { const id = el.dataset.ad; if (!seenAds.has(id)) { seenAds.add(id); beacon('/adtrack', { id, type: 'imp' }); } });
@@ -310,7 +324,10 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       <div class="btext">${loc(a, 'kicker') ? `<small>${esc(loc(a, 'kicker'))}</small>` : ''}<h3>${esc(loc(a, 'title'))}</h3>${loc(a, 'subtitle') ? `<p>${esc(loc(a, 'subtitle'))}</p>` : ''}</div>
       ${loc(a, 'cta') ? `<span class="bcta">${esc(loc(a, 'cta'))}</span>` : ''}</a>`;
   }
-  const adStrip = (placement, cat) => { const a = adsFor(placement, cat)[0]; return a ? `<div class="adslot-inline">${adCard(a, 'banner slim')}</div>` : ''; };
+  const adStrip = (placement, cat, style = '') => { const a = adsFor(placement, cat)[0]; return a ? `<div class="adslot-inline"${style ? ` style="${style}"` : ''}>${adCard(a, 'banner slim')}</div>` : ''; };
+  // One ad inside a result list, after the fourth row (or after the last when the list is shorter).
+  const withListAd = (rows, cat) => { if (!rows.length) return ''; const ad = adStrip('list', cat, 'margin:4px 0'), at = Math.min(4, rows.length);
+    return rows.slice(0, at).join('') + ad + rows.slice(at).join(''); };
 
   /* ---------------- search ---------------- */
   const norm = s => toLatin(String(s || '').toLowerCase()).replace(/[.,!?।:;"'()[\]]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -655,6 +672,9 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
     else if (!qtext) list.sort((a, b) => (!!b.sponsored - !!a.sponsored) || (!!b.featured - !!a.featured) || ((b.area === area) - (a.area === area)) ||
       ((a.status === 'closed') - (b.status === 'closed')) || (!!a.demo - !!b.demo) || (b.rating || 0) - (a.rating || 0));
     if (cat !== 'emergency') list = promote([...extraSpons, ...list]);
+    // A small town locality may have little listed yet: the rest of Jashore town follows, so the page is never a dead end.
+    const moreTown = area && !nearMode && isTown(area) && list.length < 8
+      ? beforeArea.filter(i => !list.includes(i) && inArea(i, 'যশোর সদর')).sort((a, b) => (!!b.featured - !!a.featured) || (b.rating || 0) - (a.rating || 0)).slice(0, 30) : [];
     const active = !!(open || budget || sort || halal || cat && qtext);
     const link = o => { const np = new URLSearchParams(p); Object.entries(o).forEach(([k, v]) => v ? np.set(k, v) : np.delete(k)); return (c && !qtext ? `#/c/${cat}` : '#/search') + (np.toString() ? '?' + np : ''); };
     const title = qtext ? T('খুঁজুন') : c ? catName(c) : T('সব তথ্য');
@@ -684,7 +704,9 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       ${halal ? `<a class="pill sm on" style="margin:0 0 10px" href="${link({ halal: '' })}">${icon('halal', 14)}${T('শুধু হালাল')} ${icon('x', 12)}</a>` : ''}
       <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${[['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']]
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
-      ${nearMode ? nearList(list) : `<div class="rows">${list.map(row).join('') || (kindHit ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>`}` : ''}`;
+      ${nearMode ? nearList(list) : `<div class="rows">${withListAd(list.map(row), cat) || (kindHit || moreTown.length ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>
+        ${moreTown.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:15px">${T(list.length ? 'যশোর শহরের আরও' : '{a}-তে এখনো যোগ হয়নি — যশোর শহরের অন্যগুলো', { a: areaName(area) })}</h2></div>
+          <div class="rows">${moreTown.map(row).join('')}</div>` : ''}`}` : ''}`;
   };
 
   pages.item = ([id]) => {
@@ -741,6 +763,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       ${videoBlock(it.videos)}
       ${it.features?.length ? `<div class="feat">${it.features.map(f => `<span>${icon('check', 15)}${esc(f)}</span>`).join('')}</div>` : ''}
       <div class="info" style="margin-top:16px">${infoRows.slice(0, 3).map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${l}</small>${v}</div></div>`).join('')}</div>
+      ${adStrip('detail', it.cat)}
       ${related.length ? `<div class="sechead" style="margin-top:24px"><h2 style="font-size:16px">${T(it.cat === 'place' ? 'কাছাকাছি খাবার ও থাকা' : 'আরও দেখুন')}</h2></div>
         <div class="related">${related.map(x => `<a href="#/p/${esc(x.id)}">${media(x)}<small>${nameT(x, 13)}</small></a>`).join('')}</div>` : ''}`;
   }
@@ -846,8 +869,8 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       <form class="form" data-auth="${mode}">
         ${mode === 'register' ? `<label class="field"><span>${T('আপনার নাম')}</span><input name="name" required maxlength="60" autocomplete="name"></label>` : ''}
         <label class="field"><span>${T('মোবাইল নম্বর')}</span><input name="phone" required inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX"></label>
-        <label class="field"><span>${T('পাসওয়ার্ড')}</span><input name="password" type="password" required minlength="6" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}">
-          ${mode === 'register' ? `<em class="muted" style="font-size:12px;font-style:normal">${T('কমপক্ষে ৬ অক্ষর')}</em>` : ''}</label>
+        <label class="field"><span>${T('পাসওয়ার্ড')}</span><input name="password" type="password" required minlength="${mode === 'login' ? 6 : 8}" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}">
+          ${mode === 'register' ? `<em class="muted" style="font-size:12px;font-style:normal">${T('কমপক্ষে ৮ অক্ষর')}</em>` : ''}</label>
         ${mode === 'register' ? `<label class="check"><input type="checkbox" name="terms" required><span>${T('আমি Jashore360-এর {t} পড়েছি ও সম্মত', { t: `<a href="#/terms" style="color:var(--brand);font-weight:700">${T('শর্তাবলি')}</a>` })}</span></label>` : ''}
         <button class="btn block" type="submit">${T(mode === 'login' ? 'লগইন' : 'অ্যাকাউন্ট খুলুন')}</button>
         ${mode === 'login' ? `<p class="muted" style="font-size:13px;text-align:center;margin:0">${T('পাসওয়ার্ড ভুলে গেলে আমাদের সাথে যোগাযোগ করুন')}${D.site?.contactPhone ? ` — <a href="tel:${esc(D.site.contactPhone)}">${num(D.site.contactPhone)}</a>` : ''}</p>` : ''}
@@ -887,7 +910,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       <label class="field"><span>${T('মোবাইল নম্বর')}</span><input value="${esc(num(ME.phone))}" disabled></label>
       <h4 style="margin:6px 0 0">${T('পাসওয়ার্ড পরিবর্তন (ঐচ্ছিক)')}</h4>
       <label class="field"><span>${T('বর্তমান পাসওয়ার্ড')}</span><input name="password" type="password" autocomplete="current-password"></label>
-      <label class="field"><span>${T('নতুন পাসওয়ার্ড')}</span><input name="newPassword" type="password" minlength="6" autocomplete="new-password"></label>
+      <label class="field"><span>${T('নতুন পাসওয়ার্ড')}</span><input name="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
       <button class="btn block" type="submit">${T('সংরক্ষণ করুন')}</button></form>
       <button class="btn block ghost" style="margin-top:12px;color:var(--danger)" data-logout>${icon('logout', 18)}${T('লগআউট')}</button>`;
     return `${topbar(T('আমার অ্যাকাউন্ট'))}
@@ -1224,6 +1247,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
     const list = cache.offers;
     return `${topbar(T('অফার ও কুপন'))}
       <div class="note">${icon('tag', 18)}<span>${T('কুপন নিন, দোকানে কোডটি দেখান — ছাড় পাবেন। নেওয়া কুপন "আমার অ্যাকাউন্ট → কুপন"-এ থাকে।')}</span></div>
+      ${adStrip('offers', '', 'margin:0 0 16px')}
       ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>'
         : list.length ? `<div class="tklist">${list.map(c => ticket(c, { listingLink: true })).join('')}</div>`
         : empty(T('এখন কোনো অফার নেই'), T('নতুন অফার এলে এখানে দেখাবে।'), '', 'tag')}`;
@@ -1399,6 +1423,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
     const el = e.target.closest('button, [data-call], [data-call-track], [data-map], [data-copy]');
     if (!el || el.closest('.welcome')) return;
     const ds = el.dataset;
+    if ('reload' in ds) return location.reload();
     if ('addcrow' in ds) { const box = el.closest('form').querySelector('[data-crows]'); box.insertAdjacentHTML('beforeend', contactRow()); box.lastElementChild.querySelector('input').focus(); return; }
     if ('rmcrow' in ds) { el.closest('.cedit').remove(); return; }
     if (ds.call) { e.preventDefault(); track(ds.id, 'call'); location.href = 'tel:' + ds.call; return; }
@@ -1618,7 +1643,7 @@ const nameT = (it, size) => !it.blueTick ? esc(nameOf(it)) : size > 20 ? esc(nam
       if (changed || me) render();
       welcome();
       setTimeout(maybePopup, 900);
-    } catch { if (!D) app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" onclick="location.reload()">${T('আবার চেষ্টা')}</button>`, 'globe'); }
+    } catch { if (!D) app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" data-reload>${T('আবার চেষ্টা')}</button>`, 'globe'); }
   })();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();

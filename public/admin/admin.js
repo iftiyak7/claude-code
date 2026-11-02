@@ -44,7 +44,7 @@
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
     const data = await r.json().catch(() => ({}));
     if (r.status === 401 && !path.endsWith('/login')) { S.me = null; renderLogin(); throw new Error(T('লগইন করুন')); }
-    if (!r.ok) throw new Error(T(data.error || 'সমস্যা হয়েছে'));
+    if (!r.ok) throw Object.assign(new Error(T(data.error || 'সমস্যা হয়েছে')), { data });
     return data;
   }
   const run = async (fn, okMsg) => { try { const r = await fn(); okMsg && toast(T(okMsg)); return r; } catch (e) { toast(e.message, true); throw e; } };
@@ -95,8 +95,14 @@
     root.querySelector('[data-login]').onsubmit = async e => {
       e.preventDefault();
       const f = e.target, b = f.querySelector('button'); b.disabled = true;
-      try { S.me = await api('/admin/login', { username: f.username.value, password: f.password.value }); await boot(); }
-      catch (er) { toast(er.message, true); b.disabled = false; }
+      try { S.me = await api('/admin/login', { username: f.username.value, password: f.password.value, code: f.code?.value }); await boot(); }
+      catch (er) {
+        toast(er.message, true); b.disabled = false;
+        if (er.data?.need2fa && !f.code) {     // two-step login: ask for the authenticator code
+          b.insertAdjacentHTML('beforebegin', `<label class="field"><span>${T('অথেনটিকেটর অ্যাপের কোড')}</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required></label>`);
+          f.code.focus();
+        } else if (f.code) { f.code.value = ''; f.code.focus(); }
+      }
     };
   }
   const langToggle = () => `<div class="seg mini">${[['bn', 'বাং'], ['en', 'EN']].map(([k, v]) => `<button type="button" class="${LANG() === k ? 'on' : ''}" data-setlang="${k}">${v}</button>`).join('')}</div>`;
@@ -614,7 +620,8 @@
     opts.mounted && opts.mounted();
   };
 
-  const PLACEMENTS = [['home', 'হোমপেজ স্লাইডার'], ['inline', 'হোমপেজের মাঝে'], ['category', 'ক্যাটাগরি পেজের উপরে'], ['classifieds', 'চাকরি/ভাড়া পেজের উপরে']];
+  const PLACEMENTS = [['home', 'হোমপেজ স্লাইডার'], ['inline', 'হোমপেজের মাঝে'], ['category', 'ক্যাটাগরি পেজের উপরে'], ['list', 'তালিকা ও সার্চের ফলাফলের মাঝে'],
+    ['detail', 'প্রতিষ্ঠানের পেজে (বিবরণের নিচে)'], ['offers', 'অফার ও কুপন পেজের উপরে'], ['classifieds', 'চাকরি/ভাড়া পেজের উপরে']];
   const COLS = {
     ads: {
       addLabel: 'নতুন বিজ্ঞাপন', intro: 'অ্যাপের বিজ্ঞাপনের জায়গাগুলো শুধু মূল অ্যাডমিন নিয়ন্ত্রণ করেন। বিজ্ঞাপনদাতার নাম, মেয়াদ ও কোথায় দেখাবে ঠিক করুন — ভিউ ও ক্লিক নিজে থেকেই গোনা হয়। পেইড প্রচারে উপরের ছোট লেখায় "Sponsored" দিন।',
@@ -623,7 +630,7 @@
       title: b => b.title, sub: (b, st) => {
         const s = st?.[b.id] || { imps: 0, clicks: 0 }, ctr = s.imps ? (s.clicks / s.imps * 100).toFixed(1) : 0, t = new Date().toISOString().slice(0, 10);
         const expired = b.end && b.end < t, notyet = b.start && b.start > t;
-        return `${T((PLACEMENTS.find(p => p[0] === (b.placement || 'home')) || [])[1] || '')}${b.category ? ' · ' + esc(catName(catOf(b.category))) : ''} · ${esc(b.advertiser || '—')}
+        return `${T((PLACEMENTS.find(p => p[0] === (b.placement || 'home')) || [])[1] || '')}${b.category ? ' · ' + esc(catName(catOf(b.category))) : ''}${b.areas?.length ? ' · ' + icon('pin', 12) + ' ' + esc(b.areas.join(', ')) : ''} · ${esc(b.advertiser || '—')}
           · ${b.start || b.end ? esc([day(b.start), day(b.end)].filter(Boolean).join(' → ')) : T('মেয়াদ নেই')}
           <br><span class="tag">${T('{n} ভিউ', { n: compact(s.imps) })}</span> <span class="tag">${T('{n} ক্লিক', { n: compact(s.clicks) })}</span> <span class="tag">CTR ${num(ctr)}%</span>
           ${b.active === false ? ` <span class="tag">${T('বন্ধ')}</span>` : expired ? ` <span class="tag bad">${T('মেয়াদ শেষ')}</span>` : notyet ? ` <span class="tag warn">${T('শুরু হয়নি')}</span>` : ` <span class="tag ok">${T('চলছে')}</span>`}`;
@@ -638,7 +645,8 @@
         f.onsubmit = e => e.preventDefault();
         f.onchange = () => saveSetting('site', { ...S.settings.site, bannerAuto: f.bannerAuto.checked, bannerSeconds: +f.bannerSeconds.value });
       },
-      fields: () => [['placement', 'select', 'কোথায় দেখাবে', '', PLACEMENTS], ['category', 'select', 'ক্যাটাগরি (শুধু ক্যাটাগরি পেজের জন্য)', '', [['', '— সব —'], ...cats().map(c => [c.id, catName(c)])]],
+      fields: () => [['placement', 'select', 'কোথায় দেখাবে', '', PLACEMENTS], ['category', 'select', 'ক্যাটাগরি', 'ক্যাটাগরি পেজ, তালিকার মাঝে ও প্রতিষ্ঠানের পেজে — শুধু এই ক্যাটাগরিতে দেখাবে', [['', '— সব —'], ...cats().map(c => [c.id, catName(c)])]],
+        ['areas', 'multi', 'কোন এলাকার মানুষ দেখবে', 'কিছু না বাছলে সবাই দেখবে। বাছলে শুধু যারা অ্যাপে সেই এলাকা বেছেছেন (বা লোকেশন কাছাকাছি) তারা দেখবেন — এলাকার দোকানের বিজ্ঞাপনের জন্য ভালো। "যশোর সদর" বাছলে শহরের সব এলাকা।', (S.settings.areas || []).map(a => [a, a])],
         ['advertiser', 'text', 'বিজ্ঞাপনদাতা', 'প্রতিষ্ঠানের নাম ও ফোন — শুধু আপনার রেকর্ডের জন্য'], ['kicker', 'text', 'উপরের ছোট লেখা', 'যেমন: Sponsored, সীমিত অফার'],
         ['title', 'text', 'শিরোনাম *'], ['titleEn', 'text', 'শিরোনাম (English)'], ['subtitle', 'text', 'বিবরণ'], ['subtitleEn', 'text', 'বিবরণ (English)'],
         ['cta', 'text', 'বাটনের লেখা', 'যেমন: দেখুন'], ['ctaEn', 'text', 'বাটনের লেখা (English)'],
@@ -701,6 +709,7 @@
     if (type === 'date') return `<label class="field"><span>${L}</span><input type="date" name="${k}" value="${esc(v || new Date().toISOString().slice(0, 10))}"></label>`;
     if (type === 'date0') return `<label class="field"><span>${L}</span><input type="date" name="${k}" value="${esc(v || '')}">${hintH}</label>`;
     if (type === 'number') return `<label class="field"><span>${L}</span><input name="${k}" inputmode="numeric" value="${esc(v ?? '')}">${hintH}</label>`;
+    if (type === 'multi') return `<div class="field"><span>${L}</span><div class="days multi">${opts.map(([a, b]) => `<label><input type="checkbox" name="${k}" value="${esc(a)}" ${(v || []).includes(a) ? 'checked' : ''}>${esc(T(b))}</label>`).join('')}</div>${hintH}</div>`;
     if (type === 'check') return `<label class="check"><input type="checkbox" name="${k}" ${v ? 'checked' : ''}><span>${L}</span></label>`;
     if (type === 'kv') return `<label class="field"><span>${L}</span><textarea name="${k}" rows="5">${esc(Object.entries(v || {}).map(([a, b]) => `${a} = ${b}`).join('\n'))}</textarea>${hintH}</label>`;
     if (type === 'list') return `<label class="field"><span>${L}</span><textarea name="${k}" rows="2">${esc((v || []).join(', '))}</textarea>${hintH}</label>`;
@@ -715,6 +724,7 @@
       const el = form.elements[k];
       const raw = el?.value ?? '';
       if (type === 'check') v[k] = !!el?.checked;
+      else if (type === 'multi') v[k] = [...form.querySelectorAll(`[name="${k}"]:checked`)].map(x => x.value);
       else if (type === 'kv') v[k] = Object.fromEntries(raw.split('\n').map(l => l.split('=')).filter(p => p.length >= 2 && p[0].trim()).map(([a, ...b]) => [a.trim().toLowerCase().replace(/\s+/g, '-'), b.join('=').trim()]));
       else if (type === 'list') v[k] = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
       else if (type === 'number') v[k] = raw.replace(/[^\d]/g, '') ? +raw.replace(/[^\d]/g, '') : null;
@@ -802,8 +812,10 @@
         ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}${pair(17, 18)}${pair(19, 20)}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
       <div class="grid"><form class="card" data-areas><h3>${T('এলাকার তালিকা')}</h3><div class="cbody form"><label class="field"><span>${T('প্রতি লাইনে একটি এলাকা')}</span>
         <textarea name="areas" rows="16">${esc((S.settings.areas || []).map(a => S.settings.areaGeo?.[a] ? `${a} = ${S.settings.areaGeo[a].join(', ')}` : a).join('\n'))}</textarea>
-        <em>${T('চাইলে এলাকার কেন্দ্রের লোকেশন দিন: নিউমার্কেট = 23.1712, 89.2143 — এলাকা বাছলে দূরত্ব এখান থেকে মাপা হবে। না দিলে সেই এলাকার তালিকাগুলোর গড় অবস্থান ধরা হয়।')}</em></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
+        <em>${T('চাইলে এলাকার কেন্দ্রের লোকেশন দিন: নিউমার্কেট = 23.1712, 89.2143 — এলাকা বাছলে দূরত্ব এখান থেকে মাপা হবে। না দিলে সেই এলাকার তালিকাগুলোর গড় অবস্থান ধরা হয়।')}</em>
+        <em>${T('শহরের এলাকায় (যেমন হাইকোর্ট মোড়) লোকেশন দিলে, এলাকা না লেখা থাকলেও ১.২ কিমির মধ্যের সব তথ্য সেই এলাকায় দেখাবে। Google Maps-এ জায়গায় রাইট-ক্লিক করলে সংখ্যা দুটো পাবেন।')}</em></label><div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>
         <div class="card"><h3>${T('ব্যাকআপ')}</h3><div class="cbody"><p class="muted" style="margin-top:0">${T('সব তালিকা, রিভিউ, পেমেন্ট, ব্যবহারকারী ও সেটিংস একটি ফাইলে ডাউনলোড করুন। নিয়মিত ব্যাকআপ রাখুন।')}</p>
+          <p class="muted">${icon('shield', 14)} ${T('সার্ভার নিজেও প্রতিদিন ডাটাবেসের একটি কপি রাখে (শেষ ১৪ দিনের)।')}</p>
           <a class="btn dark" href="/api/admin/export">${icon('download', 18)}${T('ব্যাকআপ ডাউনলোড')}</a></div></div></div></div>`);
     root.querySelector('[data-site]').onsubmit = async e => { e.preventDefault(); await saveSetting('site', { ...s, ...readFields(e.target, F) }); };
     root.querySelector('[data-areas]').onsubmit = async e => {
@@ -867,16 +879,24 @@
   };
 
   pages.admins = async () => {
-    const admins = owner() ? await api('/admin/admins') : [];
+    const [admins, me] = await Promise.all([owner() ? api('/admin/admins') : [], api('/admin/me')]);
     shell('admins', T('অ্যাডমিন ও নিরাপত্তা'), owner() ? `<button class="btn" data-addadmin>${icon('plus', 18)}<span class="hide-sm">${T('নতুন অ্যাডমিন')}</span></button>` : '', `<div class="split">
       ${owner() ? `<div class="card"><h3>${T('অ্যাডমিন অ্যাকাউন্ট')}</h3>${admins.map(a => `<div class="item"><span class="thumb" style="--c:${a.role === 'owner' ? '#7c5cff' : '#0e9f6e'}">${icon(a.role === 'owner' ? 'shield' : 'user', 20)}</span>
-        <div class="body"><b>${esc(a.username)}${a.username === S.me.username ? ` <span class="tag ok">${T('আপনি')}</span>` : ''}</b><small>${T(a.role === 'owner' ? 'মূল অ্যাডমিন' : 'মডারেটর')} · ${T('যোগ হয়েছে')} ${date(a.created_at)}</small></div>
+        <div class="body"><b>${esc(a.username)}${a.username === S.me.username ? ` <span class="tag ok">${T('আপনি')}</span>` : ''}</b><small>${T(a.role === 'owner' ? 'মূল অ্যাডমিন' : 'মডারেটর')} · ${T('যোগ হয়েছে')} ${date(a.created_at)}</small>
+          <div class="tags" style="margin-top:4px">${a.twofa ? `<span class="tag ok">${icon('shield', 12)} ${T('2FA চালু')}</span>` : `<span class="tag warn">${T('2FA বন্ধ')}</span>`}</div></div>
         ${a.username !== S.me.username ? `<button class="iconbtn red" data-deladmin="${a.id}" title="${T('মুছুন')}">${icon('trash', 18)}</button>` : ''}</div>`).join('')}
         <div class="cbody muted" style="font-size:13px">${T('মডারেটর তালিকা, জমা, বিজ্ঞাপন অনুমোদন, রিভিউ ও রিপোর্ট দেখতে পারেন। পেমেন্ট যাচাই, বিজ্ঞাপন (Ads), প্যাকেজ, ক্যাটাগরি, অ্যাপ রিলিজ ও সেটিংস শুধু মূল অ্যাডমিনের।')}</div></div>` : '<div></div>'}
+      <div class="grid">
+      <div class="card"><h3>${T('দুই ধাপের লগইন (2FA)')}</h3><div class="cbody">
+        ${me.twofa ? `<div class="note info" style="margin:0 0 14px">${icon('shield', 20)}<div><b>${T('চালু আছে।')}</b> ${T('লগইনে পাসওয়ার্ডের পর ফোনের অথেনটিকেটর অ্যাপের কোড লাগে।')}</div></div>
+          <button class="btn ghost" data-2faoff>${T('বন্ধ করুন')}</button>`
+        : `<div class="note" style="margin:0 0 14px">${icon('alert', 20)}<div><b>${T('বন্ধ আছে।')}</b> ${T('চালু করলে কেউ পাসওয়ার্ড জেনে গেলেও আপনার ফোন ছাড়া ঢুকতে পারবে না।')}</div></div>
+          <button class="btn" data-2faon>${icon('shield', 18)}${T('চালু করুন')}</button>`}</div></div>
       <form class="card" data-pw><h3>${T('পাসওয়ার্ড পরিবর্তন')}</h3><div class="cbody form">
         <label class="field"><span>${T('বর্তমান পাসওয়ার্ড')}</span><input type="password" name="current" required autocomplete="current-password"></label>
         <label class="field"><span>${T('নতুন পাসওয়ার্ড')}</span><input type="password" name="new" required minlength="8" autocomplete="new-password"><em>${T('কমপক্ষে ৮ অক্ষর')}</em></label>
-        <div><button class="btn">${icon('lock', 18)}${T('পরিবর্তন করুন')}</button></div></div></form></div>`);
+        <em class="muted" style="font-size:13px">${T('পরিবর্তনের পর অন্য সব ডিভাইস থেকে লগআউট হয়ে যাবে।')}</em>
+        <div><button class="btn">${icon('lock', 18)}${T('পরিবর্তন করুন')}</button></div></div></form></div></div>`);
     root.querySelector('[data-pw]').onsubmit = async e => { e.preventDefault(); await run(() => api('/admin/password', { current: e.target.current.value, new: e.target.new.value }), 'পাসওয়ার্ড পরিবর্তন হয়েছে'); e.target.reset(); };
   };
 
@@ -884,7 +904,8 @@
     'listing.approved': 'জমা অনুমোদন', 'listing.rejected': 'জমা বাতিল', 'listing.pending': 'অপেক্ষমাণ করা হয়েছে', 'review.update': 'রিভিউ আপডেট', 'review.delete': 'রিভিউ মুছে ফেলা',
     'settings.site': 'সেটিংস পরিবর্তন', 'settings.areas': 'এলাকা পরিবর্তন', 'settings.categories': 'ক্যাটাগরি পরিবর্তন', 'settings.ads': 'বিজ্ঞাপন পরিবর্তন',
     'settings.notices': 'ঘোষণা পরিবর্তন', 'settings.plans': 'প্যাকেজ পরিবর্তন', 'settings.payment': 'পেমেন্ট নম্বর পরিবর্তন', 'admin.add': 'নতুন অ্যাডমিন',
-    'admin.delete': 'অ্যাডমিন মুছে ফেলা', 'admin.password': 'পাসওয়ার্ড পরিবর্তন', 'payment.verify': 'পেমেন্ট যাচাই', 'payment.reject': 'পেমেন্ট বাতিল',
+    'admin.delete': 'অ্যাডমিন মুছে ফেলা', 'admin.password': 'পাসওয়ার্ড পরিবর্তন',
+    'admin.2fa.on': '2FA চালু', 'admin.2fa.off': '2FA বন্ধ', 'login.fail': '⚠ ভুল লগইন চেষ্টা', 'payment.verify': 'পেমেন্ট যাচাই', 'payment.reject': 'পেমেন্ট বাতিল',
     'classified.approved': 'বিজ্ঞাপন অনুমোদন', 'classified.rejected': 'বিজ্ঞাপন বাতিল', 'classified.delete': 'বিজ্ঞাপন মুছে ফেলা', 'user.ban': 'ব্যবহারকারী বন্ধ',
     'user.unban': 'ব্যবহারকারী চালু', 'user.reset': 'ব্যবহারকারীর পাসওয়ার্ড রিসেট', 'app.release': 'নতুন অ্যাপ ভার্সন' };
 
@@ -1021,6 +1042,23 @@
         <label class="field"><span>${T('ভূমিকা')}</span><select name="role"><option value="moderator">${T('মডারেটর')}</option><option value="owner">${T('মূল অ্যাডমিন')}</option></select></label>`, async f => {
         await run(() => api('/admin/admins', { username: f.username.value, password: f.password.value, role: f.role.value }), 'অ্যাডমিন যোগ হয়েছে'); route();
       }, 'যোগ করুন');
+    }
+    if ('2faon' in d) {
+      const st = await run(() => api('/admin/2fa/setup', {}));
+      return modal(T('দুই ধাপের লগইন চালু করুন'), `<ol class="steps">
+          <li>${T('ফোনে Google Authenticator বা Microsoft Authenticator অ্যাপ নামান।')}</li>
+          <li>${T('অ্যাপে + চাপুন → "Enter a setup key" → নাম দিন Jashore360, আর নিচের কী-টি লিখুন:')}<p class="bigpw" style="letter-spacing:2px;font-size:17px">${esc(st.secret.match(/.{1,4}/g).join(' '))}</p>
+            <small class="muted">${T('ফোনেই এই পেজ খোলা থাকলে')} <a href="${esc(st.uri)}">${T('এখানে চাপুন')}</a></small></li>
+          <li>${T('অ্যাপে দেখানো ৬ সংখ্যার কোড আর আপনার পাসওয়ার্ড দিন।')}</li></ol>
+        <label class="field"><span>${T('অ্যাপের কোড')}</span><input name="code" inputmode="numeric" maxlength="6" required autocomplete="one-time-code"></label>
+        <label class="field"><span>${T('পাসওয়ার্ড')}</span><input name="password" type="password" required autocomplete="current-password"></label>`,
+        async f => { await run(() => api('/admin/2fa', { enable: true, secret: st.secret, code: f.code.value, password: f.password.value }), '2FA চালু হয়েছে'); route(); }, 'চালু করুন');
+    }
+    if ('2faoff' in d) {
+      return modal(T('2FA বন্ধ করুন'), `<p>${T('বন্ধ করলে শুধু পাসওয়ার্ড দিয়েই লগইন হবে।')}</p>
+        <label class="field"><span>${T('অ্যাপের কোড')}</span><input name="code" inputmode="numeric" maxlength="6" required></label>
+        <label class="field"><span>${T('পাসওয়ার্ড')}</span><input name="password" type="password" required autocomplete="current-password"></label>`,
+        async f => { await run(() => api('/admin/2fa', { code: f.code.value, password: f.password.value }), '2FA বন্ধ হয়েছে'); route(); }, 'বন্ধ করুন');
     }
     if (d.deladmin) { if (!confirm(T('এই অ্যাডমিন মুছে যাবে। নিশ্চিত?'))) return; await run(() => api('/admin/admins/' + d.deladmin, undefined, 'DELETE'), 'মুছে ফেলা হয়েছে'); return route(); }
   });

@@ -34,6 +34,8 @@ SEED = os.path.join(HERE, 'seed.json')
 DATA = DB_PATH = UPLOADS = DOWNLOADS = None
 
 SESSION_DAYS = 30
+ADMIN_SESSION_DAYS = 7          # staff sign in again every week
+BACKUP_KEEP = 14               # daily database copies kept in DATA/backups
 MAX_BODY = 12 * 1024 * 1024
 MAX_APK = 80 * 1024 * 1024
 TEXT_TYPES = ('text/', 'application/javascript', 'application/json', 'image/svg+xml', 'application/manifest+json')
@@ -106,7 +108,8 @@ CREATE TABLE IF NOT EXISTS claims (
 
 MIGRATIONS = [('listings', 'owner_id', 'INTEGER'), ('listings', 'plan', 'TEXT'), ('listings', 'paid_until', 'TEXT'),
               ('reviews', 'user_id', 'INTEGER'), ('admins', 'role', "TEXT NOT NULL DEFAULT 'owner'"),
-              ('users', 'terms_v', 'INTEGER'), ('users', 'terms_at', 'INTEGER'), ('listings', 'imps', 'INTEGER NOT NULL DEFAULT 0')]
+              ('users', 'terms_v', 'INTEGER'), ('users', 'terms_at', 'INTEGER'), ('listings', 'imps', 'INTEGER NOT NULL DEFAULT 0'),
+              ('admins', 'totp', 'TEXT')]
 
 
 def init_db():
@@ -183,7 +186,8 @@ def init_db():
             upgrade_seed(c, seed)
 
 
-SEED_VERSION = 5
+SEED_VERSION = 6
+UPAZILA_NAMES = ('ঝিকরগাছা', 'চৌগাছা', 'মনিরামপুর', 'কেশবপুর', 'অভয়নগর', 'বাঘারপাড়া', 'শার্শা', 'বেনাপোল', 'নওয়াপাড়া')
 MOVED_KEYS = {4: {'place': ('মসজিদ', 'mosque', 'মন্দির', 'temple')}}   # search words that now belong to another category
 NEW_SUBS = {3: {'hospital': ('doctor', 'homeo')}}     # sub-types added to existing categories, by seed version
 FILL_FIELDS = ('phone', 'phone2', 'address', 'about', 'aboutEn', 'note', 'nameEn', 'hours', 'tags')
@@ -219,6 +223,13 @@ def upgrade_seed(c, seed):
                 if not doc.get('contacts'):
                     doc['contacts'] = it['contacts']
                     c.execute('UPDATE listings SET doc=? WHERE id=?', (json.dumps(doc, ensure_ascii=False), it['id']))
+    areas = get_setting(c, 'areas') or []
+    for ver, names in seed.get('_newAreas', {}).items():   # town localities added later go in before the upazilas
+        add = [a for a in names if a not in areas] if v < int(ver) else []
+        if add:
+            at = next((i for i, a in enumerate(areas) if a in UPAZILA_NAMES), len(areas))
+            areas[at:at] = add
+            c.execute("UPDATE settings SET value=? WHERE key='areas'", (json.dumps(areas, ensure_ascii=False),))
     for ver, by_cat in MOVED_KEYS.items():
         if v < ver:
             for x in cats:
@@ -376,6 +387,31 @@ def check_pw(pw, stored):
         return hmac.compare_digest(hash_pw(pw, base64.b64decode(s_)).split('$')[2], h)
     except Exception:
         return False
+
+
+# Two-step login for staff: a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator…), RFC 6238.
+def totp_code(secret, counter):
+    key = base64.b32decode(secret + '=' * (-len(secret) % 8))
+    d = hmac.new(key, counter.to_bytes(8, 'big'), 'sha1').digest()
+    o = d[-1] & 15
+    return '%06d' % ((int.from_bytes(d[o:o + 4], 'big') & 0x7fffffff) % 1000000)
+
+
+_totp_used = {}
+
+
+def totp_ok(secret, code, who):
+    code = re.sub(r'\D', '', str(code or '').translate(BN_DIGITS))
+    if len(code) != 6 or not secret:
+        return False
+    now = int(time.time()) // 30
+    for ctr in (now - 1, now, now + 1):                 # a little clock drift is fine
+        if hmac.compare_digest(totp_code(secret, ctr), code):
+            if _totp_used.get(who, -1) >= ctr:          # each code works once
+                return False
+            _totp_used[who] = ctr
+            return True
+    return False
 
 
 _hits = {}
@@ -626,9 +662,19 @@ def clean_classified(kind, d):
 # ---------------------------------------------------------------- HTTP
 
 class ApiError(Exception):
-    def __init__(self, status, msg):
+    def __init__(self, status, msg, **extra):
         super().__init__(msg)
         self.status = status
+        self.extra = extra
+
+
+SECURITY_HEADERS = [('X-Frame-Options', 'DENY'), ('Cross-Origin-Opener-Policy', 'same-origin'),
+                    ('Permissions-Policy', 'geolocation=(self), camera=(), microphone=(), payment=(), usb=()')]
+# Pages may only run this site's own scripts. Inline style attributes are used throughout, so styles stay allowed.
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+       "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; "
+       "connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; "
+       "form-action 'self'; frame-ancestors 'none'")
 
 
 ROUTES = []
@@ -658,8 +704,13 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- request helpers
     def ip(self):
-        fwd = self.headers.get('X-Forwarded-For') or self.headers.get('X-Real-IP')
-        return fwd.split(',')[0].strip() if fwd else self.client_address[0]
+        # The server only listens on localhost behind nginx. X-Real-IP is set by nginx itself; in X-Forwarded-For only the
+        # last entry is nginx's own, everything before it comes from the visitor and could be made up to dodge rate limits.
+        real = (self.headers.get('X-Real-IP') or '').strip()
+        if real:
+            return real
+        fwd = self.headers.get('X-Forwarded-For')
+        return fwd.split(',')[-1].strip() if fwd else self.client_address[0]
 
     def who(self):
         # Behind a proxy that doesn't forward the client IP every request looks local; fall back to the device cookie.
@@ -688,6 +739,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        for k, v in SECURITY_HEADERS:
+            self.send_header(k, v)
+        if ctype.startswith('text/html'):
+            self.send_header('Content-Security-Policy', CSP)
+        if self.https():
+            self.send_header('Strict-Transport-Security', 'max-age=31536000')
         for k, v in headers.items():
             self.send_header(k, v)
         for c in self._set_cookies:
@@ -754,11 +811,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def start_session(self, table, col, uid, cookie, same_site):
         tok = secrets.token_urlsafe(32)
+        days = ADMIN_SESSION_DAYS if table == 'sessions' else SESSION_DAYS
         with db() as c:
             c.execute(f'DELETE FROM {table} WHERE expires<?', (int(time.time()),))
             c.execute(f'INSERT INTO {table} (token, {col}, expires) VALUES (?,?,?)',
-                      (hashlib.sha256(tok.encode()).hexdigest(), uid, int(time.time()) + SESSION_DAYS * 86400))
-        self.set_cookie(cookie, tok, SESSION_DAYS * 86400, same_site=same_site)
+                      (hashlib.sha256(tok.encode()).hexdigest(), uid, int(time.time()) + days * 86400))
+        self.set_cookie(cookie, tok, days * 86400, same_site=same_site)
+
+    def session_token(self, cookie):
+        tok = self.cookies().get(cookie)
+        return hashlib.sha256(tok.encode()).hexdigest() if tok else ''
 
     def end_session(self, table, cookie):
         tok = self.cookies().get(cookie)
@@ -803,7 +865,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.download_apk()
             return self.static(path)
         except ApiError as e:
-            self.json({'error': str(e)}, e.status)
+            self.json({'error': str(e), **e.extra}, e.status)
         except ValueError as e:
             self.json({'error': str(e)}, 400)
         except (BrokenPipeError, ConnectionResetError):
@@ -1101,6 +1163,17 @@ def api_classified(h, cid):
 
 # ---------------------------------------------------------------- user accounts
 
+COMMON_PW = {'12345678', '123456789', '1234567890', '87654321', '11111111', '00000000', '12341234', 'password', 'password1',
+             'qwertyui', 'qwerty123', 'abcd1234', 'bangladesh', 'iloveyou', 'jashore360', 'jessore123', 'jashore123'}
+
+
+def weak_password(pw, phone=''):
+    """New passwords (existing ones keep working): at least 8 characters, not a well-known one, not the phone number."""
+    if len(pw) < 8:
+        raise ApiError(400, 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষর')
+    if pw.lower() in COMMON_PW or len(set(pw)) < 3 or (phone and phone[-8:] in pw):
+        raise ApiError(400, 'পাসওয়ার্ডটি সহজে অনুমান করা যায় — অন্য একটি দিন')
+
 @route('POST', '/auth/register')
 def auth_register(h):
     b = h.body()
@@ -1111,8 +1184,7 @@ def auth_register(h):
         raise ApiError(400, 'নাম দিন')
     if not phone:
         raise ApiError(400, 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)')
-    if len(pw) < 6:
-        raise ApiError(400, 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর')
+    weak_password(pw, phone)
     if not b.get('terms'):
         raise ApiError(400, 'শর্তাবলিতে সম্মতি দিন')
     with db() as c:
@@ -1131,7 +1203,7 @@ def auth_register(h):
 def auth_login(h):
     b = h.body()
     phone = norm_phone(b.get('phone'))
-    if not rate_ok(f'ulogin:{h.who()}:{phone}', 8, 900):
+    if not (rate_ok(f'ulogin:{h.who()}:{phone}', 8, 900) and rate_ok('uloginip:' + h.who(), 40, 900) and rate_ok(f'uloginph:{phone}', 20, 3600)):
         raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, ১৫ মিনিট পর আবার চেষ্টা করুন')
     with db() as c:
         u = c.execute('SELECT * FROM users WHERE phone=?', (phone,)).fetchone()
@@ -1170,9 +1242,9 @@ def my_profile(h):
             u = c.execute('SELECT pass FROM users WHERE id=?', (h.me['id'],)).fetchone()
             if not check_pw(str(b.get('password') or ''), u['pass']):
                 raise ApiError(400, 'বর্তমান পাসওয়ার্ড ভুল')
-            if len(b['newPassword']) < 6:
-                raise ApiError(400, 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষর')
+            weak_password(str(b['newPassword']), h.me['phone'])
             c.execute('UPDATE users SET pass=? WHERE id=?', (hash_pw(b['newPassword']), h.me['id']))
+            c.execute('DELETE FROM usessions WHERE user_id=? AND token!=?', (h.me['id'], h.session_token('j360u')))
     h.json({'ok': True})
 
 
@@ -1690,16 +1762,62 @@ def my_terms(h):
 @route('POST', '/admin/login')
 def adm_login(h):
     b = h.body()
-    if not rate_ok('login:' + h.ip() + ':' + str(b.get('username') or '').lower()[:30], 8, 900):
+    uname = str(b.get('username') or '').strip().lower()[:30]
+    # per address+name, per address (trying many names) and per name (one account tried from many addresses)
+    if not (rate_ok('login:' + h.ip() + ':' + uname, 8, 900) and rate_ok('loginip:' + h.ip(), 30, 900) and rate_ok('loginname:' + uname, 20, 3600)):
         raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, ১৫ মিনিট পর আবার চেষ্টা করুন')
     with db() as c:
-        a = c.execute('SELECT * FROM admins WHERE username=?', (str(b.get('username') or '').strip().lower(),)).fetchone()
+        a = c.execute('SELECT * FROM admins WHERE username=?', (uname,)).fetchone()
     if not a or not check_pw(str(b.get('password') or ''), a['pass']):
+        failed_login(uname, h.ip(), 'password')
         raise ApiError(401, 'ইউজারনেম বা পাসওয়ার্ড ভুল')
+    if a['totp']:
+        if not b.get('code'):
+            raise ApiError(401, 'অথেনটিকেটর অ্যাপের ৬ সংখ্যার কোড দিন', need2fa=True)
+        if not totp_ok(a['totp'], b.get('code'), 'a%d' % a['id']):
+            failed_login(uname, h.ip(), 'code')
+            raise ApiError(401, 'কোড ভুল বা মেয়াদ শেষ — অ্যাপে নতুন কোড দেখে আবার দিন', need2fa=True)
     h.start_session('sessions', 'admin_id', a['id'], 'j360s', 'Strict')
     h.staff = {'username': a['username']}
     h.audit('login')
     h.json({'ok': True, 'username': a['username'], 'role': a['role'] or 'owner'})
+
+
+def failed_login(uname, ip, what):
+    with db() as c:
+        c.execute('INSERT INTO audit (admin, action, target, at) VALUES (?,?,?,?)', (uname or '-', 'login.fail', f'{ip} ({what})', int(time.time())))
+
+
+@route('POST', '/admin/2fa/setup', auth='admin')
+def adm_2fa_setup(h):
+    secret = base64.b32encode(secrets.token_bytes(20)).decode().rstrip('=')
+    label = 'Jashore360:' + h.staff['username']
+    h.json({'secret': secret, 'uri': f'otpauth://totp/{label}?secret={secret}&issuer=Jashore360'})
+
+
+@route('POST', '/admin/2fa', auth='admin')
+def adm_2fa(h):
+    """Turn two-step login on (with the new secret and a code from it) or off (with a current code). Both need the password."""
+    b = h.body()
+    with db() as c:
+        a = c.execute('SELECT pass, totp FROM admins WHERE id=?', (h.staff['id'],)).fetchone()
+    if not check_pw(str(b.get('password') or ''), a['pass']):
+        raise ApiError(400, 'পাসওয়ার্ড ভুল')
+    who = 'a%d' % h.staff['id']
+    if b.get('enable'):
+        secret = str(b.get('secret') or '')
+        if not re.match(r'^[A-Z2-7]{32}$', secret) or not totp_ok(secret, b.get('code'), who):
+            raise ApiError(400, 'কোড মেলেনি — অ্যাপে দেখানো এখনকার কোডটি দিন')
+        new, act = secret, 'admin.2fa.on'
+    else:
+        if a['totp'] and not totp_ok(a['totp'], b.get('code'), who):
+            raise ApiError(400, 'কোড মেলেনি')
+        new, act = None, 'admin.2fa.off'
+    with db() as c:
+        c.execute('UPDATE admins SET totp=? WHERE id=?', (new, h.staff['id']))
+        c.execute('DELETE FROM sessions WHERE admin_id=? AND token!=?', (h.staff['id'], h.session_token('j360s')))
+    h.audit(act)
+    h.json({'ok': True, 'enabled': bool(new)})
 
 
 @route('POST', '/admin/logout')
@@ -1710,7 +1828,9 @@ def adm_logout(h):
 
 @route('GET', '/admin/me', auth='admin')
 def adm_me(h):
-    h.json(h.staff)
+    with db() as c:
+        on = c.execute('SELECT totp IS NOT NULL FROM admins WHERE id=?', (h.staff['id'],)).fetchone()[0]
+    h.json(dict(h.staff, twofa=bool(on)))
 
 
 @route('GET', '/admin/summary', auth='admin')
@@ -2174,7 +2294,7 @@ def adm_apk(h):
 @route('GET', '/admin/admins', auth='owner')
 def adm_admins(h):
     with db() as c:
-        h.json([dict(r) for r in c.execute('SELECT id, username, role, created_at FROM admins ORDER BY id')])
+        h.json([dict(r) for r in c.execute('SELECT id, username, role, created_at, totp IS NOT NULL AS twofa FROM admins ORDER BY id')])
 
 
 @route('POST', '/admin/admins', auth='owner')
@@ -2216,6 +2336,7 @@ def adm_password(h):
         if len(str(b.get('new') or '')) < 8:
             raise ApiError(400, 'নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষর')
         c.execute('UPDATE admins SET pass=? WHERE id=?', (hash_pw(b['new']), h.staff['id']))
+        c.execute('DELETE FROM sessions WHERE admin_id=? AND token!=?', (h.staff['id'], h.session_token('j360s')))   # sign out everywhere else
     h.audit('admin.password')
     h.json({'ok': True})
 
@@ -2236,6 +2357,39 @@ def adm_export(h):
                               'Cache-Control': 'no-store'})
 
 
+# ---------------------------------------------------------------- automatic backups
+
+def make_backup():
+    """One consistent copy of the database per day in DATA/backups (photos are not copied); the newest BACKUP_KEEP are kept."""
+    folder = os.path.join(DATA, 'backups')
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    dest = os.path.join(folder, 'jashore360-%s.db' % time.strftime('%Y%m%d'))
+    if os.path.exists(dest):
+        return None
+    tmp = dest + '.part'
+    src, dst = sqlite3.connect(DB_PATH), sqlite3.connect(tmp)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, dest)
+    old = sorted(f for f in os.listdir(folder) if re.match(r'^jashore360-\d{8}\.db$', f))[:-BACKUP_KEEP]
+    for f in old:
+        os.remove(os.path.join(folder, f))
+    return dest
+
+
+def backup_loop():
+    while True:
+        try:
+            make_backup()
+        except Exception as e:                          # a full disk must not stop the site
+            print('backup failed:', e, flush=True)
+        time.sleep(3 * 3600)
+
+
 # ---------------------------------------------------------------- CLI
 
 def set_paths(data):
@@ -2251,7 +2405,7 @@ def main():
     ap.add_argument('--data', default=os.path.join(HERE, 'data'))
     ap.add_argument('--host', default='127.0.0.1')
     ap.add_argument('--port', type=int, default=8360)
-    ap.add_argument('cmd', nargs='?', default='serve', choices=['serve', 'ensure-admin', 'reset-password', 'import-apk'])
+    ap.add_argument('cmd', nargs='?', default='serve', choices=['serve', 'ensure-admin', 'reset-password', 'import-apk', 'backup'])
     ap.add_argument('args', nargs='*')
     a = ap.parse_args()
     set_paths(a.data)
@@ -2265,10 +2419,13 @@ def main():
                     return
                 c.execute("INSERT INTO admins (username, pass, created_at, role) VALUES (?,?,?,'owner')", (user, hash_pw(pw), int(time.time())))
             else:
-                if not c.execute('UPDATE admins SET pass=? WHERE username=?', (hash_pw(pw), user)).rowcount:
+                if not c.execute('UPDATE admins SET pass=?, totp=NULL WHERE username=?', (hash_pw(pw), user)).rowcount:   # also the way back in after losing the phone
                     c.execute("INSERT INTO admins (username, pass, created_at, role) VALUES (?,?,?,'owner')", (user, hash_pw(pw), int(time.time())))
                 c.execute('DELETE FROM sessions')
         print(f'username: {user}\npassword: {pw}')
+        return
+    if a.cmd == 'backup':
+        print(make_backup() or 'today\'s backup already exists')
         return
     if a.cmd == 'import-apk':
         path, vname, vcode = a.args[0], a.args[1], int(a.args[2])
@@ -2283,6 +2440,7 @@ def main():
         return
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True
+    threading.Thread(target=backup_loop, daemon=True).start()
     print(f'Jashore360 running on http://{a.host}:{a.port}  (data: {DATA})', flush=True)
     try:
         srv.serve_forever()

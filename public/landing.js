@@ -1,4 +1,5 @@
 /* Landing page: language/theme switch, icons, and live numbers from /api/bootstrap. */
+if (location.hash.startsWith('#/')) location.replace('/app/' + location.hash);   // old app links like /#/p/id
 (() => {
   'use strict';
   const BN = '০১২৩৪৫৬৭৮৯';
