@@ -576,3 +576,7 @@ html, body { overscroll-behavior-y: contain; }
 .ordiv { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; margin: 4px 0 16px; }
 .ordiv::before, .ordiv::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .gline { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }
+
+/* shown while there is no internet */
+.offbar { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 85; max-width: calc(100% - 32px); pointer-events: none;
+  background: var(--dark); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 999px; box-shadow: var(--shadow-lg); text-align: center; }

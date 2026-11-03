@@ -5,7 +5,7 @@ import { maybePopup, welcome } from './gates.js';
 import { cache } from './page_classifieds.js';
 import { render } from './router.js';
 import { buildKeys } from './search.js';
-import { T, api, app, ls, toast } from './util.js';
+import { APP_UA, T, api, app, ls, toast } from './util.js';
 
 /* ---------------- refresh: pull down at the top of any page, or Profile → Refresh ---------------- */
 const ptr = document.createElement('div');
@@ -24,6 +24,17 @@ export async function hardRefresh() {
   finally { refreshing = false; ptr.classList.remove('spin'); setPtr(0); }
 }
 let y0 = null, dy = 0;
+// Without internet the app shows the data it saved last time; a small bar says so, and it refreshes by itself when back online.
+function offlineBar(on) {
+  let bar = document.querySelector('.offbar');
+  if (!on) return bar?.remove();
+  if (bar) return;
+  bar = document.createElement('div');
+  bar.className = 'offbar';
+  bar.setAttribute('role', 'status');
+  bar.textContent = T('ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে');
+  document.body.appendChild(bar);
+}
 /* ---------------- boot ---------------- */
 function setData(d) { S.D = d; S.CAT = Object.fromEntries(d.categories.map(c => [c.id, c])); buildKeys(); }
 export async function refresh() {
@@ -52,8 +63,18 @@ export function init() {
       S.ME = me;
       if (changed || me) render();
       welcome();
-      setTimeout(maybePopup, 900);
-    } catch { if (!S.D) app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" data-reload>${T('আবার চেষ্টা')}</button>`, 'globe'); }
+      if (navigator.onLine === false) offlineBar(true);     // the app answered from its own copy
+      else setTimeout(maybePopup, 900);
+    } catch {
+      if (S.D) { offlineBar(true); welcome(); return; }
+      app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" data-reload>${T('আবার চেষ্টা')}</button>`, 'globe');
+    }
   })();
+  window.addEventListener('offline', () => offlineBar(true));
+  window.addEventListener('online', () => { offlineBar(false); refresh().then(changed => changed && render()).catch(() => offlineBar(true)); });
+  if (APP_UA) {     // the Android app keeps its own offline copy; an older browser cache would only get in its way
+    navigator.serviceWorker?.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+    return;
+  }
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 }

@@ -187,14 +187,17 @@ elif [ -f "$APP/android/base.apk" ]; then
   VCODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["versionCode"])' "$APP/android/version.json")
   VNOTES=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("notes",""))' "$APP/android/version.json")
   OUTAPK=$(mktemp --suffix=.apk)
-  if python3 "$APP/server/sign_apk.py" "$APP/android/base.apk" "$OUTAPK" "$URL/app/" /root/jashore360-signing "${OLD_DOMAINS:-}" 2>/tmp/jashore360-apk.log; then
+  BOOTSNAP=$(mktemp --suffix=.json)    # today's data goes inside the app, so it opens even before it has ever been online
+  curl -fsS -o "$BOOTSNAP" "http://127.0.0.1:$PORT/api/bootstrap" || : > "$BOOTSNAP"
+  SNAP=(--www "$APP/public"); [ -s "$BOOTSNAP" ] && SNAP+=(--boot "$BOOTSNAP")
+  if python3 "$APP/server/sign_apk.py" "$APP/android/base.apk" "$OUTAPK" "$URL/app/" /root/jashore360-signing "${OLD_DOMAINS:-}" "${SNAP[@]}" 2>/tmp/jashore360-apk.log; then
     chmod 644 "$OUTAPK"
     sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" import-apk "$OUTAPK" "$VNAME" "$VCODE" "$VNOTES" \
       && systemctl restart "$SVC" || warn "APK যোগ করা যায়নি"
   else
     warn "APK সাইন করা যায়নি (বিস্তারিত: /tmp/jashore360-apk.log)। বাকি সব ঠিকঠাক চলছে; অ্যাডমিন প্যানেল → অ্যাপ থেকে নিজে APK আপলোড করতে পারবেন।"
   fi
-  rm -f "$OUTAPK"
+  rm -f "$OUTAPK" "$BOOTSNAP"
 fi
 
 [ "${RELOAD:-}" = 1 ] && (nginx -t -q && (systemctl reload nginx 2>/dev/null || nginx -s reload)) || true

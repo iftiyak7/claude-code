@@ -666,5 +666,6 @@ Object.assign(window.I18N_EN, {
   'বসানো আছে — বদলাতে নতুনটি দিন': 'Saved — enter a new one to change it',
   'অ্যাপ ও ওয়েবসাইটে "Google দিয়ে লগইন" দেখান': 'Show "Sign in with Google" in the app and on the website',
   'চালু করতে Client ID ও Client Secret দুটোই দিন': 'Enter both the Client ID and the Client Secret to turn it on',
-  'Client ID সঠিক নয় (…apps.googleusercontent.com)': 'The Client ID is not valid (…apps.googleusercontent.com)'
+  'Client ID সঠিক নয় (…apps.googleusercontent.com)': 'The Client ID is not valid (…apps.googleusercontent.com)',
+  'ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে': 'No internet — showing the data saved earlier'
 });

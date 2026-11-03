@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Turn android/base.apk into a signed, installable APK for this server.
 
-    python3 sign_apk.py BASE.apk OUT.apk https://example.com/app/ KEYDIR [old-domain.com,other.com]
+    python3 sign_apk.py BASE.apk OUT.apk https://example.com/app/ KEYDIR [old-domain.com,other.com] [--www PUBLIC_DIR] [--boot BOOTSTRAP.json]
 
 Adds assets/config.json with the site URL (and older domains the app should still treat as its own), zipaligns, and signs with a key kept in KEYDIR.
+With --www/--boot it also puts a copy of the app's files and of the current data in assets/www/, so even a phone that has never
+been online opens the app (it then keeps that copy up to date by itself whenever it is online).
 The key is created on first run and must stay the same forever: Android only installs an
 update over an existing app when both are signed with the same key.
 """
@@ -35,7 +37,7 @@ def ensure_key(keydir):
     return ks, pw
 
 
-def main(base, out, url, keydir, old_hosts=''):
+def main(base, out, url, keydir, old_hosts='', www=None, boot=None):
     ks, pw = ensure_key(keydir)
     tmp = tempfile.mkdtemp()
     try:
@@ -46,6 +48,13 @@ def main(base, out, url, keydir, old_hosts=''):
             if 'assets/config.json' not in z.namelist():
                 hosts = [h.strip() for h in old_hosts.split(',') if h.strip()]
                 z.writestr('assets/config.json', json.dumps({'url': url, 'hosts': hosts}))
+            if www:
+                sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+                from j360.shell import shell_files
+                for p in shell_files(www):
+                    z.write(os.path.join(www, p), 'assets/www/' + p)
+            if boot:
+                z.write(boot, 'assets/www/api/bootstrap.json')
         run('zipalign', '-f', '-p', '4', raw, aligned)
         env = dict(os.environ, J360_KS_PASS=open(pw).read().strip())
         run('apksigner', 'sign', '--ks', ks, '--ks-key-alias', 'jashore360', '--ks-pass', 'env:J360_KS_PASS',
@@ -56,4 +65,11 @@ def main(base, out, url, keydir, old_hosts=''):
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:6])
+    args, opts = [], {}
+    it = iter(sys.argv[1:])
+    for a in it:
+        if a in ('--www', '--boot'):
+            opts[a[2:]] = next(it)
+        else:
+            args.append(a)
+    main(*args[:5], **opts)

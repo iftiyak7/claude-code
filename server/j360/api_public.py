@@ -6,7 +6,7 @@ import re
 import sqlite3
 import time
 from .cache import bootstrap_payload, bump, home_domain
-from .config import CLASS_KINDS
+from .config import CLASS_KINDS, PUBLIC
 from .maps import coords_from_text, map_host_ok, resolve_map_link
 from .media import save_image
 from .records import classified_out, review_row
@@ -14,6 +14,7 @@ from .security import rate_ok
 from .store import db, get_setting, inc, resolve_lid
 from .util import ApiError, new_id, s, to_int, today
 from .web import route
+from .shell import shell_manifest
 
 
 _old_seen = {}
@@ -181,6 +182,12 @@ def api_classified(h, cid):
         if rate_ok(f'cv:{h.who()}:{cid}', 1, 3600):
             c.execute('UPDATE classifieds SET views=views+1 WHERE id=?', (cid,))
     h.json(classified_out(r))
+
+
+@route('GET', '/shell')
+def api_shell(h):
+    """The Android app keeps its own copy of these files and refreshes the changed ones whenever it is online."""
+    h.json({'files': shell_manifest(PUBLIC)})
 
 
 @route('POST', '/maplink')

@@ -7,6 +7,10 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +23,8 @@ import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -28,9 +34,16 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.HashSet;
@@ -57,6 +70,8 @@ public class MainActivity extends Activity {
     private String geoOrigin;
     private boolean shown;
     private boolean failed;
+    private volatile boolean forceOffline;   // the server could not be reached although the phone has a network
+    private volatile boolean syncing;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -84,6 +99,8 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         setupWeb();
+        if (offline()) web.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);   // photos seen before still show
+        watchNetwork();
         if (state != null) web.restoreState(state);
         Uri link = getIntent().getData();
         if (finishGoogleSignIn(link)) return;
@@ -117,9 +134,18 @@ public class MainActivity extends Activity {
                 return true;
             }
 
+            // Without internet the app runs from its own copy (see the "offline copy" part below).
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+                Uri u = req.getUrl();
+                if (!"GET".equals(req.getMethod()) || !isOwn(u) || !offline()) return null;
+                return localResponse(localPath(u.getPath()));
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (failed) return;
+                if (!offline()) syncCopy();
                 if (!shown) { shown = true; web.setVisibility(View.VISIBLE); }
                 CookieManager.getInstance().flush();
             }
@@ -127,6 +153,12 @@ public class MainActivity extends Activity {
             // Only called for main-frame failures.
             @Override
             public void onReceivedError(WebView view, int code, String description, String failingUrl) {
+                if (!forceOffline && hasLocal("app.html")) {          // the site is unreachable: open the copy on the phone instead
+                    forceOffline = true;
+                    web.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    view.loadUrl(home);
+                    return;
+                }
                 failed = true;
                 offline.setVisibility(View.VISIBLE);
                 web.setVisibility(View.INVISIBLE);
@@ -204,6 +236,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 failed = false;
+                forceOffline = false;
                 offline.setVisibility(View.GONE);
                 String url = web.getUrl();
                 web.loadUrl(url == null || url.startsWith("data:") ? home : url);
@@ -262,6 +295,153 @@ public class MainActivity extends Activity {
         StringBuilder sb = new StringBuilder();
         for (byte x : b) sb.append(String.format("%02x", x & 0xff));
         return sb.toString();
+    }
+
+    /* ---------------- offline copy ----------------
+     * The APK carries the app's files and a snapshot of the data (assets/www, added when the server builds the APK).
+     * Whenever the app is online it fetches the list of files with their SHA-256 (/api/shell), downloads only the changed
+     * ones and the current data into files/www, and checks every download against its fingerprint. Without internet, the
+     * page, its scripts and /api/bootstrap are answered from files/www, else from the copy in the APK. Online, everything
+     * comes straight from the site, so new features show up at once.
+     */
+    private boolean offline() {
+        if (forceOffline) return true;
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        NetworkInfo n = cm == null ? null : cm.getActiveNetworkInfo();
+        return n == null || !n.isConnected();
+    }
+
+    private void watchNetwork() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        if (cm == null) return;
+        try {
+            cm.registerNetworkCallback(new NetworkRequest.Builder().build(), new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    forceOffline = false;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() { web.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT); }
+                    });
+                }
+            });
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    static String localPath(String path) {
+        if (path == null || path.contains("..")) return null;
+        if (path.equals("/") || path.equals("/app") || path.startsWith("/app/")) return "app.html";
+        if (path.equals("/api/bootstrap")) return "api/bootstrap.json";
+        String p = path.substring(1);
+        if (p.equals("app.css") || p.equals("i18n.js") || p.equals("icons.js") || p.equals("icon.svg") || p.equals("manifest.webmanifest")) return p;
+        if (p.startsWith("js/") && p.endsWith(".js") && p.indexOf('/', 3) < 0) return p;
+        return null;
+    }
+
+    private File localFile(String p) {
+        return new File(new File(getFilesDir(), "www"), p);
+    }
+
+    private boolean hasLocal(String p) {
+        if (localFile(p).isFile()) return true;
+        try {
+            getAssets().open("www/" + p).close();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private WebResourceResponse localResponse(String p) {
+        if (p == null) return null;
+        InputStream in = null;
+        try {
+            File f = localFile(p);
+            in = f.isFile() ? new FileInputStream(f) : getAssets().open("www/" + p);
+        } catch (Exception e) {
+            return null;
+        }
+        String type = p.endsWith(".html") ? "text/html" : p.endsWith(".css") ? "text/css" : p.endsWith(".js") ? "application/javascript"
+                : p.endsWith(".svg") ? "image/svg+xml" : p.endsWith(".webmanifest") ? "application/manifest+json" : "application/json";
+        return new WebResourceResponse(type, "utf-8", in);
+    }
+
+    private void syncCopy() {
+        final long now = System.currentTimeMillis();
+        if (syncing || now - getSharedPreferences(PREFS, MODE_PRIVATE).getLong("synced", 0) < 10 * 60 * 1000) return;
+        syncing = true;
+        final Uri base = Uri.parse(home);
+        final String origin = base.getScheme() + "://" + base.getAuthority();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JSONObject known = readJson(localFile(".manifest.json"));
+                    JSONObject next = new JSONObject();
+                    JSONArray files = new JSONObject(new String(fetch(origin + "/api/shell"), "UTF-8")).getJSONArray("files");
+                    for (int i = 0; i < files.length(); i++) {
+                        JSONObject f = files.getJSONObject(i);
+                        String p = f.getString("path"), sha = f.getString("sha256");
+                        if (localPath("/" + p) == null && !p.equals("app.html")) continue;      // only the app's own files
+                        if (!sha.equals(known.optString(p)) || !localFile(p).isFile()) {
+                            byte[] data = fetch(origin + "/" + p);
+                            if (!sha.equals(hex(MessageDigest.getInstance("SHA-256").digest(data)))) continue;   // damaged download
+                            write(localFile(p), data);
+                        }
+                        next.put(p, sha);
+                    }
+                    byte[] boot = fetch(origin + "/api/bootstrap");
+                    new JSONObject(new String(boot, "UTF-8"));                                  // only valid data replaces the old
+                    write(localFile("api/bootstrap.json"), boot);
+                    write(localFile(".manifest.json"), next.toString().getBytes("UTF-8"));
+                    getSharedPreferences(PREFS, MODE_PRIVATE).edit().putLong("synced", now).apply();
+                } catch (Exception ignored) {
+                } finally {
+                    syncing = false;
+                }
+            }
+        }).start();
+    }
+
+    private static byte[] fetch(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(10000);
+        c.setReadTimeout(20000);
+        try {
+            if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+            InputStream in = c.getInputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+            return out.toByteArray();
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private static void write(File f, byte[] data) throws Exception {
+        f.getParentFile().mkdirs();
+        File tmp = new File(f.getPath() + ".part");
+        FileOutputStream out = new FileOutputStream(tmp);
+        try {
+            out.write(data);
+        } finally {
+            out.close();
+        }
+        if (!tmp.renameTo(f)) throw new Exception("rename");
+    }
+
+    private static JSONObject readJson(File f) {
+        try {
+            FileInputStream in = new FileInputStream(f);
+            byte[] b = new byte[(int) f.length()];
+            int n = in.read(b);
+            in.close();
+            return new JSONObject(new String(b, 0, Math.max(n, 0), "UTF-8"));
+        } catch (Exception e) {
+            return new JSONObject();
+        }
     }
 
     private boolean isOwn(Uri u) {
@@ -378,6 +558,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        forceOffline = false;
         web.onResume();
     }
 
