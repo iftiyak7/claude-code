@@ -2,7 +2,8 @@
 import { S } from './state.js';
 import { adCard, adStrip, adsFor, withListAd } from './ads.js';
 import { contactLines, ecard, empty, gcard, halalTag, isSaved, loadCoupons, media, nameT, nearList, openTag, promote, rateTag, rot, row, starsHtml, statusTag, topbar, walkText, wcard } from './components.js';
-import { KINDS, PRICE_UNIT, STATUS, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, isTown, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
+import { KINDS, PRICE_UNIT, STATUS, autoLocate, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, isTown, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
+import { render } from './router.js';
 import { search } from './search.js';
 import { ctxbar } from './sheets.js';
 import { APP_UA, LANG, LOGO, T, api, areaName, esc, fmtDate, loc, ls, money, num, track } from './util.js';
@@ -52,6 +53,7 @@ export const disclaimer = k => `<div class="note warn disc">${icon('shield', 16)
 // Runs once at start-up, in the original order (main.js calls it after every module has loaded).
 export function init() {
   pages.home = () => {
+    autoLocate(render, false);
     const site = S.D.site || {}, area = ls.get('area', '');
     const unseen = (S.D.notices || []).some(n => !ls.get('seenNotices', []).includes(n.id));
     const pop = pages.home.pop || '';
@@ -139,6 +141,7 @@ export function init() {
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
   pages.browse = p => {
+    autoLocate(render);
     const qtext = p.get('q') || '', cat = p.get('cat') || '', sub = p.get('sub') || '', open = !!p.get('open'), budget = +p.get('budget') || 0, sort = p.get('sort') || '';
     const c = S.CAT[cat];
     let list, intent = null;

@@ -60,6 +60,16 @@ export function locate() {
       rej, { timeout: 9000, maximumAge: 600000 });
   });
 }
+// Wherever someone is, lists show the nearest places first. So the phone's position is taken by itself once per visit:
+// on list pages it may ask for permission (once; never again after "no"), elsewhere only if permission was already given.
+let autoAsked = false;
+export function autoLocate(then, askIfNeeded = true) {
+  if (autoAsked || !navigator.geolocation) return;
+  const run = () => { autoAsked = true; locate().then(() => { S.originCache = null; then(); }).catch(() => {}); };
+  const perm = navigator.permissions?.query?.({ name: 'geolocation' });
+  if (!perm) { if (askIfNeeded) run(); return; }
+  perm.then(p => { if (p.state === 'granted' || (askIfNeeded && p.state === 'prompt')) run(); else if (p.state === 'denied') autoAsked = true; }).catch(() => askIfNeeded && run());
+}
 /* Areas: upazilas, plus localities of Jashore town that count as part of Sadar */
 const UPAZILAS = ['যশোর সদর', 'ঝিকরগাছা', 'চৌগাছা', 'মনিরামপুর', 'কেশবপুর', 'অভয়নগর', 'বাঘারপাড়া', 'শার্শা'];
 export const PARENT = { 'বেনাপোল': 'শার্শা', 'নওয়াপাড়া': 'অভয়নগর' };
@@ -99,7 +109,7 @@ export function km(it) {
   return dist(o, it);
 }
 export const fromWhere = () => { const o = origin(); return !o ? '' : o.gps ? T('আপনার থেকে') : T('{a} থেকে', { a: esc(areaName(o.area)) }); };
-export const kmText = k => k == null ? '' : k < 1 ? T('{n} মি.', { n: num(Math.round(k * 20) * 50) }) : T('{n} কিমি', { n: num(k.toFixed(k < 10 ? 1 : 0)) });
+export const kmText = k => k == null ? '' : Math.round(k * 20) * 50 < 1000 ? T('{n} মি.', { n: num(Math.round(k * 20) * 50) }) : T('{n} কিমি', { n: num(k.toFixed(k < 10 ? 1 : 0)) });
 const mq = it => encodeURIComponent([it.nameEn || it.name, it.address, it.area, 'Jashore', 'Bangladesh'].filter(Boolean).join(', '));
 const ll = it => it.lat != null && it.lng != null ? `${it.lat},${it.lng}` : null;
 export const mapUrl = it => it.mapUrl || `https://www.google.com/maps/search/?api=1&query=${ll(it) || mq(it)}`;
