@@ -194,7 +194,7 @@ def api_shell(h):
 def api_maplink(h):
     """Turn a pasted Google Maps link into coordinates (used by the app's and the admin's forms)."""
     url = str(h.body().get('url') or '').strip()[:1000]
-    if not rate_ok('map:' + h.who(), 30, 3600):
+    if not rate_ok('map:' + h.who(), 300 if h.admin() else 30, 3600):      # an admin may set many area points at once
         raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, পরে আবার চেষ্টা করুন')
     found = coords_from_text(url)
     if not found and map_host_ok(url):

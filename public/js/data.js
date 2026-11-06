@@ -85,7 +85,8 @@ export function origin() {
   const g = S.D.areaGeo?.[a];
   let o = g ? { lat: +g[0], lng: +g[1] } : null;
   if (!o) {
-    const pts = items().filter(i => i.lat != null && i.area === a);
+    // no map point for the area: the middle of the places listed in it (by their area, or with its name in the address)
+    const pts = items().filter(i => i.lat != null && i.cat !== 'emergency' && (i.area === a || (a.length > 2 && (i.address || '').includes(a))));
     if (pts.length) o = { lat: pts.reduce((s, i) => s + i.lat, 0) / pts.length, lng: pts.reduce((s, i) => s + i.lng, 0) / pts.length };
   }
   if (o) o.area = a;

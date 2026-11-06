@@ -295,3 +295,7 @@ code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(
 .ulist small { color: var(--muted); margin-left: 6px; }
 .steps { margin: 0 0 6px; padding-left: 20px; display: grid; gap: 12px; font-size: 14px; } .steps .bigpw { margin: 8px 0 4px; }
 .days.multi { max-height: 220px; overflow-y: auto; padding: 2px; } .days.multi input { accent-color: var(--brand); }
+.geolist { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.georow { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; align-items: center; }
+.georow input { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+.georow .tag { justify-self: start; }

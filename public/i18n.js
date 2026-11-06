@@ -667,5 +667,14 @@ Object.assign(window.I18N_EN, {
   'অ্যাপ ও ওয়েবসাইটে "Google দিয়ে লগইন" দেখান': 'Show "Sign in with Google" in the app and on the website',
   'চালু করতে Client ID ও Client Secret দুটোই দিন': 'Enter both the Client ID and the Client Secret to turn it on',
   'Client ID সঠিক নয় (…apps.googleusercontent.com)': 'The Client ID is not valid (…apps.googleusercontent.com)',
-  'ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে': 'No internet — showing the data saved earlier'
+  'ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে': 'No internet — showing the data saved earlier',
+  '{a}-এর ম্যাপ-অবস্থান এখনো যোগ হয়নি, তাই দূরত্ব দেখানো যাচ্ছে না।': '{a} has no map point yet, so distances cannot be shown.',
+  'আমার লোকেশন দিয়ে দূরত্ব দেখুন': 'Show distances from my location',
+  'এলাকার ম্যাপ-অবস্থান': 'Map points of areas',
+  'কেউ অ্যাপে এলাকা বাছলে দূরত্ব এই বিন্দু থেকে মাপা হয়। Google Maps-এ এলাকার মাঝখানটা খুলে Share → Copy link করে পাশের ঘরে পেস্ট করুন (অথবা রাইট-ক্লিক করে পাওয়া "23.17, 89.21" সংখ্যা)।': 'When someone picks an area in the app, distances are measured from this point. Open the middle of the area in Google Maps, Share → Copy link and paste it next to the area (or the "23.17, 89.21" numbers from a right-click).',
+  '{n}টি এলাকার লোকেশন নেই': '{n} areas have no location',
+  'সব এলাকার লোকেশন আছে': 'Every area has a location',
+  'আছে': 'Set',
+  'এগুলোর লিংক থেকে লোকেশন পাওয়া যায়নি: {a}': 'No location found in the links for: {a}',
+  '{n}টি এলাকার লোকেশন সংরক্ষণ হয়েছে': 'Saved the location of {n} areas'
 });

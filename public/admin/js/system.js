@@ -76,12 +76,41 @@ export function init() {
           <label class="field"><span>Client Secret</span><input name="clientSecret" type="password" autocomplete="new-password" placeholder="${g.hasSecret ? T('বসানো আছে — বদলাতে নতুনটি দিন') : ''}"></label>
           <label class="check"><input type="checkbox" name="enabled" ${g.enabled ? 'checked' : ''}><span>${T('অ্যাপ ও ওয়েবসাইটে "Google দিয়ে লগইন" দেখান')}</span></label>
           <div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>` : ''}
+        ${areaGeoCard()}
         <div class="card"><h3>${T('ব্যাকআপ')}</h3><div class="cbody"><p class="muted" style="margin-top:0">${T('সব তালিকা, রিভিউ, পেমেন্ট, ব্যবহারকারী ও সেটিংস একটি ফাইলে ডাউনলোড করুন। নিয়মিত ব্যাকআপ রাখুন।')}</p>
           <p class="muted">${icon('shield', 14)} ${T('সার্ভার নিজেও প্রতিদিন ডাটাবেসের একটি কপি রাখে (শেষ ১৪ দিনের)।')}</p>
           <a class="btn dark" href="/api/admin/export">${icon('download', 18)}${T('ব্যাকআপ ডাউনলোড')}</a></div></div></div></div>`);
     const gf = root.querySelector('[data-google]');
     if (gf) gf.onsubmit = async e => { e.preventDefault(); await run(() => api('/admin/google', { clientId: gf.clientId.value.trim(), clientSecret: gf.clientSecret.value.trim(), enabled: gf.enabled.checked }, 'PUT'), 'সংরক্ষণ হয়েছে'); route(); };
     root.querySelector('[data-site]').onsubmit = async e => { e.preventDefault(); await saveSetting('site', { ...s, ...readFields(e.target, F) }); };
+    const ag = root.querySelector('[data-areageo]');
+    ag.onsubmit = async e => {
+      e.preventDefault();
+      const btn = ag.querySelector('button[type=submit]'), geo = { ...(S.settings.areaGeo || {}) };
+      let added = 0, bad = [];
+      btn.disabled = true;
+      try {
+        for (const inp of ag.querySelectorAll('[data-geo]')) {
+          const v = inp.value.trim(), name = inp.dataset.geo;
+          if (!v) continue;
+          const m = v.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+          try {
+            const r = m ? { lat: +m[1], lng: +m[2] } : await api('/maplink', { url: v });
+            if (!(r.lat > 20 && r.lat < 27 && r.lng > 87 && r.lng < 93)) throw new Error();
+            geo[name] = [r.lat, r.lng]; added++;
+          } catch { bad.push(name); }
+        }
+        if (added) await saveSetting('areaGeo', geo);
+        if (bad.length) toast(T('এগুলোর লিংক থেকে লোকেশন পাওয়া যায়নি: {a}', { a: bad.join(', ') }), true);
+        else if (added) toast(T('{n}টি এলাকার লোকেশন সংরক্ষণ হয়েছে', { n: num(added) }));
+        route();
+      } finally { btn.disabled = false; }
+    };
+    ag.addEventListener('click', async e => {
+      const b = e.target.closest('[data-geodel]'); if (!b) return;
+      const geo = { ...(S.settings.areaGeo || {}) }; delete geo[b.dataset.geodel];
+      await saveSetting('areaGeo', geo); route();
+    });
     root.querySelector('[data-areas]').onsubmit = async e => {
       e.preventDefault();
       const areas = [], geo = {};
@@ -94,6 +123,17 @@ export function init() {
       await saveSetting('areaGeo', geo);
     };
   };
+  // Each area's map point: the app measures "how far" from it when someone picks that area.
+  function areaGeoCard() {
+    const geo = S.settings.areaGeo || {}, areas = S.settings.areas || [], missing = areas.filter(a => !geo[a]);
+    return `<form class="card" data-areageo><h3>${T('এলাকার ম্যাপ-অবস্থান')}</h3><div class="cbody form">
+      <p class="muted" style="margin:0;font-size:13px">${T('কেউ অ্যাপে এলাকা বাছলে দূরত্ব এই বিন্দু থেকে মাপা হয়। Google Maps-এ এলাকার মাঝখানটা খুলে Share → Copy link করে পাশের ঘরে পেস্ট করুন (অথবা রাইট-ক্লিক করে পাওয়া "23.17, 89.21" সংখ্যা)।')}</p>
+      <p style="margin:0">${missing.length ? `<span class="tag warn">${T('{n}টি এলাকার লোকেশন নেই', { n: num(missing.length) })}</span>` : `<span class="tag ok">${T('সব এলাকার লোকেশন আছে')}</span>`}</p>
+      <div class="geolist">${[...missing, ...areas.filter(a => geo[a])].map(a => `<div class="georow"><b>${esc(a)}</b>
+        ${geo[a] ? `<a class="tag ok" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${geo[a].join(',')}">${icon('check', 12)} ${T('আছে')}</a><button type="button" class="iconbtn" data-geodel="${esc(a)}" title="${T('মুছুন')}">${icon('x', 15)}</button>`
+          : `<input data-geo="${esc(a)}" placeholder="${T('Google Maps লিংক')}" autocomplete="off">`}</div>`).join('')}</div>
+      <div><button class="btn" type="submit">${icon('check', 18)}${T('সংরক্ষণ')}</button></div></div></form>`;
+  }
   pages.popup = async () => {
     await load();
     const v = S.settings.popup || {}, f = POPUP_F;
