@@ -676,5 +676,9 @@ Object.assign(window.I18N_EN, {
   'সব এলাকার লোকেশন আছে': 'Every area has a location',
   'আছে': 'Set',
   'এগুলোর লিংক থেকে লোকেশন পাওয়া যায়নি: {a}': 'No location found in the links for: {a}',
-  '{n}টি এলাকার লোকেশন সংরক্ষণ হয়েছে': 'Saved the location of {n} areas'
+  '{n}টি এলাকার লোকেশন সংরক্ষণ হয়েছে': 'Saved the location of {n} areas',
+  'অন্য এলাকার': 'Other areas',
+  '{a}-তে নেই — অন্য এলাকার': 'None in {a} — other areas',
+  'এই এলাকার {n}টি আগে, তারপর বাকি সব': '{n} in this area first, then all the rest',
+  'এলাকা বা লোকেশন দিলে কাছেরগুলো আগে দেখাবে': 'Choose an area or share your location to see the nearest first'
 });

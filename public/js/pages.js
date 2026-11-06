@@ -1,8 +1,8 @@
 /* Main pages: home, emergency, browse/search results, listing details. */
 import { S } from './state.js';
 import { adCard, adStrip, adsFor, withListAd } from './ads.js';
-import { contactLines, ecard, empty, gcard, halalTag, isSaved, loadCoupons, media, nameT, nearList, openTag, promote, rateTag, rot, row, starsHtml, statusTag, topbar, walkText, wcard } from './components.js';
-import { KINDS, PRICE_UNIT, STATUS, autoLocate, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, isTown, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
+import { contactLines, ecard, empty, gcard, halalTag, isSaved, loadCoupons, media, nameT, nearList, openTag, promote, rateTag, row, starsHtml, statusTag, topbar, walkText, wcard } from './components.js';
+import { KINDS, PRICE_UNIT, STATUS, autoLocate, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
 import { render } from './router.js';
 import { search } from './search.js';
 import { ctxbar } from './sheets.js';
@@ -157,19 +157,16 @@ export function init() {
     // Every category, and any "near me" search, is shown nearest-first once there is a starting point (the phone's location
     // or the chosen area): the area is where distances start, not a filter. Choosing "relevant"/"rating" sorting turns it off.
     const nearMode = !!(origin() && (sort === 'near' || (intent?.near && !sort) || (c && !qtext && !sort)));
-    const beforeArea = list;
-    if (area && !nearMode) list = list.filter(i => inArea(i, area));
-    // Paid promotion is not limited by the chosen area: up to two sponsored matches from elsewhere still lead the list.
-    const extraSpons = area && !nearMode ? beforeArea.filter(i => i.sponsored && !list.includes(i)).sort((a, b) => rot(a.id) - rot(b.id)).slice(0, 2) : [];
+    // Choosing an area never hides anything: without distances, the area's own places come first and everything else follows.
+    const here = area && !nearMode ? list.filter(i => inArea(i, area)) : [];
     const nearSort = sort === 'near' || intent?.near || nearMode;
     if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     else if (nearSort) list.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
     else if (!qtext) list.sort((a, b) => (!!b.sponsored - !!a.sponsored) || (!!b.featured - !!a.featured) || ((b.area === area) - (a.area === area)) ||
       ((a.status === 'closed') - (b.status === 'closed')) || (!!a.demo - !!b.demo) || (b.rating || 0) - (a.rating || 0));
-    if (cat !== 'emergency') list = promote([...extraSpons, ...list]);
-    // A small town locality may have little listed yet: the rest of Jashore town follows, so the page is never a dead end.
-    const moreTown = area && !nearMode && isTown(area) && list.length < 8
-      ? beforeArea.filter(i => !list.includes(i) && inArea(i, 'যশোর সদর')).sort((a, b) => (!!b.featured - !!a.featured) || (b.rating || 0) - (a.rating || 0)).slice(0, 30) : [];
+    if (cat !== 'emergency') list = promote(list);
+    const rest = area && !nearMode ? list.filter(i => !here.includes(i)) : [];
+    if (area && !nearMode) list = list.filter(i => here.includes(i));
     const active = !!(open || budget || sort || halal || cat && qtext);
     const link = o => { const np = new URLSearchParams(p); Object.entries(o).forEach(([k, v]) => v ? np.set(k, v) : np.delete(k)); return (c && !qtext ? `#/c/${cat}` : '#/search') + (np.toString() ? '?' + np : ''); };
     const title = qtext ? T('খুঁজুন') : c ? catName(c) : T('সব তথ্য');
@@ -193,16 +190,16 @@ export function init() {
         <div class="pills wrap">${hist.map(h => `<a class="pill sm" href="#/search?q=${encodeURIComponent(h)}">${icon('clock', 14)}${esc(h)}</a>`).join('')}</div>` : '')
         + `<div class="sechead" style="margin-top:8px"><h2 style="font-size:15px">${T('জনপ্রিয় সার্চ')}</h2></div><div class="pills wrap">${['কাছাকাছি হাসপাতাল', 'আজ খোলা ফার্মেসি', '২০০ টাকার মধ্যে রেস্টুরেন্ট', 'কাচ্চি', 'বাসা ভাড়া', 'মোবাইল সার্ভিসিং', 'হোটেল']
           .map(s => `<a class="pill sm" href="#/search?q=${encodeURIComponent(T(s))}">${esc(T(s))}</a>`).join('')}</div>` : ''}
-      ${qtext || c || active ? `${ctxbar(list.length, total, nearMode)}
+      ${qtext || c || active ? `${ctxbar(area && !nearMode ? here.length : list.length, total, nearMode)}
       ${area && !origin() ? `<div class="note">${icon('pin', 18)}<span>${T('{a}-এর ম্যাপ-অবস্থান এখনো যোগ হয়নি, তাই দূরত্ব দেখানো যাচ্ছে না।', { a: esc(areaName(area)) })} <button class="linkbtn" data-locate>${T('আমার লোকেশন দিয়ে দূরত্ব দেখুন')}</button></span></div>` : ''}
       ${nearSort && !origin() && !area ? `<div class="note">${icon('nav', 18)}<span>${T('দূরত্ব দেখতে লোকেশন চালু করুন বা এলাকা বাছুন।')} <button class="linkbtn" data-locate>${T('লোকেশন দিন')}</button> · <button class="linkbtn" data-areasheet>${T('এলাকা বাছুন')}</button></span></div>` : ''}
       ${['restaurant', 'shop'].includes(cat) && !halal ? `<a class="pill sm" style="margin:0 0 10px" href="${link({ halal: '1' })}">${icon('halal', 14)}${T('শুধু হালাল দেখুন')}</a>` : ''}
       ${halal ? `<a class="pill sm on" style="margin:0 0 10px" href="${link({ halal: '' })}">${icon('halal', 14)}${T('শুধু হালাল')} ${icon('x', 12)}</a>` : ''}
-      <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${(c && !qtext && origin() ? [['', 'কাছাকাছি'], ['relevant', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং']] : [['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']])
+      <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length + rest.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${(c && !qtext && origin() ? [['', 'কাছাকাছি'], ['relevant', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং']] : [['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']])
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
-      ${nearMode ? nearList(list) : `<div class="rows">${withListAd(list.map(row), cat) || (kindHit || moreTown.length ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>
-        ${moreTown.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:15px">${T(list.length ? 'যশোর শহরের আরও' : '{a}-তে এখনো যোগ হয়নি — যশোর শহরের অন্যগুলো', { a: areaName(area) })}</h2></div>
-          <div class="rows">${moreTown.map(row).join('')}</div>` : ''}`}` : ''}`;
+      ${nearMode ? nearList(list) : `<div class="rows">${withListAd(list.map(row), cat) || (kindHit || rest.length ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>
+        ${rest.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:15px">${T(list.length ? 'অন্য এলাকার' : '{a}-তে নেই — অন্য এলাকার', { a: esc(areaName(area)) })}</h2></div>
+          <div class="rows">${rest.map(row).join('')}</div>` : ''}`}` : ''}`;
   };
   pages.item = ([id]) => {
     const it = getItem(id);

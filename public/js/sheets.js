@@ -94,7 +94,7 @@ export function areaSheet() {
 export const ctxbar = (shown, total, nearMode) => {
   const a = ls.get('area', '');
   return `<div class="ctxbar"><span class="ib">${icon(S.here ? 'nav' : 'pin', 17)}</span><div><b>${esc(S.here && nearMode ? T('আপনার লোকেশন') : a ? areaName(a) : T('পুরো যশোর'))}</b>
-    <small>${nearMode ? (S.here ? T('আপনার লোকেশন থেকে দূরত্ব — কাছেরগুলো আগে') : T('{a} থেকে দূরত্ব — কাছেরগুলো আগে', { a: esc(areaName(a)) })) : a ? T('এই এলাকার {n}টি', { n: num(shown) }) + (total > shown ? ' · ' + T('সব এলাকায় {n}টি', { n: num(total) }) : '') : S.here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বাছলে শুধু সেই এলাকার তথ্য দেখাবে')}</small></div>
+    <small>${nearMode ? (S.here ? T('আপনার লোকেশন থেকে দূরত্ব — কাছেরগুলো আগে') : T('{a} থেকে দূরত্ব — কাছেরগুলো আগে', { a: esc(areaName(a)) })) : a ? T('এই এলাকার {n}টি আগে, তারপর বাকি সব', { n: num(shown) }) : S.here ? T('দূরত্ব আপনার লোকেশন থেকে') : T('এলাকা বা লোকেশন দিলে কাছেরগুলো আগে দেখাবে')}</small></div>
     ${a ? `<button class="linkbtn" data-clrarea>${T('সব এলাকা')}</button>` : ''}<button class="chipbtn" data-areasheet>${T(a ? 'বদলান' : 'এলাকা বাছুন')}</button></div>`;
 };
 export function reportSheet(target) {

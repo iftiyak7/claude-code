@@ -21,19 +21,19 @@ export function init() {
     const list = cache.ads[kind];
     if (!list) loadKind(kind).catch(e => toast(e.message));
     const area = ls.get('area', ''), sort = p.get('sort') || '';
-    const rows = (list || []).filter(a => inArea(a, area));
+    // the chosen area's ads first, then all the others — choosing an area hides nothing
+    const inA = (list || []).filter(a => inArea(a, area)), rows = [...inA, ...(list || []).filter(a => !inA.includes(a))];
     if (sort === 'low') rows.sort((a, b) => (a.price || 1e12) - (b.price || 1e12));
     if (sort === 'high') rows.sort((a, b) => (b.price || 0) - (a.price || 0));
     if (sort === 'near') rows.sort((a, b) => (km(a) ?? 1e9) - (km(b) ?? 1e9));
+    else if (sort) rows.sort((a, b) => inA.includes(b) - inA.includes(a));      // price order inside "this area first"
     return `${topbar(T(k.bn), `<a class="roundbtn" href="#/post/${kind}" aria-label="${T('বিজ্ঞাপন দিন')}">${icon('plus', 20)}</a>`)}
       <div class="pills">${Object.entries(KINDS).map(([x, v]) => `<a class="pill sm ${x === kind ? 'on' : ''}" href="#/ads/${x}">${icon(v.icon, 15)}${T(v.bn)}</a>`).join('')}</div>
       ${adStrip('classifieds')}
-      ${list ? ctxbar(rows.length, list.length) : ''}
+      ${list ? ctxbar(inA.length, list.length) : ''}
       <div class="count"><span>${T('{n}টি বিজ্ঞাপন', { n: num(rows.length) })}</span>
         <select data-adsort aria-label="${T('সাজানো')}">${[['', 'নতুন আগে'], ['low', 'কম দাম আগে'], ['high', 'বেশি দাম আগে'], ['near', 'কাছাকাছি']].map(([x, v]) => `<option value="${x}" ${x === sort ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
-      ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>' : `<div class="rows">${rows.map(crow).join('') ||
-        (area && list.length ? empty(T('{a}-এ এখনো কোনো বিজ্ঞাপন নেই', { a: esc(areaName(area)) }), T('অন্য এলাকা বা পুরো যশোর দেখুন।'), `<button class="btn sm" data-clrarea>${T('পুরো যশোর দেখুন')}</button>`, k.icon)
-        : empty(T('এখনো কোনো বিজ্ঞাপন নেই'), T('প্রথম বিজ্ঞাপনটি আপনিই দিন — সম্পূর্ণ ফ্রি।'), `<a class="btn sm" href="#/post/${kind}">${T('বিজ্ঞাপন দিন')}</a>`, k.icon))}</div>`}
+      ${!list ? '<div class="boot" style="min-height:160px"><div class="spinner"></div></div>' : `<div class="rows">${rows.map(crow).join('') || (empty(T('এখনো কোনো বিজ্ঞাপন নেই'), T('প্রথম বিজ্ঞাপনটি আপনিই দিন — সম্পূর্ণ ফ্রি।'), `<a class="btn sm" href="#/post/${kind}">${T('বিজ্ঞাপন দিন')}</a>`, k.icon))}</div>`}
       ${list?.length ? disclaimer('classified') : ''}
       <a class="bizcta" href="#/post/${kind}"><span>${icon('megaphone', 22)}</span><div><b>${T('ফ্রি বিজ্ঞাপন দিন')}</b><small>${T('অ্যাডমিন যাচাইয়ের পর {n} দিন দেখাবে', { n: num(30) })}</small></div>${icon('chevR', 18)}</a>`;
   };
