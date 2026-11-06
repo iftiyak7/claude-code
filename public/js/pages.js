@@ -151,9 +151,9 @@ export function init() {
     const halal = !!p.get('halal') || intent?.halal;
     if (halal) list = list.filter(i => i.halal);
     const area = ls.get('area', ''), total = list.length;
-    // For "nearby" categories (mosques, hospitals) the chosen area is where distances start, not a filter.
-    // Nearby views (mosques, hospitals, or any "near me" search): the area/location is where distances start, not a filter.
-    const nearMode = !!(origin() && (sort === 'near' || (intent?.near && !sort) || (c?.near && !qtext && !sort)));
+    // Every category, and any "near me" search, is shown nearest-first once there is a starting point (the phone's location
+    // or the chosen area): the area is where distances start, not a filter. Choosing "relevant"/"rating" sorting turns it off.
+    const nearMode = !!(origin() && (sort === 'near' || (intent?.near && !sort) || (c && !qtext && !sort)));
     const beforeArea = list;
     if (area && !nearMode) list = list.filter(i => inArea(i, area));
     // Paid promotion is not limited by the chosen area: up to two sponsored matches from elsewhere still lead the list.
@@ -194,7 +194,7 @@ export function init() {
       ${nearSort && !origin() ? `<div class="note">${icon('nav', 18)}<span>${T('দূরত্ব দেখতে লোকেশন চালু করুন বা এলাকা বাছুন।')} <button class="linkbtn" data-locate>${T('লোকেশন দিন')}</button> · <button class="linkbtn" data-areasheet>${T('এলাকা বাছুন')}</button></span></div>` : ''}
       ${['restaurant', 'shop'].includes(cat) && !halal ? `<a class="pill sm" style="margin:0 0 10px" href="${link({ halal: '1' })}">${icon('halal', 14)}${T('শুধু হালাল দেখুন')}</a>` : ''}
       ${halal ? `<a class="pill sm on" style="margin:0 0 10px" href="${link({ halal: '' })}">${icon('halal', 14)}${T('শুধু হালাল')} ${icon('x', 12)}</a>` : ''}
-      <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${[['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']]
+      <div class="count"><span>${T('{n}টি ফলাফল', { n: num(list.length) })}</span><select data-sort aria-label="${T('সাজানো')}">${(c && !qtext && origin() ? [['', 'কাছাকাছি'], ['relevant', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং']] : [['', 'প্রাসঙ্গিক'], ['rating', 'সেরা রেটিং'], ['near', 'কাছাকাছি']])
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
       ${nearMode ? nearList(list) : `<div class="rows">${withListAd(list.map(row), cat) || (kindHit || moreTown.length ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>
         ${moreTown.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:15px">${T(list.length ? 'যশোর শহরের আরও' : '{a}-তে এখনো যোগ হয়নি — যশোর শহরের অন্যগুলো', { a: areaName(area) })}</h2></div>
