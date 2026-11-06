@@ -680,5 +680,9 @@ Object.assign(window.I18N_EN, {
   'অন্য এলাকার': 'Other areas',
   '{a}-তে নেই — অন্য এলাকার': 'None in {a} — other areas',
   'এই এলাকার {n}টি আগে, তারপর বাকি সব': '{n} in this area first, then all the rest',
-  'এলাকা বা লোকেশন দিলে কাছেরগুলো আগে দেখাবে': 'Choose an area or share your location to see the nearest first'
+  'এলাকা বা লোকেশন দিলে কাছেরগুলো আগে দেখাবে': 'Choose an area or share your location to see the nearest first',
+  'OpenStreetMap থেকে খুঁজে আনুন': 'Look them up on OpenStreetMap',
+  'সার্ভার নিজেও লোকেশন না থাকা এলাকাগুলো OpenStreetMap-এ খোঁজে। পাওয়াগুলো "আছে" চাপলে ম্যাপে মিলিয়ে দেখতে পারবেন; ভুল হলে মুছে নিজের লিংক দিন।': 'The server also looks up areas without a point on OpenStreetMap by itself. Tap "Set" to check a found point on the map; if it is wrong, remove it and paste your own link.',
+  'খোঁজা শুরু হয়েছে — প্রতি এলাকায় প্রায় এক সেকেন্ড। একটু পরে পেজটি আবার খুলুন।': 'Lookup started — about a second per area. Open this page again in a little while.',
+  'খোঁজা আগে থেকেই চলছে': 'A lookup is already running'
 });

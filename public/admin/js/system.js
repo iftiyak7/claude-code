@@ -107,6 +107,11 @@ export function init() {
       } finally { btn.disabled = false; }
     };
     ag.addEventListener('click', async e => {
+      if (e.target.closest('[data-geolookup]')) {
+        const r = await run(() => api('/admin/areas/lookup', {}));
+        toast(T(r.started ? 'খোঁজা শুরু হয়েছে — প্রতি এলাকায় প্রায় এক সেকেন্ড। একটু পরে পেজটি আবার খুলুন।' : 'খোঁজা আগে থেকেই চলছে'));
+        return;
+      }
       const b = e.target.closest('[data-geodel]'); if (!b) return;
       const geo = { ...(S.settings.areaGeo || {}) }; delete geo[b.dataset.geodel];
       await saveSetting('areaGeo', geo); route();
@@ -128,7 +133,9 @@ export function init() {
     const geo = S.settings.areaGeo || {}, areas = S.settings.areas || [], missing = areas.filter(a => !geo[a]);
     return `<form class="card" data-areageo><h3>${T('এলাকার ম্যাপ-অবস্থান')}</h3><div class="cbody form">
       <p class="muted" style="margin:0;font-size:13px">${T('কেউ অ্যাপে এলাকা বাছলে দূরত্ব এই বিন্দু থেকে মাপা হয়। Google Maps-এ এলাকার মাঝখানটা খুলে Share → Copy link করে পাশের ঘরে পেস্ট করুন (অথবা রাইট-ক্লিক করে পাওয়া "23.17, 89.21" সংখ্যা)।')}</p>
-      <p style="margin:0">${missing.length ? `<span class="tag warn">${T('{n}টি এলাকার লোকেশন নেই', { n: num(missing.length) })}</span>` : `<span class="tag ok">${T('সব এলাকার লোকেশন আছে')}</span>`}</p>
+      <p style="margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${missing.length ? `<span class="tag warn">${T('{n}টি এলাকার লোকেশন নেই', { n: num(missing.length) })}</span>
+        <button type="button" class="btn sm ghost" data-geolookup>${icon('search', 15)}${T('OpenStreetMap থেকে খুঁজে আনুন')}</button>` : `<span class="tag ok">${T('সব এলাকার লোকেশন আছে')}</span>`}</p>
+      <p class="muted" style="margin:0;font-size:12.5px">${T('সার্ভার নিজেও লোকেশন না থাকা এলাকাগুলো OpenStreetMap-এ খোঁজে। পাওয়াগুলো "আছে" চাপলে ম্যাপে মিলিয়ে দেখতে পারবেন; ভুল হলে মুছে নিজের লিংক দিন।')}</p>
       <div class="geolist">${[...missing, ...areas.filter(a => geo[a])].map(a => `<div class="georow"><b>${esc(a)}</b>
         ${geo[a] ? `<a class="tag ok" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${geo[a].join(',')}">${icon('check', 12)} ${T('আছে')}</a><button type="button" class="iconbtn" data-geodel="${esc(a)}" title="${T('মুছুন')}">${icon('x', 15)}</button>`
           : `<input data-geo="${esc(a)}" placeholder="${T('Google Maps লিংক')}" autocomplete="off">`}</div>`).join('')}</div>

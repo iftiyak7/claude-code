@@ -1,6 +1,6 @@
 /* Data helpers: listings, categories, opening hours, areas, location and distances. */
 import { S } from './state.js';
-import { LANG, T, areaName, esc, loc, ls, num } from './util.js';
+import { APP_UA, LANG, T, areaName, esc, loc, ls, num } from './util.js';
 
 /* ---------------- data helpers ---------------- */
 export const items = () => S.D.listings;
@@ -66,7 +66,8 @@ let autoAsked = false;
 export function autoLocate(then, askIfNeeded = true) {
   if (autoAsked || !navigator.geolocation) return;
   const run = () => { autoAsked = true; locate().then(() => { S.originCache = null; then(); }).catch(() => {}); };
-  const perm = navigator.permissions?.query?.({ name: 'geolocation' });
+  // inside the Android app the browser's permission state is not reliable; Android asks (and remembers a "no") itself
+  const perm = !APP_UA && navigator.permissions?.query?.({ name: 'geolocation' });
   if (!perm) { if (askIfNeeded) run(); return; }
   perm.then(p => { if (p.state === 'granted' || (askIfNeeded && p.state === 'prompt')) run(); else if (p.state === 'denied') autoAsked = true; }).catch(() => askIfNeeded && run());
 }

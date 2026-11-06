@@ -32,7 +32,7 @@ class Server:
         self.tmp = tempfile.mkdtemp(prefix='j360test-')
         self.data = data or os.path.join(self.tmp, 'data')
         self.port = free_port()
-        self.env = dict(os.environ, J360_DOMAIN_FILE=os.path.join(self.tmp, 'domain'), **(env or {}))
+        self.env = dict(os.environ, J360_DOMAIN_FILE=os.path.join(self.tmp, 'domain'), J360_NO_GEOCODE='1', **(env or {}))
         out = subprocess.run([sys.executable, SERVER, '--data', self.data, 'ensure-admin', 'admin'],
                              capture_output=True, text=True, env=self.env, check=True).stdout
         self.admin_password = out.split('password: ')[1].strip() if 'password: ' in out else None

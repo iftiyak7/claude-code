@@ -10,6 +10,7 @@ from . import config
 from .api_admin_system import store_apk
 from .backup import backup_loop, make_backup
 from .config import HERE, set_paths
+from .geocode import geocode_loop
 from .migrate import init_db
 from .security import hash_pw
 from .store import db, get_setting
@@ -61,6 +62,8 @@ def main():
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True
     threading.Thread(target=backup_loop, daemon=True).start()
+    if not os.environ.get('J360_NO_GEOCODE'):
+        threading.Thread(target=geocode_loop, daemon=True).start()
     print(f'Jashore360 running on http://{a.host}:{a.port}  (data: {config.DATA})', flush=True)
     try:
         srv.serve_forever()

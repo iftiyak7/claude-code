@@ -7,6 +7,7 @@ import time
 from . import config
 from .cache import bump
 from .config import DICT_SETTINGS, MAX_APK, MODERATOR_SETTINGS, SETTING_KEYS
+from .geocode import start_lookup
 from .media import save_image
 from .records import classified_out, listing_out, review_row
 from .store import db, get_setting
@@ -121,3 +122,12 @@ def adm_export(h):
     raw = json.dumps(out, ensure_ascii=False, indent=1).encode()
     h.send(200, raw, headers={'Content-Disposition': 'attachment; filename="jashore360-backup-%s.json"' % time.strftime('%Y%m%d'),
                               'Cache-Control': 'no-store'})
+
+
+@route('POST', '/admin/areas/lookup', auth='owner')
+def adm_area_lookup(h):
+    """Look up the map points of all areas that have none, on OpenStreetMap (runs in the background, about a second per area)."""
+    started = start_lookup()
+    h.audit('settings.areaGeo', 'lookup')
+    h.json({'started': started})
+
