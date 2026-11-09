@@ -22,7 +22,7 @@ class SeoTest(ServerTest):
         self.assertIn('application/xml', h['Content-Type'])
         self.assertIn('/p/h-general</loc>', xml)
         self.assertIn('/c/hospital</loc>', xml)
-        self.assertNotIn('/c/emergency<', xml)
+        self.assertIn('/c/emergency</loc>', xml)                    # emergency services matter most
 
     def test_listing_page_has_title_preview_and_text(self):
         st, page, h = self.get('/p/h-general')
@@ -38,6 +38,16 @@ class SeoTest(ServerTest):
         self.assertIn('<article class="seo"><h1>', page)                  # readable without running the app
         self.assertIn('/js/main.js', page)                                # and it is still the app
         self.assertIn("script-src 'self'", h['Content-Security-Policy'])
+
+    def test_app_page_and_opening_hours(self):
+        st, page, h = self.get('/app/')
+        self.assertEqual(st, 200)
+        self.assertIn('og:title', page)
+        self.assertRegex(page, r'og:image" content="https?://')
+        self.assertEqual(h['Cache-Control'], 'no-cache')
+        st, page, _ = self.get('/p/h-general')                         # open 24 hours
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
+        self.assertEqual(ld['openingHours'], 'Mo-Su 00:00-23:59')
 
     def test_category_page_lists_links(self):
         st, page, _ = self.get('/c/hospital')

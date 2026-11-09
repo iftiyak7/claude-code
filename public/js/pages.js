@@ -122,7 +122,7 @@ export function init() {
 
     ${recent.length ? `<section class="sec"><div class="sechead"><h2>${T('সম্প্রতি দেখেছেন')}</h2></div><div class="rows">${recent.map(row).join('')}</div></section>` : ''}
 
-    <a class="bizcta" href="#/add"><span>${icon('store', 24)}</span><div><b>${esc(loc(S.D.site, 'bizCtaTitle') || T('আপনার ব্যবসা যুক্ত করুন'))}</b><small>${esc(loc(S.D.site, 'bizCtaText') || T('হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন'))}</small></div>${icon('chevR', 18)}</a>
+    <a class="bizcta" href="#/add"><span>${icon('store', 24)}</span><div><b>${esc(loc(S.D.site, 'bizCtaTitle') || T('আপনার ব্যবসা যুক্ত করুন'))}</b><small>${esc(loc(S.D.site, 'bizCtaText') || T('যশোরের মানুষ সহজে আপনাকে খুঁজে পাবে — অ্যাকাউন্ট খুলে শুরু করুন'))}</small></div>${icon('chevR', 18)}</a>
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
   pages.emergency = p => {

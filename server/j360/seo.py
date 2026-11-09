@@ -35,7 +35,7 @@ def public_listings(c, lid=None):
         yield r['id'], d, r['updated_at']
 
 
-def app_page(h, title, desc, path, image=None, body='', extra_head=''):
+def app_page(h, title, desc, path, image=None, body='', extra_head='', cache='public, max-age=300'):
     """app.html with this page's title, description, share preview and readable content."""
     base = base_url(h)
     url = base + path
@@ -55,7 +55,7 @@ def app_page(h, title, desc, path, image=None, body='', extra_head=''):
     tpl = re.sub(r'<title>.*?</title>\s*<meta name="description"[^>]*>', lambda m: head, tpl, count=1, flags=re.S)
     tpl = tpl.replace('<main id="app"><div class="boot"><div class="spinner"></div></div></main>',
                       f'<main id="app">{body}<div class="boot"><div class="spinner"></div></div></main>', 1)
-    h.send(200, tpl.encode(), 'text/html; charset=utf-8', {'Cache-Control': 'public, max-age=300'})
+    h.send(200, tpl.encode(), 'text/html; charset=utf-8', {'Cache-Control': cache})
 
 
 def category_name(c, cat_id):
@@ -63,6 +63,31 @@ def category_name(c, cat_id):
         if x.get('id') == cat_id:
             return x
     return None
+
+
+DAYS = ('Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa')      # the app stores days off as 0 = Sunday … 6 = Saturday
+
+
+def opening_hours(d):
+    """schema.org openingHours, e.g. "Sa,Su,Mo,Tu,We,Th 09:00-21:00" (Friday off), or "Mo-Su 00:00-23:59" for 24 hours."""
+    hours, off = d.get('hours'), set(d.get('off') or [])
+    if hours == '24h':
+        return 'Mo-Su 00:00-23:59'
+    m = re.match(r'^(\d\d:\d\d)-(\d\d:\d\d)$', hours or '')
+    if not m:
+        return None
+    open_days = [DAYS[i] for i in (6, 0, 1, 2, 3, 4, 5) if i not in off]       # the week as Bangladesh counts it, from Saturday
+    if not open_days:
+        return None
+    return (','.join(open_days) if off else 'Mo-Su') + f' {m.group(1)}-{m.group(2)}'
+
+
+@page(r'/app/?')
+def app_home(h):
+    """The app's own address, with the same share preview as the landing page."""
+    app_page(h, 'Jashore360 — যশোরের সবকিছু, এক অ্যাপে',
+             'যশোরের জরুরি সেবা, হাসপাতাল, রেস্টুরেন্ট, দোকান, সার্ভিস ও দর্শনীয় স্থানের যাচাইকৃত তথ্য এক জায়গায়।', '/app/',
+             cache='no-cache')          # like before: a new app version is picked up at once
 
 
 @page(r'/p/([\w-]+)/?')
@@ -91,6 +116,9 @@ def listing_page(h, lid):
         ld['telephone'] = d['phone']
     if d.get('lat') is not None:
         ld['geo'] = {'@type': 'GeoCoordinates', 'latitude': d['lat'], 'longitude': d['lng']}
+    hours = opening_hours(d)
+    if hours:
+        ld['openingHours'] = hours
     if d.get('images'):
         ld['image'] = [base_url(h) + u for u in d['images'][:3]]
     # a <script> data block is not run, so the page's script rules (CSP) do not stop it; with every "<" written as \u003c
@@ -137,7 +165,7 @@ def robots(h):
 def sitemap(h):
     base = base_url(h)
     with db() as c:
-        cats = [x['id'] for x in get_setting(c, 'categories') or [] if x.get('active', True) and x.get('id') != 'emergency']
+        cats = [x['id'] for x in get_setting(c, 'categories') or [] if x.get('active', True)]
         rows = list(public_listings(c))
     day = lambda t: time.strftime('%Y-%m-%d', time.gmtime(t or time.time()))
     urls = [(base + '/', None), (base + '/app/', None)] + [(f'{base}/c/{x}', None) for x in cats] + [(f'{base}/p/{i}', day(u)) for i, _, u in rows]

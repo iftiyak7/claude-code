@@ -71,6 +71,21 @@ def users_allow_google(c):
     c.execute('DROP TABLE users_old')
 
 
+RETIRED_TEXT = {'অ্যাকাউন্ট খুলুন, প্যাকেজ বাছুন — হাজারো মানুষের কাছে পৌঁছান': 'অ্যাকাউন্ট খুলুন, প্যাকেজ বাছুন — যশোরের মানুষ সহজে আপনাকে খুঁজে পাবে', 'Create an account, pick a plan and reach thousands of people': 'Create an account, pick a plan and let people in Jashore find you'}   # old starter wording -> new
+
+
+def retire_text(c):
+    """Starter banners still showing retired wording get the new text; anything the admin wrote stays as it is."""
+    ads = get_setting(c, 'ads') or []
+    changed = False
+    for a in ads:
+        for k in ('subtitle', 'subtitleEn'):
+            if a.get(k) in RETIRED_TEXT:
+                a[k], changed = RETIRED_TEXT[a[k]], True
+    if changed:
+        c.execute("UPDATE settings SET value=? WHERE key='ads'", (json.dumps(ads, ensure_ascii=False),))
+
+
 def init_db():
     for d in (config.DATA, config.UPLOADS, config.DOWNLOADS):
         os.makedirs(d, exist_ok=True)
@@ -144,6 +159,7 @@ def init_db():
             c.execute("INSERT OR REPLACE INTO settings VALUES ('_seedv', ?)", (str(SEED_VERSION),))
         else:
             upgrade_seed(c, seed)
+        retire_text(c)
 
 
 SEED_VERSION = 6

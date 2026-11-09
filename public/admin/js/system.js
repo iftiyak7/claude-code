@@ -60,7 +60,7 @@ export function init() {
       ['classifiedDisclaimer', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের নিচের সতর্কতা'], ['classifiedDisclaimerEn', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের সতর্কতা (English)'],
       ['listingDisclaimer', 'textarea', 'প্রতিষ্ঠানের পেজের নিচের সতর্কতা'], ['listingDisclaimerEn', 'textarea', 'প্রতিষ্ঠানের পেজের সতর্কতা (English)'],
       ['bizCtaTitle', 'text', 'হোমপেজের "ব্যবসা যুক্ত করুন" শিরোনাম', 'খালি রাখলে: আপনার ব্যবসা যুক্ত করুন'], ['bizCtaTitleEn', 'text', '"ব্যবসা যুক্ত করুন" শিরোনাম (English)'],
-      ['bizCtaText', 'text', 'তার নিচের লেখা', 'খালি রাখলে: হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন'], ['bizCtaTextEn', 'text', 'তার নিচের লেখা (English)'],
+      ['bizCtaText', 'text', 'তার নিচের লেখা', 'খালি রাখলে: যশোরের মানুষ সহজে আপনাকে খুঁজে পাবে — অ্যাকাউন্ট খুলে শুরু করুন'], ['bizCtaTextEn', 'text', 'তার নিচের লেখা (English)'],
       ['classifieds', 'select', 'চাকরি ও ভাড়া অংশ', 'হোম ও এক্সপ্লোরে "ভাড়া ও চাকরি" টাইল; "লুকান" বাছলে নতুন বিজ্ঞাপন দেওয়ার অপশনও লুকাবে',
         [['auto', 'অন্তত একটি বিজ্ঞাপন থাকলে দেখান'], ['show', 'সবসময় দেখান'], ['hide', 'লুকান']]]];
     const pair = (a, b) => `<div class="two">${fieldHtml(F[a], s[F[a][0]])}${fieldHtml(F[b], s[F[b][0]])}</div>`;
