@@ -23,10 +23,14 @@ warn() { printf '\n\033[1;33m!!\033[0m %s\n' "$*"; }
 say "অ্যাপ ডাউনলোড"
 command -v python3 >/dev/null || { apt-get update -qq && apt-get install -y -qq python3; }
 TMP=$(mktemp -d)
-curl -fsSL "https://codeload.github.com/iftiyak7/claude-code/tar.gz/refs/heads/$BRANCH" | tar xz -C "$TMP" --strip-components=1
+# The exact commit, so what is installed can be checked later at /api/version (falls back to the branch if GitHub's API is busy).
+VERSION=$(curl -fsSL -m 20 -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/iftiyak7/claude-code/commits/$BRANCH" 2>/dev/null || true)
+[[ "$VERSION" =~ ^[0-9a-f]{40}$ ]] && REF="$VERSION" || { VERSION=""; REF="refs/heads/$BRANCH"; }
+curl -fsSL "https://codeload.github.com/iftiyak7/claude-code/tar.gz/$REF" | tar xz -C "$TMP" --strip-components=1
 mkdir -p "$APP"
 rm -rf "$APP/public.new" "$APP/server.new"
 cp -r "$TMP/public" "$APP/public.new"; cp -r "$TMP/server" "$APP/server.new"
+echo "${VERSION:-unknown}" > "$APP/server.new/VERSION"
 rm -rf "$APP/public" "$APP/server"; mv "$APP/public.new" "$APP/public"; mv "$APP/server.new" "$APP/server"
 mkdir -p "$APP/android"; cp "$TMP/android/base.apk" "$TMP/android/version.json" "$APP/android/" 2>/dev/null || true
 rm -rf "$TMP"
@@ -207,6 +211,7 @@ echo
 [ "${REMOVED:-}" = 1 ] && say "পুরনো ঠিকানা সার্ভার থেকে বাদ দেওয়া হয়েছে — এখন শুধু $DOMAIN চলছে। Hostinger-এ পুরনো ডোমেইনের auto-renew বন্ধ করে দিতে পারেন।"
 echo "════════════════════════════════════════════"
 echo " ✅ Jashore360 চালু হয়েছে"
+echo "    ভার্সন:          ${VERSION:-unknown}  (যাচাই: $URL/api/version)"
 echo "    অ্যাপ:          $URL"
 echo "    অ্যাডমিন প্যানেল: $URL/admin"
 echo "    APK ডাউনলোড:     $URL/download/jashore360.apk"

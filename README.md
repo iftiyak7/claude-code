@@ -33,6 +33,8 @@ curl -fsSL https://raw.githubusercontent.com/iftiyak7/claude-code/claude/vigilan
 ```
 এটি CloudPanel থেকে পুরনো সাইট মুছে দেয় (ডাটা, ছবি, অ্যাকাউন্ট সব আগের মতো থাকে)। তারপর রেজিস্ট্রারে পুরনো ডোমেইনের auto-renew বন্ধ করে দিতে পারেন।
 
+আপডেট সত্যিই চালু হয়েছে কি না: `https://আপনার-ডোমেইন/api/version` খুললে যে কমিট চলছে সেটি দেখায় (ইনস্টলারও শেষে দেখায়)।
+
 পাসওয়ার্ড ভুলে গেলে:
 ```bash
 sudo -u j360svc python3 /opt/jashore360/server/server.py --data /var/lib/jashore360 reset-password admin

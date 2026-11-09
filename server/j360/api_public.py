@@ -2,11 +2,12 @@
 import hashlib
 import http.client
 import json
+import os
 import re
 import sqlite3
 import time
 from .cache import bootstrap_payload, bump, home_domain
-from .config import CLASS_KINDS, PUBLIC
+from .config import CLASS_KINDS, HERE, PUBLIC
 from .maps import coords_from_text, map_host_ok, resolve_map_link
 from .media import save_image
 from .records import classified_out, review_row
@@ -182,6 +183,16 @@ def api_classified(h, cid):
         if rate_ok(f'cv:{h.who()}:{cid}', 1, 3600):
             c.execute('UPDATE classifieds SET views=views+1 WHERE id=?', (cid,))
     h.json(classified_out(r))
+
+
+@route('GET', '/version')
+def api_version(h):
+    """Which commit this server runs (written by the installer), to check that an update really went live."""
+    try:
+        v = open(os.path.join(HERE, 'VERSION')).read().strip()
+    except OSError:
+        v = 'dev'
+    h.json({'version': v})
 
 
 @route('GET', '/shell')

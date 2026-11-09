@@ -3,3 +3,4 @@ server/data/
 __pycache__/
 *.png
 !android/res/**/*.png
+server/VERSION

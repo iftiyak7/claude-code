@@ -40,6 +40,9 @@ class PublicTest(ServerTest):
             self.assertTrue(st == 404 or body.lstrip().lower().startswith(b'<!doctype html'), path)
             self.assertNotIn(b'SQLite format', body, path)
 
+    def test_version_says_what_runs(self):
+        self.assertTrue(self.ok(self.srv.client().get('/version'))['version'])
+
     def test_unknown_api_is_404_json(self):
         st, r = self.srv.client().get('/nope')
         self.assertEqual(st, 404)
