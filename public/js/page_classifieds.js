@@ -1,7 +1,7 @@
 /* Jobs, rents, mess and tuition ads. */
 import { adStrip } from './ads.js';
 import { crow, empty, media, topbar } from './components.js';
-import { KINDS, dirUrl, fromWhere, inArea, km, kmText, optLabel } from './data.js';
+import { KINDS, dirUrl, fromWhere, fullAddress, inArea, km, kmText, optLabel } from './data.js';
 import { disclaimer, pages, videoBlock } from './pages.js';
 import { render } from './router.js';
 import { ctxbar } from './sheets.js';
@@ -63,7 +63,7 @@ export function init() {
         ${a.description ? `<p class="prose" style="margin-top:16px">${esc(a.description)}</p>` : ''}
         ${videoBlock(a.videos)}
         <div class="info" style="margin-top:12px">${facts.map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${T(l)}</small>${esc(v)}</div></div>`).join('')}
-          ${a.address || a.area ? `<div class="li"><span class="ib">${icon('pin', 18)}</span><div><small>${T('ঠিকানা')}</small>${esc([a.address, areaName(a.area)].filter(Boolean).join(', '))}</div></div>` : ''}
+          ${a.address || a.area ? `<div class="li"><span class="ib">${icon('pin', 18)}</span><div><small>${T('ঠিকানা')}</small>${esc(fullAddress(a))}</div></div>` : ''}
           <div class="li"><span class="ib">${icon('user', 18)}</span><div><small>${T('যোগাযোগ')}</small>${esc(a.contactName || '')} <a href="tel:${esc(a.phone)}">${num(a.phone)}</a></div></div></div>
         ${disclaimer('classified')}
         <button class="reportlink" data-reportad="${esc(id)}">${icon('flag', 14)}${T('ভুয়া বা আপত্তিকর বিজ্ঞাপন? রিপোর্ট করুন')}</button>

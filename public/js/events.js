@@ -69,7 +69,8 @@ export function init() {
     if (ds.share || ds.sharead) {
       const it = ds.share ? getItem(ds.share) : cache.ad?.id === ds.sharead ? cache.ad : Object.values(cache.ads).flat().find(x => x.id === ds.sharead);
       if (!it) return;
-      const url = location.origin + '/app/#/' + (ds.share ? 'p/' : 'ad/') + it.id, title = ds.share ? nameOf(it) : it.title;
+      // a listing is shared as /p/<id>: that page carries a preview (title, picture) for chat apps and search engines
+      const url = location.origin + (ds.share ? '/p/' : '/app/#/ad/') + it.id, title = ds.share ? nameOf(it) : it.title;
       try { if (navigator.share) await navigator.share({ title, url }); else { await navigator.clipboard.writeText(title + '\n' + url); toast(T('লিংক কপি হয়েছে')); } } catch {}
       return;
     }

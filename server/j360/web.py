@@ -21,6 +21,14 @@ from .util import ApiError
 
 
 ROUTES = []
+PAGES = []          # server-made pages outside /api (robots.txt, sitemap, listing pages for search engines)
+
+
+def page(pattern):
+    def deco(fn):
+        PAGES.append((re.compile('^' + pattern + '$'), fn))
+        return fn
+    return deco
 
 
 def route(method, pattern, auth=None):
@@ -222,6 +230,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise ApiError(405, 'অনুমোদিত নয়')
             if path in ('/download/jashore360.apk', '/download/app.apk'):
                 return self.download_apk()
+            for rx, fn in PAGES:
+                mt = rx.match(path)
+                if mt:
+                    return fn(self, *mt.groups())
             return self.static(path)
         except ApiError as e:
             self.json({'error': str(e), **e.extra}, e.status)

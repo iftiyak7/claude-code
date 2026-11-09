@@ -82,5 +82,8 @@ export async function doLocate(then) {
 
 // Runs once at start-up, in the original order (main.js calls it after every module has loaded).
 export function init() {
+  // shared and search-engine links (/p/<listing>, /c/<category>) open the same page inside the app
+  const deep = location.pathname.match(/^\/(p|c)\/([\w-]+)\/?$/);
+  if (deep && !location.hash) history.replaceState(null, '', '/app/#/' + deep[1] + '/' + deep[2]);
   window.addEventListener('hashchange', () => { closeSheet(true); render(); });
 }

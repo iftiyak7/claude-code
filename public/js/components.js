@@ -101,7 +101,8 @@ export function row(it) {
     <div class="sub">${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}${d != null ? ' · ' + kmText(d) : ''}</div>
     <div class="meta">${offerTag(it)}${rateTag(it)}${openTag(it)}${halalTag(it)}${it.price ? `<span class="tag">${money(it.price)}</span>` : ''}${it.sponsored ? '<span class="tag ad">Sponsored</span>' : ''}${it.demo ? `<span class="tag">${T('নমুনা')}</span>` : ''}</div></div>${act}</a>`;
 }
-export const wcard = (it, sp) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${nameT(it)}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
+// sp must be true (not a list index): call it as list.map(it => wcard(it)), never list.map(wcard)
+export const wcard = (it, sp = false) => `<a class="wcard" href="#/p/${esc(it.id)}"${sp === true ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${sp === true ? '<span class="flag tag glass">Sponsored</span>' : ''}<div class="t"><b>${nameT(it)}</b><small>${icon('pin', 13)}${esc(areaName(it.area) || T('যশোর'))}${km(it) != null ? ' · ' + kmText(km(it)) : ''}</small></div></a>`;
 export function crow(a) {
   const k = KINDS[a.kind];
   const meta = a.kind === 'job' ? [a.company, optLabel('jobType', a.jobType)] : a.kind === 'rent' ? [optLabel('propertyType', a.propertyType), a.rooms && T('{n} রুম', { n: num(a.rooms) })]

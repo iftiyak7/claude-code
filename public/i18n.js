@@ -684,5 +684,16 @@ Object.assign(window.I18N_EN, {
   'OpenStreetMap থেকে খুঁজে আনুন': 'Look them up on OpenStreetMap',
   'সার্ভার নিজেও লোকেশন না থাকা এলাকাগুলো OpenStreetMap-এ খোঁজে। পাওয়াগুলো "আছে" চাপলে ম্যাপে মিলিয়ে দেখতে পারবেন; ভুল হলে মুছে নিজের লিংক দিন।': 'The server also looks up areas without a point on OpenStreetMap by itself. Tap "Set" to check a found point on the map; if it is wrong, remove it and paste your own link.',
   'খোঁজা শুরু হয়েছে — প্রতি এলাকায় প্রায় এক সেকেন্ড। একটু পরে পেজটি আবার খুলুন।': 'Lookup started — about a second per area. Open this page again in a little while.',
-  'খোঁজা আগে থেকেই চলছে': 'A lookup is already running'
+  'খোঁজা আগে থেকেই চলছে': 'A lookup is already running',
+  'আরও {s}': 'More {s}',
+  'হোমপেজের "ব্যবসা যুক্ত করুন" শিরোনাম': 'Home page "Add your business" title',
+  'খালি রাখলে: আপনার ব্যবসা যুক্ত করুন': 'Empty: Add your business',
+  '"ব্যবসা যুক্ত করুন" শিরোনাম (English)': '"Add your business" title (English)',
+  'তার নিচের লেখা': 'Text below it',
+  'খালি রাখলে: হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন': 'Empty: Reach thousands of people — open an account to start',
+  'তার নিচের লেখা (English)': 'Text below it (English)',
+  'চাকরি ও ভাড়া অংশ': 'Jobs & rent section',
+  'হোম ও এক্সপ্লোরে "ভাড়া ও চাকরি" টাইল; "লুকান" বাছলে নতুন বিজ্ঞাপন দেওয়ার অপশনও লুকাবে': 'The "Rent & jobs" tiles on Home and Explore; "Hide" also hides posting new ads',
+  'অন্তত একটি বিজ্ঞাপন থাকলে দেখান': 'Show once there is at least one ad',
+  'সবসময় দেখান': 'Always show'
 });

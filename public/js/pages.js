@@ -2,7 +2,7 @@
 import { S } from './state.js';
 import { adCard, adStrip, adsFor, withListAd } from './ads.js';
 import { contactLines, ecard, empty, gcard, halalTag, isSaved, loadCoupons, media, nameT, nearList, openTag, promote, rateTag, row, starsHtml, statusTag, topbar, walkText, wcard } from './components.js';
-import { KINDS, PRICE_UNIT, STATUS, autoLocate, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
+import { KINDS, PRICE_UNIT, STATUS, autoLocate, fullAddress, showClassifieds, catName, catOf, dirUrl, fromWhere, getItem, hoursText, inArea, isOpen, items, km, kmText, mapUrl, origin, subIcon, subLabel, subName } from './data.js';
 import { render } from './router.js';
 import { search } from './search.js';
 import { ctxbar } from './sheets.js';
@@ -23,7 +23,7 @@ function tabBody(it, tab, infoRows, related) {
     ${it.features?.length ? `<div class="feat">${it.features.map(f => `<span>${icon('check', 15)}${esc(f)}</span>`).join('')}</div>` : ''}
     <div class="info" style="margin-top:16px">${infoRows.slice(0, 3).map(([ic, l, v]) => `<div class="li"><span class="ib">${icon(ic, 18)}</span><div><small>${l}</small>${v}</div></div>`).join('')}</div>
     ${adStrip('detail', it.cat)}
-    ${related.length ? `<div class="sechead" style="margin-top:24px"><h2 style="font-size:16px">${T(it.cat === 'place' ? 'কাছাকাছি খাবার ও থাকা' : 'আরও দেখুন')}</h2></div>
+    ${related.length ? `<div class="sechead" style="margin-top:24px"><h2 style="font-size:16px">${it.cat === 'place' ? T('কাছাকাছি খাবার ও থাকা') : it.sub ? T('আরও {s}', { s: esc(subLabel(it)) }) : T('আরও দেখুন')}</h2></div>
       <div class="related">${related.map(x => `<a href="#/p/${esc(x.id)}">${media(x)}<small>${nameT(x, 13)}</small></a>`).join('')}</div>` : ''}`;
 }
 export async function loadReviews(it) {
@@ -95,8 +95,8 @@ export function init() {
     <section class="sec"><div class="sechead"><h2>${T('ক্যাটাগরি')}</h2><a href="#/explore">${T('সব দেখুন')}${icon('chevR', 14)}</a></div>
       <div class="cats">${cats.map(c => `<a class="catt" href="#/c/${c.id}"><span style="--c:${esc(c.color)}">${icon(c.icon, 26)}</span>${esc(short(c))}</a>`).join('')}</div></section>
 
-    <section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div>
-      <div class="ktiles">${Object.entries(KINDS).map(([k, v]) => `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(counts[k] || 0) })}</small></a>`).join('')}</div></section>
+    ${showClassifieds() ? `<section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div>
+      <div class="ktiles">${Object.entries(KINDS).map(([k, v]) => `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(counts[k] || 0) })}</small></a>`).join('')}</div></section>` : ''}
 
     ${S.ME?.coupons ? `<a class="note offerbar" href="#/account?tab=coupons" style="margin-top:14px">${icon('tag', 18)}<span><b>${T('আপনার জন্য {n}টি কুপন আছে', { n: num(S.ME.coupons) })}</b> — ${T('দেখুন')}</span></a>` : ''}
     ${Object.keys(S.D.offers || {}).length ? `<a class="bizcta offercta" href="#/offers"><span>${icon('tag', 22)}</span><div><b>${T('অফার ও কুপন')}</b><small>${T('{n}টি প্রতিষ্ঠানে অফার চলছে — কুপন নিয়ে ছাড় পান', { n: num(Object.keys(S.D.offers).length) })}</small></div>${icon('chevR', 18)}</a>` : ''}
@@ -118,11 +118,11 @@ export function init() {
         <span class="body"><b>${T('অথবা এলাকা বাছুন')}</b><span class="sub" style="white-space:normal">${T('যেমন নিউমার্কেট — শুধু সেই এলাকার তথ্য দেখাবে')}</span></span></button></div>`}</section>
 
     ${places.length ? `<section class="sec"><div class="sechead"><h2>${T('যশোর ঘুরে দেখুন')}</h2><a href="#/c/place">${T('সব দেখুন')}${icon('chevR', 14)}</a></div>
-      <div class="wcards">${places.map(wcard).join('')}</div></section>` : ''}
+      <div class="wcards">${places.map(it => wcard(it)).join('')}</div></section>` : ''}
 
     ${recent.length ? `<section class="sec"><div class="sechead"><h2>${T('সম্প্রতি দেখেছেন')}</h2></div><div class="rows">${recent.map(row).join('')}</div></section>` : ''}
 
-    <a class="bizcta" href="#/add"><span>${icon('store', 24)}</span><div><b>${T('আপনার ব্যবসা যুক্ত করুন')}</b><small>${T('হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন')}</small></div>${icon('chevR', 18)}</a>
+    <a class="bizcta" href="#/add"><span>${icon('store', 24)}</span><div><b>${esc(loc(S.D.site, 'bizCtaTitle') || T('আপনার ব্যবসা যুক্ত করুন'))}</b><small>${esc(loc(S.D.site, 'bizCtaText') || T('হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন'))}</small></div>${icon('chevR', 18)}</a>
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
   pages.emergency = p => {
@@ -209,10 +209,12 @@ export function init() {
     if (S.D.offers?.[it.id] || S.ME) setTimeout(() => loadCoupons(it.id), 0);
     const c = catOf(it), d = km(it), tab = pages.item.tab || 'about', imgs = it.images || [];
     const rec = ls.get('recent', []).filter(x => x !== id); ls.set('recent', [id, ...rec].slice(0, 12));
-    const related = items().filter(x => x.id !== id && (it.cat === 'place' ? ['restaurant', 'hotel'].includes(x.cat) && x.lat != null && it.lat != null : x.cat === it.cat))
+    // "more like this": the same kind (dentist → dentists), not just the same category; places suggest food and stays nearby
+    const related = items().filter(x => x.id !== id && (it.cat === 'place' ? ['restaurant', 'hotel'].includes(x.cat) && x.lat != null && it.lat != null
+      : x.cat === it.cat && (it.sub ? x.sub === it.sub : true)))
       .map(x => ({ x, d: it.lat != null && x.lat != null ? Math.hypot(x.lat - it.lat, x.lng - it.lng) : 9 })).sort((a, b) => a.d - b.d).slice(0, 8).map(o => o.x);
     const infoRows = [
-      (it.address || it.area) && ['pin', T('ঠিকানা'), esc([it.address, areaName(it.area), T('যশোর')].filter(Boolean).join(', ')) + (d != null ? ` <span class="muted">· ${kmText(d)} ${esc(fromWhere())}</span>` : '')],
+      (it.address || it.area) && ['pin', T('ঠিকানা'), esc(fullAddress(it)) + (d != null ? ` <span class="muted">· ${kmText(d)} ${esc(fromWhere())}</span>` : '')],
       ['clock', T('সময়সূচি'), hoursText(it)],
       it.phone && ['phone', T('ফোন'), `<a href="tel:${esc(it.phone)}" data-call-track="${esc(id)}">${num(it.phone)}</a>${it.phone2 ? ` · <a href="tel:${esc(it.phone2)}">${num(it.phone2)}</a>` : ''}`],
       it.web && ['globe', T('ওয়েবসাইট'), `<a href="${esc(it.web)}" target="_blank" rel="noopener nofollow">${esc(it.web.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`],

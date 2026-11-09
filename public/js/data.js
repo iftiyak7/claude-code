@@ -11,6 +11,20 @@ export const subName = (c, sub) => (LANG() === 'en' && c.subsEn?.[sub]) || c.sub
 export const subLabel = it => subName(catOf(it), it.sub) || catName(catOf(it));
 export const subIcon = it => catOf(it).subIcons?.[it.sub] || catOf(it).icon;
 export const nameOf = it => loc(it, 'name');
+// "street, area, Jashore" without saying the area or Jashore twice when the street address already has them
+export function fullAddress(it) {
+  const addr = (it.address || '').trim(), low = addr.toLowerCase(), area = areaName(it.area);
+  const parts = [addr];
+  if (it.area && !addr.includes(it.area) && !(area && low.includes(area.toLowerCase()))) parts.push(area);
+  const all = parts.join(' ').toLowerCase();
+  if (!/যশোর|jashore|jessore/.test(all)) parts.push(T('যশোর'));
+  return parts.filter(Boolean).join(', ');
+}
+// Jobs & rent: the admin can show it always, hide it, or (default) show it only once there are ads
+export function showClassifieds() {
+  const mode = S.D?.site?.classifieds || 'auto';
+  return mode === 'show' || (mode !== 'hide' && Object.values(S.D?.classifiedCounts || {}).some(n => n > 0));
+}
 export const PRICE_UNIT = { restaurant: 'জনপ্রতি', hotel: 'প্রতি রাত', service: 'থেকে শুরু' };
 export const STATUS = { verified: ['যাচাইকৃত', 'ok'], pending: ['যাচাই চলছে', 'warn'], needs_update: ['আপডেট প্রয়োজন', 'warn'],
   temp_closed: ['সাময়িক বন্ধ', 'bad'], closed: ['স্থায়ীভাবে বন্ধ', 'bad'] };

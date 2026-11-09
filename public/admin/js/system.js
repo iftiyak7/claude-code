@@ -58,11 +58,15 @@ export function init() {
       ['about', 'textarea', 'আমাদের সম্পর্কে'], ['aboutEn', 'textarea', 'আমাদের সম্পর্কে (English)'], ['disclaimer', 'textarea', 'দাবিত্যাগ (ফুটারে দেখায়)'],
       ['disclaimerEn', 'textarea', 'দাবিত্যাগ (English)'], ['snakeTip', 'textarea', 'সাপে কামড়ের নির্দেশনা (জরুরি পেজ)'], ['snakeTipEn', 'textarea', 'সাপে কামড়ের নির্দেশনা (English)'],
       ['classifiedDisclaimer', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের নিচের সতর্কতা'], ['classifiedDisclaimerEn', 'textarea', 'চাকরি/ভাড়া বিজ্ঞাপনের সতর্কতা (English)'],
-      ['listingDisclaimer', 'textarea', 'প্রতিষ্ঠানের পেজের নিচের সতর্কতা'], ['listingDisclaimerEn', 'textarea', 'প্রতিষ্ঠানের পেজের সতর্কতা (English)']];
+      ['listingDisclaimer', 'textarea', 'প্রতিষ্ঠানের পেজের নিচের সতর্কতা'], ['listingDisclaimerEn', 'textarea', 'প্রতিষ্ঠানের পেজের সতর্কতা (English)'],
+      ['bizCtaTitle', 'text', 'হোমপেজের "ব্যবসা যুক্ত করুন" শিরোনাম', 'খালি রাখলে: আপনার ব্যবসা যুক্ত করুন'], ['bizCtaTitleEn', 'text', '"ব্যবসা যুক্ত করুন" শিরোনাম (English)'],
+      ['bizCtaText', 'text', 'তার নিচের লেখা', 'খালি রাখলে: হাজারো মানুষের কাছে পৌঁছান — অ্যাকাউন্ট খুলে শুরু করুন'], ['bizCtaTextEn', 'text', 'তার নিচের লেখা (English)'],
+      ['classifieds', 'select', 'চাকরি ও ভাড়া অংশ', 'হোম ও এক্সপ্লোরে "ভাড়া ও চাকরি" টাইল; "লুকান" বাছলে নতুন বিজ্ঞাপন দেওয়ার অপশনও লুকাবে',
+        [['auto', 'অন্তত একটি বিজ্ঞাপন থাকলে দেখান'], ['show', 'সবসময় দেখান'], ['hide', 'লুকান']]]];
     const pair = (a, b) => `<div class="two">${fieldHtml(F[a], s[F[a][0]])}${fieldHtml(F[b], s[F[b][0]])}</div>`;
     shell('settings', T('সাধারণ সেটিংস'), '', `<div class="split"><form class="card" data-site><h3>${T('অ্যাপের তথ্য')}</h3><div class="cbody form">
         ${fieldHtml(F[0], s.name)}${pair(1, 2)}${pair(3, 4)}${fieldHtml(F[5], s.hotline)}${pair(6, 7)}${pair(8, 9)}${fieldHtml(F[10], s.facebook)}
-        ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}${pair(17, 18)}${pair(19, 20)}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
+        ${pair(11, 12)}${pair(13, 14)}${pair(15, 16)}${pair(17, 18)}${pair(19, 20)}${pair(21, 22)}${pair(23, 24)}${fieldHtml(F[25], s.classifieds || 'auto')}<div><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></div></form>
       <div class="grid"><form class="card" data-areas><h3>${T('এলাকার তালিকা')}</h3><div class="cbody form"><label class="field"><span>${T('প্রতি লাইনে একটি এলাকা')}</span>
         <textarea name="areas" rows="16">${esc((S.settings.areas || []).map(a => S.settings.areaGeo?.[a] ? `${a} = ${S.settings.areaGeo[a].join(', ')}` : a).join('\n'))}</textarea>
         <em>${T('চাইলে এলাকার কেন্দ্রের লোকেশন দিন: নিউমার্কেট = 23.1712, 89.2143 — এলাকা বাছলে দূরত্ব এখান থেকে মাপা হবে। না দিলে সেই এলাকার তালিকাগুলোর গড় অবস্থান ধরা হয়।')}</em>

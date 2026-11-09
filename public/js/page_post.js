@@ -2,7 +2,7 @@
 import { S } from './state.js';
 import { adStrip } from './ads.js';
 import { empty, gcard, saved, ticket, topbar } from './components.js';
-import { KINDS, OPTS, catName, getItem, isTown, items, subLabel, subName } from './data.js';
+import { KINDS, OPTS, catName, getItem, isTown, items, showClassifieds, subLabel, subName } from './data.js';
 import { cache } from './page_classifieds.js';
 import { pages } from './pages.js';
 import { go, render } from './router.js';
@@ -102,7 +102,7 @@ export function init() {
       ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন', 'ফ্রি']];
     return `${topbar(T('কী যোগ করতে চান?'))}
       ${S.ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
-      <div class="rows">${opts.map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
+      <div class="rows">${opts.filter(([to]) => to.startsWith('listing') || S.D.site?.classifieds !== 'hide').map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
         <span class="body"><b>${T(t)}</b><span class="sub" style="white-space:normal">${T(d)}</span><span class="meta"><span class="tag ${b === 'ফ্রি' ? 'ok' : 'ad'}">${T(b)}</span><span class="muted">${T('অ্যাডমিন যাচাইয়ের পর প্রকাশ')}</span></span></span>${icon('chevR', 18)}</a>`).join('')}</div>`;
   };
   pages.edit = ([type, id]) => {
@@ -240,8 +240,8 @@ export function init() {
       <div class="grid2">${S.D.categories.map(c => `<a class="gcard" href="${c.id === 'emergency' ? '#/emergency' : '#/c/' + c.id}" style="padding:18px;gap:14px">
         <span class="catt" style="width:auto;align-items:flex-start"><span style="--c:${esc(c.color)};width:54px;height:54px;border-radius:17px">${icon(c.icon, 24)}</span></span>
         <div><b style="display:block;font-size:15px">${esc(catName(c))}</b><small class="muted">${T('{n}টি তথ্য', { n: num(counts[c.id] || 0) })}</small></div></a>`).join('')}</div>
-      <section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div><div class="ktiles">${Object.entries(KINDS).map(([k, v]) =>
-        `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(S.D.classifiedCounts?.[k] || 0) })}</small></a>`).join('')}</div></section>
+      ${showClassifieds() ? `<section class="sec"><div class="sechead"><h2>${T('ভাড়া ও চাকরি')}</h2></div><div class="ktiles">${Object.entries(KINDS).map(([k, v]) =>
+        `<a href="#/ads/${k}" style="--c:${v.color}"><span>${icon(v.icon, 22)}</span><b>${T(v.bn)}</b><small>${T('{n}টি বিজ্ঞাপন', { n: num(S.D.classifiedCounts?.[k] || 0) })}</small></a>`).join('')}</div></section>` : ''}
       <a class="bizcta" href="#/offers" style="margin-top:18px"><span>${icon('tag', 22)}</span><div><b>${T('অফার ও কুপন')}</b><small>${T('{n}টি প্রতিষ্ঠানে অফার চলছে', { n: num(Object.keys(S.D.offers || {}).length) })}</small></div>${icon('chevR', 18)}</a>
       <section class="sec"><div class="sechead"><h2>${T('শীঘ্রই আসছে')}</h2></div><div class="pills wrap">${[['droplet', 'রক্তদাতা নেটওয়ার্ক'], ['nav', 'যাতায়াত'], ['calendar', 'ইভেন্ট']]
         .map(([i, t]) => `<span class="pill sm">${icon(i, 15)}${T(t)}</span>`).join('')}</div></section>`;
