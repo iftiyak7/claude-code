@@ -27,7 +27,17 @@ export function render() {
   if (path !== lastPath && (name === 'post' || name === 'edit')) { MEDIA.images = []; MEDIA.videos = []; pages.edit.filled = null; if (name === 'post') cache.edit = null; }
   const html = ['browse', 'emergency'].includes(name) ? pages[name](p) : pages[name](params, p);
   if (html === '') return;               // page redirected
+  // a row of choices that scrolls sideways keeps its place when the page is redrawn, and the chosen one stays in view
+  const rowScroll = path === lastPath ? [...app.querySelectorAll('.pills')].map(p => p.scrollLeft) : [];
   app.innerHTML = html;
+  app.querySelectorAll('.pills').forEach((p, i) => {
+    if (p.scrollWidth <= p.clientWidth) return;
+    if (rowScroll[i] != null) p.scrollLeft = rowScroll[i];
+    const on = p.querySelector('.on');
+    if (!on) return;
+    const pr = p.getBoundingClientRect(), er = on.getBoundingClientRect();
+    if (er.left < pr.left + 8 || er.right > pr.right - 8) p.scrollLeft += (er.left - pr.left) - (pr.width - er.width) / 2;
+  });
   nav.hidden = name === 'item' || name === 'ad';
   nav.querySelectorAll('a').forEach(a => { a.classList.toggle('on', a.dataset.nav === navKey[name]); a.setAttribute('aria-label', T(a.dataset.label)); });
   if (path !== lastPath) window.scrollTo(0, 0);
