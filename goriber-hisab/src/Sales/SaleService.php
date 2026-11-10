@@ -885,6 +885,8 @@ final class SaleService extends Service {
 			if ( ! $line['track_stock'] ) {
 				continue;
 			}
+			// Stock entered before its purchase price was known: cost it now, not at ৳0.
+			$this->stock->ensureCost( $ctx, (int) $item['product_id'], (int) $item['variant_id'] );
 			$res = $this->stock->out(
 				$ctx,
 				array(

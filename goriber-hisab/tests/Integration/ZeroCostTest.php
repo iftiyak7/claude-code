@@ -53,12 +53,36 @@ final class ZeroCostTest extends IntegrationTestCase {
 		$v = $this->k->products->saveVariant( $this->ctx, $p, array( 'name' => '100 g', 'selling_price' => '90', 'purchase_price' => '', 'opening_qty' => '4' ) )['id'];
 		// Price saved straight in the database (as on a shop where it was set before this fix).
 		$this->db->update( $this->db->table( 'product_variants' ), array( 'purchase_price' => '75' ), array( 'id' => $v ) );
-		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'variant_id' => $v, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '90' ) ) ) );
 		$this->assertSame( 1, $this->k->products->get( $this->ctx, $p )['zero_cost'] );
 		$r = $this->k->products->repairCost( $this->ctx, $p );
-		$this->assertSame( 1, $r['sales'] );
-		$this->assertMoney( '15', $this->k->sales->get( $this->ctx, $sale['id'] )['gross_profit'] );
+		$this->assertSame( '4.0000', $r['stock'] );
 		$this->assertSame( 0, $this->k->products->get( $this->ctx, $p )['zero_cost'] );
+		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'variant_id' => $v, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '90' ) ) ) );
+		$this->assertMoney( '15', $sale['gross_profit'] );
 		$this->assertBooksBalanced( 'repaired' );
+	}
+
+	public function testNewSaleCostsStockAutomatically(): void {
+		// Price already saved, stock still at ৳0 (the shop's situation): no button needed.
+		$p = $this->product( 'Morich', '500' );
+		$v = $this->k->products->saveVariant( $this->ctx, $p, array( 'name' => '100 g', 'selling_price' => '90', 'purchase_price' => '', 'opening_qty' => '4' ) )['id'];
+		$this->db->update( $this->db->table( 'product_variants' ), array( 'purchase_price' => '75' ), array( 'id' => $v ) );
+		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'variant_id' => $v, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '90' ) ) ) );
+		$this->assertMoney( '15', $sale['gross_profit'] );
+		$this->assertMoney( '225', $this->balance( 'inventory' ) );
+		$this->assertBooksBalanced( 'auto cost at sale' );
+	}
+
+	public function testWholeShopRepair(): void {
+		$p = $this->product( 'Holud', '500' );
+		$v = $this->k->products->saveVariant( $this->ctx, $p, array( 'name' => '100 g', 'selling_price' => '90', 'purchase_price' => '', 'opening_qty' => '4' ) )['id'];
+		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $p, 'variant_id' => $v, 'qty' => '4' ) ), 'payments' => array( array( 'amount' => '360' ) ) ) );
+		$this->assertMoney( '360', $sale['gross_profit'], 'all sold before the price was set' );
+		$this->db->update( $this->db->table( 'product_variants' ), array( 'purchase_price' => '75' ), array( 'id' => $v ) );
+		$r = $this->k->stock->repairZeroCosts( $this->ctx );
+		$this->assertSame( 1, $r['sales'] );
+		$this->assertMoney( '60', $this->k->sales->get( $this->ctx, $sale['id'] )['gross_profit'] );
+		$this->assertBooksBalanced( 'shop repair' );
+		$this->assertSame( 0, $this->k->stock->repairZeroCosts( $this->ctx )['sales'], 'nothing twice' );
 	}
 }

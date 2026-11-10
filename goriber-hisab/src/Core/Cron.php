@@ -26,6 +26,7 @@ final class Cron {
 
 	public function register(): void {
 		add_action( 'goriber_hisab_daily', array( $this, 'daily' ) );
+		add_action( 'goriber_hisab_repair_costs', array( $this, 'repairCosts' ) );
 	}
 
 	public function daily(): void {
@@ -37,9 +38,25 @@ final class Cron {
 				$this->dueReminder( $ctx );
 				$this->backupReminder( $ctx );
 				$this->k->notifications->lowStockSummary( $ctx );
+				$this->k->stock->repairZeroCosts( $ctx );
 				do_action( 'goriber_hisab/daily', $ctx );
 			} catch ( \Throwable $e ) {
 				error_log( 'Goriber Hisab daily job failed for business ' . $id . ': ' . $e->getMessage() ); // phpcs:ignore
+			}
+		}
+	}
+
+	/**
+	 * One-off after an update: stock and sales at ৳0 cost get their purchase price.
+	 */
+	public function repairCosts(): void {
+		$bt  = $this->k->db->table( 'businesses' );
+		$ids = array_map( 'intval', $this->k->db->column( "SELECT id FROM {$bt} WHERE deleted_at IS NULL" ) );
+		foreach ( $ids as $id ) {
+			try {
+				$this->k->stock->repairZeroCosts( $this->k->businesses->systemContext( $id ) );
+			} catch ( \Throwable $e ) {
+				error_log( 'Goriber Hisab cost repair failed for business ' . $id . ': ' . $e->getMessage() ); // phpcs:ignore
 			}
 		}
 	}

@@ -120,6 +120,13 @@ final class Installer {
 					}
 				}
 			},
+			// Stock entered before its purchase price was known sat at ৳0 cost (profit = full price).
+			// Fix every shop shortly after the update, in the background.
+			'1.15.0' => static function ( $db ): void {
+				if ( function_exists( 'wp_schedule_single_event' ) && ! wp_next_scheduled( 'goriber_hisab_repair_costs' ) ) {
+					wp_schedule_single_event( time() + 30, 'goriber_hisab_repair_costs' );
+				}
+			},
 		);
 		return (array) apply_filters( 'goriber_hisab/migrations', $builtin );
 	}

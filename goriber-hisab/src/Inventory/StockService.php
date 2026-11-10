@@ -232,6 +232,63 @@ final class StockService extends Service {
 		return array( 'stock' => Decimal::toString( $fixed_qty ), 'sales' => $fixed );
 	}
 
+	/**
+	 * Purchase price of a product or one of its sizes (0 when not set).
+	 */
+	public function purchasePrice( BusinessContext $ctx, int $product_id, int $variant_id ): int {
+		if ( $variant_id > 0 ) {
+			$v = Decimal::of( $this->db->value( 'SELECT purchase_price FROM ' . $this->db->table( 'product_variants' ) . ' WHERE id = %d AND business_id = %d', array( $variant_id, $ctx->business_id ) ) ?? 0 );
+			if ( $v > 0 ) {
+				return $v;
+			}
+		}
+		return Decimal::of( $this->db->value( 'SELECT purchase_price FROM ' . $this->db->table( 'products' ) . ' WHERE id = %d AND business_id = %d', array( $product_id, $ctx->business_id ) ) ?? 0 );
+	}
+
+	/**
+	 * Before stock leaves: if it sits at ৳0 cost though a purchase price is
+	 * known, give it that cost first, so the sale's profit is right.
+	 */
+	public function ensureCost( BusinessContext $ctx, int $product_id, int $variant_id, int $branch_id = 0 ): void {
+		$branch = $branch_id ?: $ctx->branch_id;
+		$st     = $this->db->table( 'stock_levels' );
+		$zero   = (int) $this->db->value( "SELECT COUNT(*) FROM {$st} WHERE business_id = %d AND branch_id = %d AND product_id = %d AND variant_id = %d AND qty > 0 AND value <= 0", array( $ctx->business_id, $branch, $product_id, $variant_id ) );
+		if ( $zero ) {
+			$this->fixZeroCost( $ctx, $product_id, $variant_id, $this->purchasePrice( $ctx, $product_id, $variant_id ) );
+		}
+	}
+
+	/**
+	 * Whole shop: every product / size with stock or sales at ৳0 cost whose
+	 * purchase price is now known. Run once after updating and every night.
+	 *
+	 * @return array{items:int,sales:int}
+	 */
+	public function repairZeroCosts( BusinessContext $ctx ): array {
+		$st    = $this->db->table( 'stock_levels' );
+		$it    = $this->db->table( 'sale_items' );
+		$sa    = $this->db->table( 'sales' );
+		$pairs = $this->db->rows(
+			"SELECT DISTINCT product_id, variant_id FROM {$st} WHERE business_id = %d AND qty > 0 AND value <= 0
+			UNION SELECT DISTINCT i.product_id, i.variant_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id
+				WHERE i.business_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND s.status = 'completed'",
+			array( $ctx->business_id, $ctx->business_id )
+		);
+		$out = array( 'items' => 0, 'sales' => 0 );
+		foreach ( $pairs as $p ) {
+			$price = $this->purchasePrice( $ctx, (int) $p['product_id'], (int) $p['variant_id'] );
+			if ( $price <= 0 ) {
+				continue;
+			}
+			$r = $this->fixZeroCost( $ctx, (int) $p['product_id'], (int) $p['variant_id'], $price );
+			if ( Decimal::of( $r['stock'] ) > 0 || $r['sales'] > 0 ) {
+				++$out['items'];
+				$out['sales'] += $r['sales'];
+			}
+		}
+		return $out;
+	}
+
 	/* ------------------------------------------------------------------ Recipes */
 
 	/**
