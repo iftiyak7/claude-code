@@ -57,28 +57,56 @@ const chip = (v, upGood = true) => {
   return h('span', { class: `rv-chg ${good ? 'up' : 'down'}` }, `${v > 0 ? '▲' : v < 0 ? '▼' : '•'} ${pct(Math.abs(v))}`);
 };
 
+/** Brand colour and light tints of it (plain hex: the PDF renderer cannot mix colours). */
+function brand() {
+  const c = /^#[0-9a-f]{6}$/i.test(state.settings?.['invoice.color'] || '') ? state.settings['invoice.color'] : '#047857';
+  const rgb = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const tint = (k) => `#${rgb.map((v) => Math.round(255 - (255 - v) * k).toString(16).padStart(2, '0')).join('')}`;
+  const on = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) > 165 ? '#0f172a' : '#ffffff';
+  return { c, on, soft: tint(0.08), mid: tint(0.22) };
+}
+
 function paint(sheet, r) {
   const C = r.current;
-  const P = r.previous;
   const b = state.business || {};
+  const B = brand();
   const period = r.from === r.to ? date(r.from) : `${date(r.from)} – ${date(r.to)}`;
+  sheet.style.setProperty('--rv-c', B.c);
+  sheet.style.setProperty('--rv-on', B.on);
+  sheet.style.setProperty('--rv-soft', B.soft);
+  sheet.style.setProperty('--rv-mid', B.mid);
 
-  const kpi = (label, value, sub, tone, change, upGood = true) => h('div', { class: `rv-kpi ${tone}` },
-    h('span', { class: 'rv-kpi-label' }, label),
+  // One plain sentence first: how did it go?
+  const net = Number(C.net);
+  const story = [
+    t('{n} sales brought in {s}.', { n: C.count, s: money(C.sales) }),
+    r.profit_ok ? (net >= 0 ? t('After product cost and all expenses you kept {p}.', { p: money(C.net) }) : t('After product cost and all expenses you lost {p}.', { p: money(String(Math.abs(net))) })) : '',
+    r.has_prev && r.changes.sales !== null ? t('Sales are {c} compared with the period before.', { c: pct(r.changes.sales, true) }) : t('There are no earlier sales to compare with yet.'),
+  ].filter(Boolean).join(' ');
+
+  const kpi = (ic, label, value, sub, tone, change, upGood = true) => h('div', { class: `rv-kpi ${tone}` },
+    h('span', { class: 'rv-kpi-label' }, icon(ic, 15), label),
     h('strong', {}, value),
-    h('span', { class: 'rv-kpi-sub' }, sub || '', ' ', chip(change, upGood)));
+    h('span', { class: 'rv-kpi-sub' }, sub || '', r.has_prev ? chip(change, upGood) : null));
 
   const sig = (s) => {
     const [label, cls] = STATUS[s.status];
+    const before = (v) => (r.has_prev ? ` (${t('before')}: ${pct(v)})` : '');
     const text = {
-      profit: () => t('Net profit {x}, margin {m} (before: {p})', { x: money(s.net), m: pct(s.value), p: pct(s.prev) }),
-      growth: () => t('Sales {a} vs the period before, {b} vs the same days last year', { a: pct(s.prev, true), b: pct(s.year, true) }),
+      profit: () => t('Net profit {x}, margin {m}', { x: money(s.net), m: pct(s.value) }) + before(s.prev),
+      growth: () => (r.has_prev
+        ? t('Sales {a} vs the period before', { a: pct(s.prev, true) }) + (r.has_year && s.year !== null ? `, ${t('{b} vs the same days last year', { b: pct(s.year, true) })}` : '')
+        : t('No earlier sales to compare with yet.')),
       cash: () => t('{p} of sales money is in hand ({x}); {d} still due', { p: pct(s.value), x: money(s.collected), d: money(s.due) }),
-      retention: () => t('{p} of orders from returning customers (before: {q}), {n} new customers', { p: pct(s.value), q: pct(s.prev), n: s.new }),
-      returns: () => t('Return rate {p} (before: {q})', { p: pct(s.value), q: pct(s.prev) }),
+      retention: () => t('{p} of orders from returning customers, {n} new customers', { p: pct(s.value), n: s.new }) + before(s.prev),
+      returns: () => t('Return rate {p}', { p: pct(s.value) }) + before(s.prev),
     }[s.key]();
-    const name = { profit: t('Profit'), growth: t('Growth'), cash: t('Cash'), retention: t('Keeping customers'), returns: t('Returns') }[s.key];
-    return h('tr', {}, h('th', {}, name), h('td', {}, h('span', { class: `rv-badge ${cls}` }, t(label))), h('td', {}, text));
+    const meta = { profit: ['income', t('Profit')], growth: ['reports', t('Growth')], cash: ['cash', t('Cash')], retention: ['users', t('Keeping customers')], returns: ['return', t('Returns')] }[s.key];
+    // No earlier data: growth is not "keep an eye", it is simply unknown.
+    const shown = s.key === 'growth' && !r.has_prev ? ['—', 'none'] : [t(label), cls];
+    return h('div', { class: `rv-sig ${shown[1]}` },
+      h('div', { class: 'rv-sig-top' }, h('span', { class: 'rv-sig-ic' }, icon(meta[0], 16)), h('strong', {}, meta[1]), h('span', { class: `rv-badge ${shown[1]}` }, shown[0])),
+      h('p', {}, text));
   };
 
   const line = (x) => {
@@ -91,7 +119,28 @@ function paint(sheet, r) {
     return h('li', {}, t('{what} {dir} {p}', { what, dir, p: pct(x.pct) }));
   };
 
+  // Ranked product list with a bar for each.
+  const ranked = (rows, by, unit) => {
+    const max = Math.max(...rows.map((x) => Math.abs(Number(x[by])) || 0), 1);
+    return h('ol', { class: 'rv-rank' }, rows.map((x, i) => h('li', {},
+      h('span', { class: `rv-pos p${i + 1}` }, String(i + 1)),
+      h('div', { class: 'rv-rank-main' },
+        h('div', { class: 'rv-rank-top' },
+          h('strong', {}, x.name),
+          h('span', { class: 'rv-rank-val' }, unit(x))),
+        h('div', { class: 'rv-bar' }, h('span', { style: `width:${Math.max(4, Math.round(Math.abs(Number(x[by])) / max * 100))}%` })),
+        h('small', {}, [
+          by !== 'qty' ? `${qty(x.qty)} ${t('sold')}` : null,
+          by !== 'sales' ? money(x.sales) : null,
+          x.orders ? t('on {n} bills', { n: x.orders }) : null,
+          x.share !== null && x.share !== undefined ? t('{p} of sales', { p: pct(x.share) }) : null,
+          r.profit_ok && by !== 'profit' && x.profit !== null ? `${t('Profit')} ${money(x.profit)}` : null,
+        ].filter(Boolean).join(' · '))))));
+  };
+
   const chart = r.points?.length > 1 ? lineChart(r.points, [{ key: 'sales', label: t('Sales') }, ...(r.profit_ok && r.points[0]?.profit !== undefined && r.points[0]?.profit !== null ? [{ key: 'profit', label: t('Profit') }] : [])], { height: 170 }) : null;
+  const best = r.best || [];
+  const maxCost = Math.max(...(r.costs || []).map((x) => Number(x.amount)), 1);
 
   mount(sheet,
     h('header', { class: 'rv-head' },
@@ -99,29 +148,34 @@ function paint(sheet, r) {
         b.logo_url ? h('img', { src: b.logo_url, alt: '' }) : null,
         h('div', {}, h('strong', {}, b.name || ''), h('small', {}, [b.address, b.phone].filter(Boolean).join(' · ')))),
       h('div', { class: 'rv-title' }, h('strong', {}, t('Business review')), h('span', {}, period),
-        h('small', {}, t('Compared with {a} and {b}', { a: `${date(r.prev.from)} – ${date(r.prev.to)}`, b: t('the same days last year') })))),
+        r.has_prev ? h('small', {}, t('Compared with {a}', { a: `${date(r.prev.from)} – ${date(r.prev.to)}` })) : null)),
+    h('p', { class: 'rv-story' }, story),
     h('div', { class: 'rv-kpis' },
-      kpi(t('Sales'), money(C.sales), t('{n} orders', { n: C.count }), 'blue', r.changes.sales),
-      r.profit_ok ? kpi(t('Gross profit'), money(C.gross), t('after product cost'), 'green', r.changes.gross) : null,
-      r.profit_ok ? kpi(t('Expenses (all)'), money(C.expenses), t('rent, salary, bills…'), 'amber', r.changes.expenses, false) : null,
-      r.profit_ok ? kpi(t('Net profit'), money(C.net), t('margin {m}', { m: pct(C.margin) }), Number(C.net) < 0 ? 'red' : 'green', r.changes.net) : null,
-      !r.profit_ok ? kpi(t('Average order'), money(C.aov), '', 'green', null) : null),
-    h('h3', { class: 'rv-h' }, t('5 signs of your business')),
-    h('table', { class: 'rv-signals' }, h('tbody', {}, r.signals.map(sig))),
+      kpi('sales', t('Sales'), money(C.sales), t('{n} orders', { n: C.count }), 'blue', r.changes.sales),
+      r.profit_ok ? kpi('reports', t('Gross profit'), money(C.gross), t('after product cost'), 'green', r.changes.gross) : null,
+      r.profit_ok ? kpi('expenses', t('Expenses (all)'), money(C.expenses), t('rent, salary, bills…'), 'amber', r.changes.expenses, false) : null,
+      r.profit_ok ? kpi('income', t('Net profit'), money(C.net), t('margin {m}', { m: pct(C.margin) }), net < 0 ? 'red' : 'green', r.changes.net) : null,
+      !r.profit_ok ? kpi('cash', t('Average order'), money(C.aov), '', 'green', null) : null),
+    h('section', { class: 'rv-sec' },
+      h('h3', { class: 'rv-h' }, '🏆 ', t('Top 5 best-selling products')),
+      best.length ? ranked(best, 'qty', (x) => `${qty(x.qty)} ${t('sold')}`) : h('p', { class: 'muted' }, t('No sales in this period.'))),
+    chart ? h('section', { class: 'rv-sec rv-chart' }, h('h3', { class: 'rv-h' }, t('Day by day')), chart) : null,
+    h('section', { class: 'rv-sec' },
+      h('h3', { class: 'rv-h' }, t('5 signs of your business')),
+      h('div', { class: 'rv-sigs' }, r.signals.map(sig))),
     h('div', { class: 'rv-two' },
-      h('div', { class: 'rv-box good' }, h('h4', {}, '✓ ', t('What went well')), r.good.length ? h('ul', {}, r.good.map(line)) : h('p', { class: 'muted' }, t('Nothing stood out.'))),
-      h('div', { class: 'rv-box bad' }, h('h4', {}, '! ', t('What needs attention')), r.bad.length ? h('ul', {}, r.bad.map(line)) : h('p', { class: 'muted' }, t('No problems found.')))),
-    chart ? h('div', { class: 'rv-chart' }, h('h3', { class: 'rv-h' }, t('Day by day')), chart) : null,
-    h('h3', { class: 'rv-h' }, r.profit_ok ? t('5 most profitable products') : t('5 best-selling products')),
-    r.products.length ? h('table', { class: 'rv-table' },
-      h('thead', {}, h('tr', {}, h('th', {}, t('Product')), h('th', { class: 'num' }, t('Quantity')), h('th', { class: 'num' }, t('Sales')), r.profit_ok ? h('th', { class: 'num' }, t('Profit')) : null)),
-      h('tbody', {}, r.products.map((x) => h('tr', {}, h('td', {}, x.name), h('td', { class: 'num' }, qty(x.qty)), h('td', { class: 'num' }, money(x.sales)), r.profit_ok ? h('td', { class: 'num' }, h('strong', { class: Number(x.profit) < 0 ? 'bad-text' : 'ok-text' }, money(x.profit))) : null))))
-      : h('p', { class: 'muted' }, t('No sales in this period.')),
-    r.profit_ok ? h('h3', { class: 'rv-h' }, t('5 biggest costs')) : null,
-    r.profit_ok ? (r.costs.length ? h('table', { class: 'rv-table' },
-      h('thead', {}, h('tr', {}, h('th', {}, t('Cost')), h('th', { class: 'num' }, t('Amount')), h('th', { class: 'num' }, t('% of sales')), h('th', { class: 'num' }, t('Per order vs before')))),
-      h('tbody', {}, r.costs.map((x) => h('tr', {}, h('td', {}, t(x.name)), h('td', { class: 'num' }, money(x.amount)), h('td', { class: 'num' }, pct(x.pct_of_sales)), h('td', { class: 'num' }, chip(x.per_order_chg, false) || '—')))))
-      : h('p', { class: 'muted' }, t('No expenses in this period.'))) : null,
+      h('div', { class: 'rv-box good' }, h('h4', {}, '✓ ', t('What went well')), r.good.length ? h('ul', {}, r.good.map(line)) : h('p', { class: 'muted' }, r.has_prev ? t('Nothing stood out.') : t('Shown once there is an earlier period to compare with.'))),
+      h('div', { class: 'rv-box bad' }, h('h4', {}, '! ', t('What needs attention')), r.bad.length ? h('ul', {}, r.bad.map(line)) : h('p', { class: 'muted' }, r.has_prev ? t('No problems found.') : t('Shown once there is an earlier period to compare with.')))),
+    r.profit_ok ? h('section', { class: 'rv-sec' },
+      h('h3', { class: 'rv-h' }, '💰 ', t('5 most profitable products')),
+      r.products.length ? ranked(r.products, 'profit', (x) => h('span', { class: Number(x.profit) < 0 ? 'bad-text' : 'ok-text' }, money(x.profit))) : h('p', { class: 'muted' }, t('No sales in this period.'))) : null,
+    r.profit_ok ? h('section', { class: 'rv-sec' },
+      h('h3', { class: 'rv-h' }, t('5 biggest costs')),
+      r.costs.length ? h('div', { class: 'rv-costs' }, r.costs.map((x) => h('div', { class: 'rv-cost' },
+        h('div', { class: 'rv-rank-top' }, h('strong', {}, t(x.name)), h('span', { class: 'rv-rank-val' }, money(x.amount))),
+        h('div', { class: 'rv-bar cost' }, h('span', { style: `width:${Math.max(4, Math.round(Number(x.amount) / maxCost * 100))}%` })),
+        h('small', {}, [x.pct_of_sales !== null ? t('{p} of sales', { p: pct(x.pct_of_sales) }) : null, r.has_prev && x.per_order_chg !== null ? t('per order {c} vs before', { c: pct(x.per_order_chg, true) }) : null].filter(Boolean).join(' · ')))))
+        : h('p', { class: 'muted' }, t('No expenses in this period.'))) : null,
     h('p', { class: 'rv-foot' }, t('Same rules as the Profit & loss report. Made on {d}.', { d: new Date().toLocaleString(currentLang() === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) })));
 }
 

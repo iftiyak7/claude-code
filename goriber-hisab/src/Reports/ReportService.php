@@ -655,15 +655,26 @@ final class ReportService extends Service {
 			GROUP BY i.product_id ORDER BY {$order} LIMIT 5",
 			array_merge( array( $ctx->business_id, $from, $to ), $bp )
 		);
-		$products = array_map(
-			static fn( $r ) => array(
-				'id'     => (int) $r['product_id'],
-				'name'   => (string) $r['name'],
-				'qty'    => Decimal::toString( Decimal::of( $r['qty'] ) ),
-				'sales'  => Decimal::toString( Decimal::of( $r['net'] ) ),
-				'profit' => $profit_ok ? Decimal::toString( Decimal::of( $r['profit'] ) ) : null,
-			),
-			$prods
+		$shape    = static fn( $r ) => array(
+			'id'     => (int) $r['product_id'],
+			'name'   => (string) $r['name'],
+			'qty'    => Decimal::toString( Decimal::of( $r['qty'] ) ),
+			'sales'  => Decimal::toString( Decimal::of( $r['net'] ) ),
+			'profit' => $profit_ok ? Decimal::toString( Decimal::of( $r['profit'] ) ) : null,
+			'orders' => (int) ( $r['orders'] ?? 0 ),
+			'share'  => $cur['sales'] ? round( Decimal::of( $r['net'] ) / $cur['sales'] * 100, 1 ) : null,
+		);
+		$products = array_map( $shape, $prods );
+		// Best sellers: what left the shelf most (quantity after returns), with how many bills it was on.
+		$best = array_map(
+			$shape,
+			$this->db->rows(
+				"SELECT i.product_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit, COUNT(DISTINCT i.sale_id) AS orders
+				FROM {$si} i JOIN {$st} s ON s.id = i.sale_id
+				WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}
+				GROUP BY i.product_id HAVING SUM(i.qty - i.returned_qty) > 0 ORDER BY qty DESC, net DESC LIMIT 5",
+				array_merge( array( $ctx->business_id, $from, $to ), $bp )
+			)
 		);
 
 		$out = static fn( array $m ): array => array(
@@ -700,7 +711,11 @@ final class ReportService extends Service {
 			'good'       => array_slice( $good, 0, 5 ),
 			'bad'        => array_slice( $bad, 0, 5 ),
 			'products'   => $products,
+			'best'       => $best,
 			'costs'      => $costs,
+			// Nothing in the earlier periods: there is nothing to compare with yet.
+			'has_prev'   => $prev['count'] > 0,
+			'has_year'   => $year['count'] > 0,
 			'points'     => $this->series( $ctx, $from, $to, $branch, $profit_ok )['points'] ?? array(),
 			'profit_ok'  => $profit_ok,
 		);

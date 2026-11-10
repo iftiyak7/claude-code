@@ -249,6 +249,11 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertSame( 1, $r['current']['new_customers'] );
 		$this->assertSame( 66.7, $r['current']['collected_pct'] );
 		$this->assertSame( 'Honey', $r['products'][0]['name'] );
+		$this->assertSame( 'Honey', $r['best'][0]['name'] );
+		$this->assertMoney( '6', $r['best'][0]['qty'] );
+		$this->assertSame( 2, $r['best'][0]['orders'] );
+		$this->assertSame( 100.0, $r['best'][0]['share'] );
+		$this->assertTrue( false === $r['has_prev'] );
 		$this->assertMoney( '1200', $r['products'][0]['profit'] );
 		$this->assertSame( array( 'profit', 'growth', 'cash', 'retention', 'returns' ), array_column( $r['signals'], 'key' ) );
 	}
