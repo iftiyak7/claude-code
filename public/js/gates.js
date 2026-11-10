@@ -29,7 +29,7 @@ function moved() {
 export function welcome() {
   if (moved()) return;
   const tv = S.D.terms?.version || 0, again = ls.get('welcomed', false);
-  if ((again && ls.get('termsV', 0) >= tv) || document.querySelector('.welcome') || location.hash.startsWith('#/terms')) return;
+  if ((again && ls.get('termsV', 0) >= tv) || document.querySelector('.welcome') || /^#\/(terms|privacy)/.test(location.hash)) return;
   const w = document.createElement('div');
   w.className = 'welcome';
   const chips = [['hospital', '#0b8fd6', 'top:12%;left:14%'], ['utensils', '#f2711c', 'top:22%;right:12%'], ['siren', '#e5484d', 'bottom:16%;left:12%'], ['home', '#7c5cff', 'bottom:10%;right:18%']];

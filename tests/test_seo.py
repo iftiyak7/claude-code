@@ -77,6 +77,39 @@ class SeoTest(ServerTest):
         self.assertEqual(st, 200)
         self.assertRegex(page, r'og:image" content="https?://[^"]+/shots/')
         self.assertIn('og:url', page)
+        self.assertNotIn('{{', page)                                     # every placeholder is filled in
+        self.assertRegex(page, r'<b data-num>[০-৯]+</b><span[^>]*>প্রতিষ্ঠান ও স্থান')   # live number, in the HTML itself
+        self.assertIn('data-noapk', page)                                # no app file yet: the download button is hidden
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
+        self.assertIn('FAQPage', [x['@type'] for x in ld['@graph']])
+        for word in ('প্যাকেজ', 'পেইড', 'Sponsored'):                    # the landing page does not talk about paid plans
+            self.assertNotIn(word, page)
+        for link in ('href="/terms"', 'href="/privacy"', 'href="/c/hospital"', 'href="/app/#/ads/rent"'):
+            self.assertIn(link, page)
+
+    def test_terms_and_privacy_pages(self):
+        for path, title, word in (('/terms', 'শর্তাবলি', 'প্রযোজ্য আইন'), ('/privacy', 'গোপনীয়তা নীতি', 'আমরা কী তথ্য নিই')):
+            st, page, h = self.get(path)
+            self.assertEqual(st, 200)
+            self.assertIn(f'<h1>{title}</h1>', page)
+            self.assertIn(word, page)
+            self.assertIn('<h2>', page)
+            self.assertNotIn('{{', page)
+            self.assertNotIn('## ', page)
+            self.assertIn("script-src 'self'", h['Content-Security-Policy'])
+            st, en, _ = self.get(path + '?lang=en')
+            self.assertIn('<html lang="en">', en)
+            self.assertIn('Jashore360 is', en) if path == '/terms' else self.assertIn('What we collect', en)
+        self.assertIn('/privacy</loc>', self.get('/sitemap.xml')[1])
+        # the admin's text is shown escaped, and contact details from the settings are added
+        adm = self.srv.admin()
+        self.ok(adm.put('/admin/settings/privacy', {'bn': '## শিরোনাম <b>x</b>\n\n<script>alert(1)</script> লেখা', 'en': ''}))
+        site = self.ok(adm.get('/admin/settings/site'))
+        self.ok(adm.put('/admin/settings/site', dict(site, contactEmail='hello@jashore360.com')))
+        st, page, _ = self.get('/privacy')
+        self.assertIn('<h2>শিরোনাম &lt;b&gt;x&lt;/b&gt;</h2>', page)
+        self.assertNotIn('<script>alert', page)
+        self.assertIn('mailto:hello@jashore360.com', page)
 
 
 if __name__ == '__main__':

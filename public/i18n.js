@@ -695,5 +695,12 @@ Object.assign(window.I18N_EN, {
   'চাকরি ও ভাড়া অংশ': 'Jobs & rent section',
   'হোম ও এক্সপ্লোরে "ভাড়া ও চাকরি" টাইল; "লুকান" বাছলে নতুন বিজ্ঞাপন দেওয়ার অপশনও লুকাবে': 'The "Rent & jobs" tiles on Home and Explore; "Hide" also hides posting new ads',
   'অন্তত একটি বিজ্ঞাপন থাকলে দেখান': 'Show once there is at least one ad',
-  'সবসময় দেখান': 'Always show'
+  'সবসময় দেখান': 'Always show',
+  'গোপনীয়তা নীতি': 'Privacy policy',
+  'এখনো যোগ করা হয়নি।': 'Not added yet.',
+  'অ্যাপ কোন তথ্য নেয় ও কীভাবে ব্যবহার করে। ওয়েবসাইটে /privacy ঠিকানায় আর অ্যাপের প্রোফাইল পেজে দেখায়; Play Store-এ এই লিংকটিই দিতে হয়।': 'What information the app collects and how it is used. Shown at /privacy on the website and on the app\'s profile page; this is the link the Play Store asks for.',
+  'ওয়েবসাইটে দেখুন': 'View on the website',
+  'গোপনীয়তা নীতি (বাংলা)': 'Privacy policy (Bangla)',
+  'গোপনীয়তা নীতি (English)': 'Privacy policy (English)',
+  'অনুচ্ছেদের মাঝে একটি ফাঁকা লাইন দিন; শিরোনামের লাইন "## " দিয়ে শুরু করুন': 'Leave a blank line between paragraphs; start a heading line with "## "'
 });

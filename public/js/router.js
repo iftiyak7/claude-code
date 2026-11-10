@@ -11,8 +11,8 @@ import { T, app, beacon, loc, nav, toast } from './util.js';
 /* ---------------- router ---------------- */
 const routes = [[/^$/, 'home'], [/^emergency$/, 'emergency'], [/^c\/([\w-]+)$/, 'browse'], [/^search$/, 'browse'], [/^p\/([\w-]+)$/, 'item'],
   [/^explore$/, 'explore'], [/^saved$/, 'saved'], [/^add$/, 'add'], [/^profile$/, 'profile'], [/^login$/, 'login'], [/^account$/, 'account'],
-  [/^post\/(\w+)$/, 'post'], [/^pay\/([\w-]+)$/, 'pay'], [/^ads\/(\w+)$/, 'ads'], [/^ad\/(\w+)$/, 'ad'], [/^edit\/(listing|ad)\/([\w-]+)$/, 'edit'], [/^terms$/, 'terms'], [/^offers$/, 'offers']];
-const navKey = { home: 'home', browse: 'explore', explore: 'explore', emergency: 'home', saved: 'saved', add: 'add', post: 'add', pay: 'add', edit: 'profile', terms: 'profile', offers: 'explore',
+  [/^post\/(\w+)$/, 'post'], [/^pay\/([\w-]+)$/, 'pay'], [/^ads\/(\w+)$/, 'ads'], [/^ad\/(\w+)$/, 'ad'], [/^edit\/(listing|ad)\/([\w-]+)$/, 'edit'], [/^terms$/, 'terms'], [/^privacy$/, 'privacy'], [/^offers$/, 'offers']];
+const navKey = { home: 'home', browse: 'explore', explore: 'explore', emergency: 'home', saved: 'saved', add: 'add', post: 'add', pay: 'add', edit: 'profile', terms: 'profile', privacy: 'profile', offers: 'explore',
   profile: 'profile', account: 'profile', login: 'profile', ads: 'explore' };
 let lastPath = null;
 export const go = h => { location.hash = h; };

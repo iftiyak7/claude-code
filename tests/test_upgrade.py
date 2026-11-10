@@ -47,6 +47,53 @@ class UpgradeTest(unittest.TestCase):
             srv.stop()
 
 
+class TermsRenewalTest(unittest.TestCase):
+    OLD = '১. Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম।'
+
+    def restart(self, srv, terms):
+        srv.proc.terminate()
+        srv.proc.wait(10)
+        srv.proc.stderr.close()
+        db = sqlite3.connect(os.path.join(srv.data, 'jashore360.db'))
+        db.execute("UPDATE settings SET value=? WHERE key='terms'", (json.dumps(terms, ensure_ascii=False),))
+        db.execute("DELETE FROM settings WHERE key='privacy'")             # an install from before the privacy policy
+        db.commit()
+        db.close()
+        srv.proc = subprocess.Popen([sys.executable, SERVER, '--data', srv.data, '--port', str(srv.port)],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=srv.env)
+        import time
+        for _ in range(100):
+            try:
+                return srv.client().get('/bootstrap')[1]
+            except OSError:
+                time.sleep(0.1)
+
+    def test_starter_terms_are_replaced_but_edited_terms_are_kept(self):
+        import hashlib
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('migrate_src', os.path.join(os.path.dirname(SERVER), 'j360', 'migrate.py'))
+        src = open(spec.origin, encoding='utf-8').read()
+        old_hash = src.split("OLD_TERMS = ('")[1].split("'")[0]
+        srv = Server()
+        try:
+            # an admin's own terms stay, and the privacy policy appears
+            d = self.restart(srv, {'version': 3, 'updated': '2026-01-01', 'bn': 'আমার নিজের শর্ত', 'en': 'My own terms'})
+            self.assertEqual((d['terms']['bn'], d['terms']['version']), ('আমার নিজের শর্ত', 3))
+            self.assertIn('আমরা কী তথ্য নিই', d['privacy']['bn'])
+            # the old starter terms (recognised by their fingerprint) become the full terms, as a new version
+            import subprocess as sp
+            old_bn = sp.run(['git', '-C', os.path.dirname(os.path.dirname(SERVER)), 'show', 'dc27029:server/seed.json'], capture_output=True, text=True).stdout
+            if not old_bn:
+                self.skipTest('git history not available')
+            old_bn = json.loads(old_bn)['terms']['bn']
+            self.assertEqual(hashlib.sha256(old_bn.strip().encode()).hexdigest(), old_hash)
+            d = self.restart(srv, {'version': 1, 'updated': '2026-10-20', 'bn': old_bn, 'en': 'old'})
+            self.assertEqual(d['terms']['version'], 2)
+            self.assertIn('প্রযোজ্য আইন', d['terms']['bn'])
+        finally:
+            srv.stop()
+
+
 class OldUsersTableTest(unittest.TestCase):
     def test_users_from_before_google_keep_working(self):
         srv = Server()

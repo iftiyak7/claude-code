@@ -1,4 +1,5 @@
 """Creating the database and bringing an older install's tables and starter data up to date."""
+import hashlib
 import json
 import os
 import time
@@ -86,6 +87,19 @@ def retire_text(c):
         c.execute("UPDATE settings SET value=? WHERE key='ads'", (json.dumps(ads, ensure_ascii=False),))
 
 
+OLD_TERMS = ('d94698f3e9f4a8204016af02152eb02c5c9428cb8092e24a2a60283ab97f27a5',)   # sha256 of earlier starter terms (Bangla)
+
+
+def renew_terms(c, seed):
+    """A site still on the short starter terms gets the full terms (as a new version, so people are asked to agree again).
+    Terms the admin has edited are left alone."""
+    cur = get_setting(c, 'terms') or {}
+    if hashlib.sha256((cur.get('bn') or '').strip().encode()).hexdigest() not in OLD_TERMS:
+        return
+    new = dict(seed['terms'], version=(cur.get('version') or 0) + 1)
+    c.execute("UPDATE settings SET value=? WHERE key='terms'", (json.dumps(new, ensure_ascii=False),))
+
+
 def init_db():
     for d in (config.DATA, config.UPLOADS, config.DOWNLOADS):
         os.makedirs(d, exist_ok=True)
@@ -160,6 +174,7 @@ def init_db():
         else:
             upgrade_seed(c, seed)
         retire_text(c)
+        renew_terms(c, seed)
 
 
 SEED_VERSION = 6

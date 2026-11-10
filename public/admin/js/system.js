@@ -168,14 +168,27 @@ export function init() {
   };
   pages.terms = async () => {
     await load();
-    const t = S.settings.terms || {};
+    const t = S.settings.terms || {}, p = S.settings.privacy || {};
     shell('terms', T('শর্তাবলি'), '', `<p class="muted" style="margin-top:0">${T('অ্যাপে প্রথমবার ঢোকার সময় ও অ্যাকাউন্ট খোলার সময় ব্যবহারকারীকে এই শর্তাবলিতে সম্মতি দিতে হয়। লেখা বদলালে সবাইকে আবার সম্মতি দিতে হবে।')}</p>
-      ${t.version ? `<div class="note info">${icon('doc', 20)}<div>${T('বর্তমান ভার্সন')}: <b>${num(t.version)}</b>${t.updated ? ` · ${T('আপডেট')}: ${date(t.updated)}` : ''} · <a href="/app/#/terms" target="_blank">${T('অ্যাপে দেখুন')}</a></div></div>` : ''}
+      ${t.version ? `<div class="note info">${icon('doc', 20)}<div>${T('বর্তমান ভার্সন')}: <b>${num(t.version)}</b>${t.updated ? ` · ${T('আপডেট')}: ${date(t.updated)}` : ''} · <a href="/terms" target="_blank">${T('ওয়েবসাইটে দেখুন')}</a></div></div>` : ''}
       <form class="split" data-terms>
         <div class="card"><h3>বাংলা</h3><div class="cbody form"><label class="field"><span>${T('শর্তাবলি (বাংলা)')}</span><textarea name="bn" rows="22">${esc(t.bn || '')}</textarea>
-          <em>${T('প্রতিটি অনুচ্ছেদের মাঝে একটি ফাঁকা লাইন দিন')}</em></label></div></div>
+          <em>${T('অনুচ্ছেদের মাঝে একটি ফাঁকা লাইন দিন; শিরোনামের লাইন "## " দিয়ে শুরু করুন')}</em></label></div></div>
         <div class="card"><h3>English</h3><div class="cbody form"><label class="field"><span>${T('শর্তাবলি (English)')}</span><textarea name="en" rows="22">${esc(t.en || '')}</textarea></label></div></div>
+        <div class="savebar" style="grid-column:1/-1"><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></form>
+      <h2 style="margin:34px 0 6px;font-size:20px">${T('গোপনীয়তা নীতি')}</h2>
+      <p class="muted" style="margin-top:0">${T('অ্যাপ কোন তথ্য নেয় ও কীভাবে ব্যবহার করে। ওয়েবসাইটে /privacy ঠিকানায় আর অ্যাপের প্রোফাইল পেজে দেখায়; Play Store-এ এই লিংকটিই দিতে হয়।')}
+        ${p.updated ? ` · ${T('আপডেট')}: ${date(p.updated)}` : ''} · <a href="/privacy" target="_blank">${T('ওয়েবসাইটে দেখুন')}</a></p>
+      <form class="split" data-privacy>
+        <div class="card"><h3>বাংলা</h3><div class="cbody form"><label class="field"><span>${T('গোপনীয়তা নীতি (বাংলা)')}</span><textarea name="bn" rows="22">${esc(p.bn || '')}</textarea>
+          <em>${T('অনুচ্ছেদের মাঝে একটি ফাঁকা লাইন দিন; শিরোনামের লাইন "## " দিয়ে শুরু করুন')}</em></label></div></div>
+        <div class="card"><h3>English</h3><div class="cbody form"><label class="field"><span>${T('গোপনীয়তা নীতি (English)')}</span><textarea name="en" rows="22">${esc(p.en || '')}</textarea></label></div></div>
         <div class="savebar" style="grid-column:1/-1"><button class="btn">${icon('check', 18)}${T('সংরক্ষণ করুন')}</button></div></form>`);
+    root.querySelector('[data-privacy]').onsubmit = async e => {
+      e.preventDefault();
+      await saveSetting('privacy', { bn: e.target.bn.value, en: e.target.en.value });
+      S.settings.privacy = await api('/admin/settings/privacy'); route();
+    };
     root.querySelector('[data-terms]').onsubmit = async e => {
       e.preventDefault();
       await saveSetting('terms', { bn: e.target.bn.value, en: e.target.en.value });

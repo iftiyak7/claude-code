@@ -2,7 +2,7 @@
 import { LANG, S, STATUS, T, api, esc } from './util.js';
 
 /* ---------------- data ---------------- */
-const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'popup', 'areaGeo'];
+const SETTINGS = ['site', 'areas', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'privacy', 'popup', 'areaGeo'];
 export const cats = () => S.settings.categories || [];
 export const catOf = id => cats().find(c => c.id === id) || { bn: id, en: id, icon: 'info', color: '#8b95a7', subs: {} };
 export const catName = c => LANG() === 'en' ? c.en || c.bn : c.bn;

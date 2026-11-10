@@ -21,8 +21,8 @@ mimetypes.add_type('video/mp4', '.mp4')
 mimetypes.add_type('video/webm', '.webm')
 mimetypes.add_type('video/quicktime', '.mov')
 
-SETTING_KEYS = ('site', 'areas', 'areaGeo', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'popup')
-DICT_SETTINGS = ('site', 'payment', 'app', 'terms', 'popup', 'areaGeo')
+SETTING_KEYS = ('site', 'areas', 'areaGeo', 'categories', 'notices', 'ads', 'plans', 'payment', 'app', 'terms', 'privacy', 'popup')
+DICT_SETTINGS = ('site', 'payment', 'app', 'terms', 'privacy', 'popup', 'areaGeo')
 MODERATOR_SETTINGS = {'notices'}           # every other setting is owner-only
 CLASS_KINDS = ('job', 'rent', 'mess', 'tuition')
 CLASS_DAYS = 30

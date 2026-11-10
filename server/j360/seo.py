@@ -5,6 +5,7 @@ The app itself runs on /app/#/… (hash links that search engines ignore). Each 
 (Open Graph / Twitter) and schema.org data in the HTML, and its main facts as plain text. People who open such a
 link get the app, which jumps to the listing.
 """
+import gzip
 import html
 import json
 import os
@@ -17,6 +18,11 @@ from .util import today
 from .web import page
 
 ESC = html.escape
+
+
+def send_text(h, text, ctype, headers):
+    raw = text.encode()
+    h.send(200, raw, ctype, headers, gzip.compress(raw, 6))
 
 
 def base_url(h):
@@ -55,7 +61,7 @@ def app_page(h, title, desc, path, image=None, body='', extra_head='', cache='pu
     tpl = re.sub(r'<title>.*?</title>\s*<meta name="description"[^>]*>', lambda m: head, tpl, count=1, flags=re.S)
     tpl = tpl.replace('<main id="app"><div class="boot"><div class="spinner"></div></div></main>',
                       f'<main id="app">{body}<div class="boot"><div class="spinner"></div></div></main>', 1)
-    h.send(200, tpl.encode(), 'text/html; charset=utf-8', {'Cache-Control': cache})
+    send_text(h, tpl, 'text/html; charset=utf-8', {'Cache-Control': cache})
 
 
 def category_name(c, cat_id):
@@ -145,20 +151,109 @@ def category_page(h, cat_id):
     app_page(h, title, desc, '/c/' + cat_id, None, body)
 
 
+BN_DIGITS = str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')
+BN_MONTHS = ('জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর')
+EN_MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December')
+
+
+def bn(n):
+    return str(n).translate(BN_DIGITS)
+
+
+def long_date(iso, en=False):
+    m = re.match(r'^(\d{4})-(\d\d)-(\d\d)', iso or '')
+    if not m:
+        return ''
+    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    return f'{d} {EN_MONTHS[mo - 1]} {y}' if en else bn(f'{d} {BN_MONTHS[mo - 1]} {y}')
+
+
+def fill(template, values):
+    """Put values into a page template's {{name}} places. Values are HTML; escape text before passing it."""
+    return re.sub(r'\{\{(\w+)\}\}', lambda m: str(values.get(m.group(1), '')), template)
+
+
+def contact_html(site):
+    """Phone, e-mail and Facebook from Admin → General settings, as links."""
+    parts = []
+    if site.get('contactPhone'):
+        parts.append(f'<a href="tel:{ESC(site["contactPhone"])}">{ESC(site["contactPhone"])}</a>')
+    if site.get('contactEmail'):
+        parts.append(f'<a href="mailto:{ESC(site["contactEmail"])}">{ESC(site["contactEmail"])}</a>')
+    if re.match(r'^https?://', site.get('facebook') or ''):
+        parts.append(f'<a href="{ESC(site["facebook"])}" rel="noopener">Facebook</a>')
+    return ' · '.join(parts)
+
+
 @page(r'/')
 def landing(h):
-    """The landing page, with its share picture and address made absolute (previews need full URLs)."""
-    base = base_url(h)
-    text = open(os.path.join(PUBLIC, 'index.html'), encoding='utf-8').read().replace('content="/shots/', f'content="{base}/shots/')
-    if 'og:url' not in text:
-        text = text.replace('<meta property="og:title"', f'<link rel="canonical" href="{base}/">\n  <meta property="og:url" content="{base}/">\n  <meta property="og:title"', 1)
-    h.send(200, text.encode(), 'text/html; charset=utf-8', {'Cache-Control': 'no-cache'})
+    """The landing page. Live numbers, the app download details and contact links are put in here on the server,
+    so the page needs no data request of its own and search engines see the finished text."""
+    with db() as c:
+        listings = sum(1 for _ in public_listings(c))
+        areas = len(get_setting(c, 'areas') or [])
+        app = get_setting(c, 'app') or {}
+        site = get_setting(c, 'site') or {}
+    if app.get('file'):
+        size = app.get('size') or 0
+        size = f'{max(1, round(size / 1024))} KB' if size < 1048576 else f'{size / 1048576:.1f} MB'
+        apk = f'v{ESC(str(app.get("versionName", "")))} · {size}'
+    else:
+        apk = ''
+    text = fill(open(os.path.join(PUBLIC, 'index.html'), encoding='utf-8').read(), {
+        'base': base_url(h), 'listings': bn(listings), 'areas': bn(areas), 'apk': apk, 'noapk': '' if apk else ' data-noapk',
+        'contact': contact_html(site), 'year': bn(time.strftime('%Y'))})
+    send_text(h, text, 'text/html; charset=utf-8', {'Cache-Control': 'no-cache'})
+
+
+LEGAL = {'terms': ('শর্তাবলি', 'Terms & Conditions', 'Jashore360 ব্যবহারের শর্তাবলি: অ্যাকাউন্ট, বিজ্ঞাপন, রিভিউ, দায় ও নিয়ম।'),
+         'privacy': ('গোপনীয়তা নীতি', 'Privacy Policy', 'Jashore360 আপনার কোন তথ্য নেয়, কীভাবে ব্যবহার করে ও সুরক্ষিত রাখে।')}
+
+
+def legal_html(text):
+    """Plain text from the admin → HTML: blank line = new paragraph, "## " = heading, a short "Label:" at the start is bold."""
+    out = []
+    for block in re.split(r'\n\s*\n', (text or '').strip()):
+        block = block.strip()
+        if not block:
+            continue
+        if block.startswith('## '):
+            out.append(f'<h2>{ESC(block[3:].strip())}</h2>')
+        else:
+            para = ESC(block).replace('\n', '<br>')
+            para = re.sub(r'^([^:।.<]{2,30}):\s', lambda m: f'<b>{m.group(1)}:</b> ', para)
+            out.append(f'<p>{para}</p>')
+    return '\n'.join(out)
+
+
+@page(r'/(terms|privacy)/?')
+def legal_page(h, which):
+    en = h.query.get('lang') == 'en'
+    with db() as c:
+        doc = get_setting(c, which) or {}
+        site = get_setting(c, 'site') or {}
+    bn_title, en_title, desc = LEGAL[which]
+    title = en_title if en else bn_title
+    body = legal_html((en and doc.get('en')) or doc.get('bn')) or f'<p>{"Not added yet." if en else "এখনো যোগ করা হয়নি।"}</p>'
+    contact = contact_html(site)
+    if contact:
+        body += f'<h2>{"Contact" if en else "যোগাযোগ"}</h2><p>{contact}</p>'
+    updated = long_date(doc.get('updated'), en)
+    text = fill(open(os.path.join(PUBLIC, 'legal.html'), encoding='utf-8').read(), {
+        'lang': 'en' if en else 'bn', 'title': ESC(title), 'desc': ESC(desc), 'base': base_url(h), 'path': '/' + which,
+        'updated': (('Last updated: ' if en else 'সর্বশেষ আপডেট: ') + updated) if updated else '', 'body': body,
+        'switch': f'<a class="chip" href="/{which}{"" if en else "?lang=en"}">{"বাংলা" if en else "English"}</a>',
+        'home': 'Home' if en else 'হোম', 'open': 'Open the app' if en else 'অ্যাপ খুলুন',
+        'terms': 'Terms' if en else 'শর্তাবলি', 'privacy': 'Privacy' if en else 'গোপনীয়তা নীতি', 'q': '?lang=en' if en else '',
+        'terms_on': ' aria-current="page"' if which == 'terms' else '', 'privacy_on': ' aria-current="page"' if which == 'privacy' else '',
+        'year': time.strftime('%Y') if en else bn(time.strftime('%Y'))})
+    send_text(h, text, 'text/html; charset=utf-8', {'Cache-Control': 'no-cache'})
 
 
 @page(r'/robots\.txt')
 def robots(h):
     text = f'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: {base_url(h)}/sitemap.xml\n'
-    h.send(200, text.encode(), 'text/plain; charset=utf-8', {'Cache-Control': 'public, max-age=3600'})
+    send_text(h, text, 'text/plain; charset=utf-8', {'Cache-Control': 'public, max-age=3600'})
 
 
 @page(r'/sitemap\.xml')
@@ -168,7 +263,7 @@ def sitemap(h):
         cats = [x['id'] for x in get_setting(c, 'categories') or [] if x.get('active', True)]
         rows = list(public_listings(c))
     day = lambda t: time.strftime('%Y-%m-%d', time.gmtime(t or time.time()))
-    urls = [(base + '/', None), (base + '/app/', None)] + [(f'{base}/c/{x}', None) for x in cats] + [(f'{base}/p/{i}', day(u)) for i, _, u in rows]
+    urls = [(base + '/', None), (base + '/app/', None), (base + '/terms', None), (base + '/privacy', None)] + [(f'{base}/c/{x}', None) for x in cats] + [(f'{base}/p/{i}', day(u)) for i, _, u in rows]
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
            + ''.join(f'  <url><loc>{ESC(u)}</loc>{f"<lastmod>{m}</lastmod>" if m else ""}</url>\n' for u, m in urls) + '</urlset>\n')
-    h.send(200, xml.encode(), 'application/xml; charset=utf-8', {'Cache-Control': 'public, max-age=3600'})
+    send_text(h, xml, 'application/xml; charset=utf-8', {'Cache-Control': 'public, max-age=3600'})

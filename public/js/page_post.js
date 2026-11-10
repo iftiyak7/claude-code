@@ -87,8 +87,10 @@ export function fillForm(f, d) {
   f.querySelectorAll('[name=off]').forEach(el => { el.checked = (d.off || []).includes(+el.value); });
   if (f.lat && d.lat != null) setLoc(f, d.lat, d.lng);
 }
-const termsText = () => (LANG() === 'en' && S.D.terms?.en) || S.D.terms?.bn || '';
-export const termsHtml = () => termsText().split(/\n\s*\n/).map(x => `<p>${esc(x.trim()).replace(/\n/g, '<br>')}</p>`).join('');
+// Terms and privacy text as written by the admin: a blank line starts a new paragraph, "## " a heading, a short "Label:" is bold
+const legalHtml = doc => ((LANG() === 'en' && doc?.en) || doc?.bn || '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).map(x => x.startsWith('## ')
+  ? `<h3>${esc(x.slice(3).trim())}</h3>` : `<p>${esc(x).replace(/\n/g, '<br>').replace(/^([^:।.<]{2,30}):\s/, '<b>$1:</b> ')}</p>`).join('');
+export const termsHtml = () => legalHtml(S.D.terms);
 
 // Runs once at start-up, in the original order (main.js calls it after every module has loaded).
 export function init() {
@@ -275,6 +277,7 @@ export function init() {
       <a class="li" href="#/offers"><span class="ib">${icon('tag', 18)}</span><div>${T('অফার ও কুপন')}</div>${icon('chevR', 18)}</a>
       <button class="li" data-hardrefresh><span class="ib">${icon('refresh', 18)}</span><div>${T('রিফ্রেশ করুন')}<small>${T('নতুন তথ্য আনুন — যেকোনো পেজের উপরে টেনে নামালেও হয়')}</small></div>${icon('chevR', 18)}</button>
       <a class="li" href="#/terms"><span class="ib">${icon('doc', 18)}</span><div>${T('শর্তাবলি')}</div>${icon('chevR', 18)}</a>
+      <a class="li" href="#/privacy"><span class="ib">${icon('shield', 18)}</span><div>${T('গোপনীয়তা নীতি')}</div>${icon('chevR', 18)}</a>
       <a class="li" href="/"><span class="ib">${icon('info', 18)}</span><div>${T('Jashore360 সম্পর্কে')}<small>${esc(loc(site, 'about'))}</small></div>${icon('chevR', 18)}</a>
     </div>
     <p class="foot">${esc(loc(site, 'disclaimer'))}<br>${T('পেইড বিজ্ঞাপন সবসময় "Sponsored" চিহ্নিত থাকে এবং রেটিংকে প্রভাবিত করে না।')}</p>`;
@@ -282,6 +285,9 @@ export function init() {
   pages.terms = () => `${topbar(T('শর্তাবলি'))}
     <div class="prose terms">${termsHtml() || `<p>${T('শর্তাবলি এখনো যোগ করা হয়নি।')}</p>`}</div>
     ${S.D.terms?.updated ? `<p class="muted" style="font-size:13px">${T('সর্বশেষ আপডেট')}: ${esc(fmtDate(S.D.terms.updated))}</p>` : ''}`;
+  pages.privacy = () => `${topbar(T('গোপনীয়তা নীতি'))}
+    <div class="prose terms">${legalHtml(S.D.privacy) || `<p>${T('এখনো যোগ করা হয়নি।')}</p>`}</div>
+    ${S.D.privacy?.updated ? `<p class="muted" style="font-size:13px">${T('সর্বশেষ আপডেট')}: ${esc(fmtDate(S.D.privacy.updated))}</p>` : ''}`;
   pages.offers = () => {
     if (!cache.offers) api('/coupons').then(r => { cache.offers = r; if (location.hash.startsWith('#/offers')) render(); }).catch(e => toast(e.message));
     const list = cache.offers;

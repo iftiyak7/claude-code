@@ -52,6 +52,8 @@ def adm_put_setting(h, key):
             old = get_setting(c, 'terms') or {}
             val = {'bn': s(val.get('bn'), 30000) or '', 'en': s(val.get('en'), 30000) or '', 'updated': today(),
                    'version': (old.get('version') or 0) + (1 if (val.get('bn'), val.get('en')) != (old.get('bn'), old.get('en')) else 0)}
+        if key == 'privacy':
+            val = {'bn': s(val.get('bn'), 30000) or '', 'en': s(val.get('en'), 30000) or '', 'updated': today()}
         if key == 'popup':                         # changed content counts as a new popup, so "show once" shows it again
             old = get_setting(c, 'popup') or {}
             body = {k: v for k, v in val.items() if k != 'rev'}

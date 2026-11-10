@@ -408,6 +408,8 @@ h4 { font-size: 14px; color: var(--ink-2); margin: 18px 0 10px; }
 .videos video { width: 100%; max-height: 440px; border-radius: 16px; background: #000; display: block; }
 .note.disc { margin-top: 16px; font-size: 13px; line-height: 1.55; }
 .terms p { margin: 0 0 14px; }
+.terms h3, .wtext h3 { font-size: 16px; margin: 22px 0 8px; }
+.wtext h3 { font-size: 13.5px; margin: 14px 0 6px; color: #fff; }
 .welcome .wterms { display: flex; gap: 10px; align-items: flex-start; text-align: left; font-size: 14px; margin: 0 0 14px; color: rgba(255, 255, 255, .85); }
 .welcome .wterms input { width: 20px; height: 20px; accent-color: var(--brand); margin: 1px 0 0; flex: none; }
 .welcome .wterms button { background: none; border: 0; padding: 0; color: #7ee2bd; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
