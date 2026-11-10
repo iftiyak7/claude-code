@@ -127,6 +127,23 @@ final class Installer {
 					wp_schedule_single_event( time() + 30, 'goriber_hisab_repair_costs' );
 				}
 			},
+			// Purchases did not update the purchase price: take it from each product's latest purchase.
+			'1.16.0' => static function ( $db ): void {
+				$it   = $db->table( 'purchase_items' );
+				$pt   = $db->table( 'purchases' );
+				$rows = $db->rows(
+					"SELECT i.business_id, i.product_id, i.variant_id, i.unit_price FROM {$it} i JOIN {$pt} p ON p.id = i.purchase_id
+					WHERE p.status = 'completed' AND i.unit_price > 0 ORDER BY p.purchase_date, p.id, i.id"
+				);
+				$last = array();
+				foreach ( $rows as $r ) {
+					$last[ $r['business_id'] . ':' . $r['product_id'] . ':' . $r['variant_id'] ] = $r;
+				}
+				foreach ( $last as $r ) {
+					$variant = (int) $r['variant_id'];
+					$db->update( $db->table( $variant ? 'product_variants' : 'products' ), array( 'purchase_price' => $r['unit_price'] ), array( 'id' => $variant ?: (int) $r['product_id'], 'business_id' => (int) $r['business_id'] ) );
+				}
+			},
 		);
 		return (array) apply_filters( 'goriber_hisab/migrations', $builtin );
 	}

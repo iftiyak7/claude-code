@@ -322,4 +322,20 @@ final class PurchaseInventoryTest extends IntegrationTestCase {
 		$this->assertSame( '3.0000', $this->qty( $p ) );
 		$this->assertBooksBalanced( 'negative stock' );
 	}
+
+	public function testLatestPurchaseSetsThePurchasePrice(): void {
+		$p   = $this->product( 'Kathbadam', '1600', '1420' );
+		$sup = $this->supplier( 'Paikar' );
+		$this->k->purchases->create( $this->ctx, array( 'supplier_id' => $sup, 'purchase_date' => '2026-03-10', 'items' => array( array( 'product_id' => $p, 'qty' => '5', 'unit_price' => '1480' ) ) ) );
+		$this->assertMoney( '1480', $this->k->products->get( $this->ctx, $p )['purchase_price'], 'latest buying price' );
+		// An older bill entered later does not overwrite the newer price.
+		$this->k->purchases->create( $this->ctx, array( 'supplier_id' => $sup, 'purchase_date' => '2026-03-01', 'items' => array( array( 'product_id' => $p, 'qty' => '5', 'unit_price' => '1400' ) ) ) );
+		$this->assertMoney( '1480', $this->k->products->get( $this->ctx, $p )['purchase_price'] );
+		// A size gets its own price.
+		$v = $this->k->products->saveVariant( $this->ctx, $p, array( 'name' => '500 g', 'selling_price' => '800', 'purchase_price' => '700' ) )['id'];
+		$this->k->purchases->create( $this->ctx, array( 'supplier_id' => $sup, 'purchase_date' => '2026-03-12', 'items' => array( array( 'product_id' => $p, 'variant_id' => $v, 'qty' => '4', 'unit_price' => '740' ) ) ) );
+		$this->assertMoney( '740', $this->k->products->get( $this->ctx, $p )['variants'][0]['purchase_price'] );
+		$this->assertMoney( '1480', $this->k->products->get( $this->ctx, $p )['purchase_price'] );
+		$this->assertBooksBalanced( 'purchases' );
+	}
 }

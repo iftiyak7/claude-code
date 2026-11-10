@@ -378,7 +378,8 @@ final class PurchaseService extends Service {
 				'discount_value' => $disc,
 				'batch_no'       => Text::line( $item['batch_no'] ?? '', 60 ),
 				'expiry_date'    => Text::date( $item['expiry_date'] ?? null ),
-				'update_price'   => Text::bool( $item['update_price'] ?? false ),
+				// The latest buying price becomes the product's purchase price (unless asked not to).
+				'update_price'   => Text::bool( $item['update_price'] ?? true ),
 			);
 			$calc[ $i ]  = array(
 				'qty'            => $qty,
@@ -570,7 +571,7 @@ final class PurchaseService extends Service {
 					'reference_no'   => $number,
 				)
 			);
-			if ( $line['update_price'] ) {
+			if ( $line['update_price'] && ! $this->newerPurchase( $ctx, (int) $item['product_id'], (int) $item['variant_id'], (string) $doc['purchase_date'], $id ) ) {
 				$this->db->update(
 					$this->db->table( (int) $item['variant_id'] ? 'product_variants' : 'products' ),
 					array( 'purchase_price' => Decimal::toString( Decimal::of( $item['unit_price'] ) ) ),
@@ -729,5 +730,19 @@ final class PurchaseService extends Service {
 				$items
 			),
 		);
+	}
+
+	/**
+	 * Is there a later purchase of this product / size? Then an older purchase
+	 * entered now does not change its purchase price.
+	 */
+	private function newerPurchase( BusinessContext $ctx, int $product_id, int $variant_id, string $date, int $id ): bool {
+		$it = $this->db->table( 'purchase_items' );
+		$pt = $this->db->table( 'purchases' );
+		return (int) $this->db->value(
+			"SELECT COUNT(*) FROM {$it} i JOIN {$pt} p ON p.id = i.purchase_id
+			WHERE p.business_id = %d AND p.status = 'completed' AND p.id <> %d AND i.product_id = %d AND i.variant_id = %d AND p.purchase_date > %s",
+			array( $ctx->business_id, $id, $product_id, $variant_id, $date )
+		) > 0;
 	}
 }
