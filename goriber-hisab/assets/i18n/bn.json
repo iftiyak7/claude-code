@@ -2003,5 +2003,16 @@
 "It was entered before the purchase price was set, so its sales show the whole price as profit. Fix it with the purchase price now set (for each size its own). Past sales of that stock get the right cost too; the stock counts as already in the shop, not as profit or loss.": "ক্রয় মূল্য দেওয়ার আগে স্টক এন্ট্রি হয়েছিল, তাই এগুলো বিক্রি হলে পুরো দামটাই লাভ দেখায়। এখন যে ক্রয় মূল্য দেওয়া আছে (প্রতিটা সাইজের নিজেরটা) সেটা দিয়ে ঠিক করুন। আগের বিক্রিগুলোর খরচও ঠিক হয়ে যাবে; স্টকটা আগে থেকে দোকানে ছিল ধরা হবে — লাভ বা ক্ষতি নয়।",
 "Fix the cost": "খরচ ঠিক করুন",
 "Cost fixed: {s} in stock, {n} sales corrected": "খরচ ঠিক হয়েছে: স্টকে {s}টা, {n}টা বিক্রি সংশোধিত",
-"Enter the purchase price first (Edit), then fix the cost.": "আগে ক্রয় মূল্য দিন (এডিট), তারপর খরচ ঠিক করুন।"
+"Enter the purchase price first (Edit), then fix the cost.": "আগে ক্রয় মূল্য দিন (এডিট), তারপর খরচ ঠিক করুন।",
+"Offline: customer saved on this device and will sync automatically.": "অফলাইন: কাস্টমার এই ফোনে সেভ হয়েছে, নেট এলে নিজে থেকে চলে যাবে।",
+"Offline: saved on this device and will sync automatically.": "অফলাইন: এই ফোনে সেভ হয়েছে, নেট এলে নিজে থেকে চলে যাবে।",
+"Waiting to sync": "সিঙ্কের অপেক্ষায়",
+"Online — saved work syncs automatically.": "অনলাইন — সেভ করা কাজ নিজে থেকে সিঙ্ক হচ্ছে।",
+"You are offline. Work is saved on this device and syncs when the internet is back.": "আপনি অফলাইনে আছেন। কাজ এই ফোনে সেভ হচ্ছে, নেট এলে সিঙ্ক হবে।",
+"Sale": "বিক্রি",
+"Due collected": "বাকি আদায়",
+"Supplier paid": "সাপ্লায়ারকে পরিশোধ",
+"Expense": "খরচ",
+"Purchase": "ক্রয়",
+"Discard this? It will not be recorded.": "এটা বাদ দেবেন? এটা হিসাবে উঠবে না।"
 }

@@ -16,7 +16,7 @@ import { icon } from '../core/icons.js';
 import { whatsappUrl } from '../core/remind.js';
 import { onScan, scanWithCamera, cameraSupported } from '../core/scanner.js';
 import { printSale, openPrint } from '../core/printer.js';
-import { cacheGet, queueSale, refreshSnapshot } from '../core/offline.js';
+import { cacheGet, queueSale, queueWrite, localId, sync, refreshSnapshot } from '../core/offline.js';
 import { navigate } from '../core/router.js';
 
 export default async function pos(el) {
@@ -225,11 +225,19 @@ export default async function pos(el) {
       size: 'sm',
       body: h('form', { class: 'form', id: 'qc' }, field(t('Name'), name, { required: true }), field(t('Phone'), phone)),
       actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+        const body = { name: name.value, phone: phone.value, quick: 1, uuid: uuid() };
         try {
-          cart.customer = await api.post('customers', { name: name.value, phone: phone.value, quick: 1 });
-          m.close(); paintCustomer();
-          if (typeof after === 'function') after(cart.customer);
-        } catch (err) { showError(err); }
+          cart.customer = await api.post('customers', body);
+        } catch (err) {
+          if (!err.offline || !window.GoriberHisabNative) { showError(err); return; }
+          if (!name.value.trim()) { showError(new Error(t('Enter a name.'))); return; }
+          // No internet: the customer is kept on this phone and sent before the sale.
+          await queueWrite('customer', 'customers', body);
+          cart.customer = { id: 0, uuid: body.uuid, name: body.name, phone: body.phone, balance: '0', _local: true };
+          toast(t('Offline: customer saved on this device and will sync automatically.'), 'success', 5000);
+        }
+        m.close(); paintCustomer();
+        if (typeof after === 'function') after(cart.customer);
       } }, t('Add'))],
     });
   }
@@ -346,6 +354,7 @@ export default async function pos(el) {
   function payload() {
     return {
       customer_id: cart.customer?.id || 0,
+      ...(cart.customer?._local ? { customer_uuid: cart.customer.uuid } : {}),
       ...sellerPayload(),
       channel: 'pos',
       items: cart.lines.map((l) => ({
@@ -550,6 +559,12 @@ export default async function pos(el) {
   }
 
   async function complete(tenders, given, print, m) {
+    // A customer made offline: if the internet is back, send it first and use its real id.
+    if (cart.customer?._local && navigator.onLine) {
+      await sync().catch(() => {});
+      const id = await localId(cart.customer.uuid);
+      if (id) cart.customer = { ...cart.customer, id, _local: false };
+    }
     const body = {
       ...payload(),
       uuid: uuid(),

@@ -156,4 +156,15 @@ final class SecurityTest extends IntegrationTestCase {
 		// The only branch left cannot be deleted.
 		$this->assertThrows( \GoriberHisab\Support\ConflictException::class, fn() => $this->k->businesses->deleteBranch( $this->ctx, $main ) );
 	}
+
+	public function testOfflineCustomerIsNeverCreatedTwice(): void {
+		$uuid = '6f1c2a4e-1b2c-4d3e-8f90-0a1b2c3d4e5f';
+		$a    = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Rina', 'phone' => '01711000222', 'uuid' => $uuid ) );
+		$b    = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Rina', 'phone' => '01711000222', 'uuid' => $uuid ) );
+		$this->assertSame( $a['id'], $b['id'], 'same offline item sent twice' );
+		$c = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Rina B', 'phone' => '01711000222', 'uuid' => '7f1c2a4e-1b2c-4d3e-8f90-0a1b2c3d4e5f' ) );
+		$this->assertSame( $a['id'], $c['id'], 'same phone added offline on another device' );
+		$d = $this->k->contacts->create( $this->ctx, 'customer', array( 'name' => 'Karim', 'phone' => '01811000333' ) );
+		$this->assertTrue( $d['id'] !== $a['id'] );
+	}
 }

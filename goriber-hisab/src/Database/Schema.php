@@ -39,7 +39,7 @@ namespace GoriberHisab\Database;
  */
 final class Schema {
 
-	public const VERSION = '1.13.0';
+	public const VERSION = '1.14.0';
 
 	/**
 	 * Common audit columns appended to document tables.
@@ -384,6 +384,7 @@ final class Schema {
 						'image_id'        => 'fk',
 						'last_activity_at' => 'datetime_null',
 						'status'          => 'str:20',
+						'uuid'            => 'uuid',
 					),
 					self::stamps(),
 					self::soft()
@@ -392,6 +393,7 @@ final class Schema {
 					'business_type' => array( 'business_id', 'type', 'status', 'name' ),
 					'phone'         => array( 'business_id', 'phone' ),
 					'code'          => array( 'business_id', 'code' ),
+					'uuid'          => array( 'business_id', 'uuid' ),
 				),
 			),
 

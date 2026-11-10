@@ -72,18 +72,26 @@ function audit(el, query) {
 }
 
 async function syncQueue(el) {
-  const p = page(t('Offline sales'), {
-    subtitle: navigator.onLine ? t('Online — queued sales sync automatically.') : t('You are offline. Sales are saved on this device.'),
+  const p = page(t('Waiting to sync'), {
+    subtitle: navigator.onLine ? t('Online — saved work syncs automatically.') : t('You are offline. Work is saved on this device and syncs when the internet is back.'),
     actions: [h('button', { class: 'btn btn-primary btn-sm', type: 'button', disabled: !navigator.onLine, onclick: async () => { await sync(); syncQueue(el); } }, t('Sync now'))],
   });
   const items = await queued();
+  const KIND = { sale: t('Sale'), customer: t('New customer'), payment: t('Due collected'), supplier_payment: t('Supplier paid'), expense: t('Expense'), income: t('Income'), purchase: t('Purchase') };
+  const summary = (q) => {
+    const x = q.payload;
+    switch (q.kind || 'sale') {
+      case 'sale': case 'purchase': return `${(x.items || []).length} ${t('items')} · ${money(String((x.payments || []).reduce((a, y) => a + Number(y.amount), 0)))}`;
+      case 'customer': return `${x.name} ${x.phone || ''}`;
+      default: return money(String(x.amount || 0));
+    }
+  };
   p.body.append(card(null, items.length ? h('ul', { class: 'list' }, items.map((q) => h('li', {},
     h('div', { class: 'grow' },
-      h('strong', {}, new Date(q.created).toLocaleString()),
-      h('small', { class: 'muted' }, ` · ${q.payload.items.length} ${t('items')} · ${money(q.payload.payments.reduce((a, x) => a + Number(x.amount), 0).toString())}`),
+      h('strong', {}, KIND[q.kind || 'sale'] || q.kind), h('small', { class: 'muted' }, ` · ${new Date(q.created).toLocaleString()} · ${summary(q)}`),
       q.error ? h('p', { class: 'bad-text' }, q.error) : null),
     h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => {
-      if (!(await confirmDialog(t('Discard this offline sale? It will not be recorded.'), { danger: true, confirmText: t('Discard') }))) return;
+      if (!(await confirmDialog(t('Discard this? It will not be recorded.'), { danger: true, confirmText: t('Discard') }))) return;
       await discard(q.uuid); toast(t('Discarded')); syncQueue(el);
     } }, t('Discard'))))) : empty(t('Nothing waiting to sync.'))));
   mount(el, p.el);

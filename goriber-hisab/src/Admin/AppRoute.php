@@ -346,6 +346,7 @@ final class AppRoute {
 <script>window.BZL = <?php echo wp_json_encode( $config ); ?>;(function(){try{var m=localStorage.getItem('gh.theme');if(m==='dark'||m==='light')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
 <script><?php echo self::bootGuard(); // phpcs:ignore WordPress.Security.EscapeOutput -- static script. ?></script>
 <script type="importmap"><?php echo wp_json_encode( array( 'imports' => self::importMap() ), JSON_UNESCAPED_SLASHES ); ?></script>
+<script type="application/json" id="gh-offline-files"><?php echo wp_json_encode( array_map( static fn( $p ) => GORIBER_HISAB_URL . 'assets/' . $p . '?v=' . GORIBER_HISAB_VERSION, array( 'i18n/bn.json', 'vendor/zxing.min.js', 'vendor/html2canvas.min.js', 'img/icon.svg', 'img/mark.svg', 'img/nooriyah.jpg' ) ), JSON_UNESCAPED_SLASHES ); // The Android app keeps these for offline use. ?></script>
 <script type="module" src="<?php echo $asset( 'js/app.js' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>"></script>
 </head>
 <body>

@@ -3,6 +3,7 @@
  * Totals preview locally; the server recalculates on save.
  */
 import { h, mount, uuid } from '../core/dom.js';
+import { postOrQueue } from '../core/offline.js';
 import { api } from '../core/api.js';
 import { state, can } from '../core/state.js';
 import { t } from '../core/i18n.js';
@@ -244,7 +245,9 @@ export default async function documentForm(el, params) {
     submitBtn.disabled = true;
     showFieldErrors(form, {});
     try {
-      const saved = editing ? await api.put(`${base}/${editing}`, body) : await api.post(base, body);
+      // A new purchase made without internet (in the app) waits on the phone and is sent later.
+      const saved = editing ? await api.put(`${base}/${editing}`, body) : (isSale ? await api.post(base, body) : await postOrQueue('purchase', base, body));
+      if (saved.queued) { toast(t('Offline: saved on this device and will sync automatically.'), 'success', 5000); navigate(`/${base}`); return; }
       toast(t('Saved {n}', { n: saved.number }));
       navigate(`/${base}/${saved.id}`);
     } catch (err) {

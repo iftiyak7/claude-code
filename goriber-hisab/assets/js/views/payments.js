@@ -3,6 +3,7 @@
  * "pay supplier" dialogs used across the app.
  */
 import { h, mount, uuid } from '../core/dom.js';
+import { postOrQueue } from '../core/offline.js';
 import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
 import { t } from '../core/i18n.js';
@@ -87,7 +88,7 @@ function standalone(el, type, query) {
     search: async (q) => (await api.get(isCustomer ? 'customers' : 'suppliers', { search: q, per_page: 10, due_only: q ? '' : 1, orderby: 'balance' })).items,
     label: (c) => c.name,
     sub: (c) => `${c.phone || ''} · ${isCustomer ? t('Due') : t('Payable')} ${money(c.balance)}`,
-    onPick: (c) => mount(holder, paymentForm(c, isCustomer, { onDone: (pay) => navigate(`/payments/${pay.id}`) })),
+    onPick: (c) => mount(holder, paymentForm(c, isCustomer, { onDone: (pay) => navigate(pay.queued ? '/payments' : `/payments/${pay.id}`) })),
   });
   p.body.append(card(isCustomer ? t('Customer') : t('Supplier'), picker.el), holder);
   mount(el, p.el);
@@ -114,10 +115,12 @@ function paymentForm(contact, isCustomer, { doc = null, onDone } = {}) {
     const v = values(form);
     showFieldErrors(form, {});
     try {
-      const body = { ...v, contact_id: contact.id, uuid: uuid() };
+      const body = { ...v, contact_id: contact.id, uuid: uuid(), ...(contact._local ? { contact_uuid: contact.uuid } : {}) };
       if (doc) body[isCustomer ? 'sale_id' : 'purchase_id'] = doc.id;
-      const pay = await api.post(isCustomer ? 'payments/receive' : 'payments/pay', body);
-      toast(t('{x} recorded', { x: money(pay.amount) }));
+      // Without internet (in the app) the payment waits on the phone and is sent later.
+      const pay = await postOrQueue(isCustomer ? 'payment' : 'supplier_payment', isCustomer ? 'payments/receive' : 'payments/pay', body);
+      if (pay.queued) toast(t('Offline: saved on this device and will sync automatically.'), 'success', 5000);
+      else toast(t('{x} recorded', { x: money(pay.amount) }));
       onDone?.(pay);
     } catch (err) { showFieldErrors(form, err.errors || {}); showError(err); }
   });

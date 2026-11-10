@@ -2,6 +2,7 @@
  * Expenses and other income (shared screen, kind = expense | income).
  */
 import { h, mount, uuid } from '../core/dom.js';
+import { postOrQueue } from '../core/offline.js';
 import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
 import { t } from '../core/i18n.js';
@@ -88,7 +89,12 @@ function editor(el, kind, categories) {
   const api_base = kind === 'expense' ? 'expenses' : 'incomes';
   const f = h('form', { class: 'form' }, card(null, formFields(kind, categories)),
     h('div', { class: 'form-actions sticky' }, h('a', { class: 'btn', href: `#/${base}` }, t('Cancel')), h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, t('Save'))));
-  bindForm(f, async (v) => { const saved = await api.post(api_base, { ...v, uuid: uuid() }); navigate(`/${base}/${saved.id}`); });
+  bindForm(f, async (v) => {
+    const saved = await postOrQueue(kind, api_base, { ...v, uuid: uuid() });
+    if (saved.queued) { toast(t('Offline: saved on this device and will sync automatically.'), 'success', 5000); navigate(`/${base}`); return; }
+    toast(t('Saved'));
+    navigate(`/${base}/${saved.id}`);
+  }, { success: '' });
   const p = page(kind === 'expense' ? t('Add expense') : t('Add income'), { back: `/${base}` });
   p.body.append(f);
   mount(el, p.el);

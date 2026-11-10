@@ -156,6 +156,8 @@ async function boot() {
     .forEach((n, i) => setTimeout(() => import(`./views/${n}.js?v=${window.BZL.version}`).catch(() => {}), i * 120)));
   if (state.ctx) {
     sync();
+    // Phones do not always say when the internet comes back: try again every minute.
+    setInterval(() => { if (navigator.onLine) sync(); }, 60000);
     refreshSnapshot();
     startAlerts();
   }

@@ -188,12 +188,26 @@ final class ContactService extends Service {
 	 */
 	public function create( BusinessContext $ctx, string $type, array $data ): array {
 		$ctx->authorize( self::perm( $type, 'create' ) );
+		// Made offline and sent again when the phone came back online: never twice.
+		$uuid = Text::uuid( $data['uuid'] ?? null );
+		if ( $uuid ) {
+			$ct   = $this->db->table( 'contacts' );
+			$same = (int) $this->db->value( "SELECT id FROM {$ct} WHERE business_id = %d AND uuid = %s AND deleted_at IS NULL", array( $ctx->business_id, $uuid ) );
+			$phone = Text::phone( (string) ( $data['phone'] ?? '' ) );
+			if ( ! $same && '' !== $phone ) {
+				// Someone added the same person from another device meanwhile.
+				$same = (int) $this->db->value( "SELECT id FROM {$ct} WHERE business_id = %d AND type = %s AND phone = %s AND deleted_at IS NULL ORDER BY id LIMIT 1", array( $ctx->business_id, $type, $phone ) );
+			}
+			if ( $same ) {
+				return $this->get( $ctx, $type, $same );
+			}
+		}
 		$clean   = $this->validate( $ctx, $type, $data );
 		$opening = $this->money( $data, 'opening_balance' );
 		$now     = $this->now();
 
 		$id = $this->db->transaction(
-			function () use ( $ctx, $type, $clean, $opening, $now ) {
+			function () use ( $ctx, $type, $clean, $opening, $now, $uuid ) {
 				$code = '' !== $clean['code'] ? $clean['code'] : $this->numbers->next( $ctx, $type );
 				$id   = $this->db->insert(
 					$this->db->table( 'contacts' ),
@@ -206,6 +220,7 @@ final class ContactService extends Service {
 							'opening_balance' => Decimal::toString( $opening ),
 							'balance'         => '0',
 							'status'          => 'active',
+							'uuid'            => $uuid,
 							'created_by'      => $ctx->user_id,
 							'updated_by'      => $ctx->user_id,
 							'created_at'      => $now,

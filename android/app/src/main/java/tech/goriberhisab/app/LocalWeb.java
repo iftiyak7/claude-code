@@ -47,6 +47,7 @@ final class LocalWeb {
     private final Context context;
     private final AssetManager assets;
     private final File shellDir;
+    private final File webDir;
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private volatile String serverVersion;
     private String userAgent = "";
@@ -57,6 +58,7 @@ final class LocalWeb {
         this.shellDir = new File(context.getFilesDir(), "shell");
         //noinspection ResultOfMethodCallIgnored
         shellDir.mkdirs();
+        this.webDir = new File(context.getFilesDir(), "web");
         this.serverVersion = context.getSharedPreferences("goriber_hisab", Context.MODE_PRIVATE).getString("server_version", "");
     }
 
@@ -93,8 +95,23 @@ final class LocalWeb {
         }
         String v = uri.getQueryParameter("v");
         boolean same = v != null ? v.equals(BuildConfig.WEB_VERSION) : BuildConfig.WEB_VERSION.equals(serverVersion);
-        if (!same) {
-            // The website runs another version: use its files, ours only as an offline fallback.
+        if (!same && v != null) {
+            // The website runs a newer version than this APK: keep its files on the phone,
+            // so the new features keep working without internet too.
+            File kept = keptFile(v, rel);
+            if (kept != null && kept.exists()) {
+                try {
+                    return fileResponse(new FileInputStream(kept), rel);
+                } catch (IOException ignored) {
+                    // download again below
+                }
+            }
+            byte[] body = download(uri.toString());
+            if (body != null) {
+                keep(kept, body);
+                return fileResponse(new ByteArrayInputStream(body), rel);
+            }
+        } else if (!same) {
             WebResourceResponse net = fetch(uri.toString(), mime(rel));
             if (net != null) {
                 return net;
@@ -109,6 +126,101 @@ final class LocalWeb {
         } catch (IOException e) {
             return null; // not bundled: let the WebView fetch it
         }
+    }
+
+    private static WebResourceResponse fileResponse(InputStream in, String rel) {
+        Map<String, String> h = new HashMap<>();
+        h.put("Cache-Control", "no-cache");
+        h.put("Access-Control-Allow-Origin", "*");
+        return new WebResourceResponse(mime(rel), mime(rel).startsWith("image/") ? null : "utf-8", 200, "OK", h, in);
+    }
+
+    /** Where a file of website version v is kept, or null for a name we will not store. */
+    private File keptFile(String v, String rel) {
+        if (!v.matches("[0-9A-Za-z._-]{1,40}") || rel.contains("..") || rel.startsWith("/")) {
+            return null;
+        }
+        return new File(new File(webDir, v), rel);
+    }
+
+    private static void keep(File file, byte[] body) {
+        if (file == null) {
+            return;
+        }
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            file.getParentFile().mkdirs();
+            File tmp = new File(file.getPath() + ".tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(body);
+            }
+            //noinspection ResultOfMethodCallIgnored
+            tmp.renameTo(file);
+        } catch (IOException ignored) {
+            // the next online visit downloads it again
+        }
+    }
+
+    private byte[] download(String url) {
+        try {
+            HttpURLConnection c = open(url);
+            if (c.getResponseCode() != 200) {
+                c.disconnect();
+                return null;
+            }
+            byte[] body = read(c.getInputStream());
+            c.disconnect();
+            return body;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static final Pattern FILE = Pattern.compile("https?://[^\\s\"'<>]+?" + Pattern.quote(ASSETS) + "([^\\s\"'<>?]+)\\?v=([0-9A-Za-z._-]+)");
+
+    /**
+     * A newer website version was seen: download all its app files now (in the
+     * background, while there is internet) and drop older downloads.
+     */
+    private void prefetch(String html) {
+        if (serverVersion.isEmpty() || serverVersion.equals(BuildConfig.WEB_VERSION)) {
+            return;
+        }
+        Matcher m = FILE.matcher(html);
+        while (m.find()) {
+            String rel = m.group(1);
+            String v = m.group(2);
+            if (!v.equals(serverVersion) || rel.startsWith("app/")) {
+                continue;
+            }
+            File kept = keptFile(v, rel);
+            if (kept == null || kept.exists()) {
+                continue;
+            }
+            byte[] body = download(m.group(0).replace("&#038;", "&").replace("&amp;", "&"));
+            if (body != null) {
+                keep(kept, body);
+            }
+        }
+        File[] versions = webDir.listFiles();
+        if (versions != null) {
+            for (File d : versions) {
+                if (!d.getName().equals(serverVersion)) {
+                    deleteTree(d);
+                }
+            }
+        }
+    }
+
+    private static void deleteTree(File f) {
+        File[] kids = f.listFiles();
+        if (kids != null) {
+            for (File k : kids) {
+                deleteTree(k);
+            }
+        }
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
     }
 
     private static String mime(String rel) {
@@ -250,6 +362,7 @@ final class LocalWeb {
                 return null;
             }
             rememberVersion(text);
+            bg.execute(() -> prefetch(text));
             forgetShell();
             File tmp = new File(file.getPath() + ".tmp");
             try (FileOutputStream out = new FileOutputStream(tmp)) {
