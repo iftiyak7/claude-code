@@ -224,12 +224,18 @@ export function bindForm(form, submit, { success = t('Saved') } = {}) {
  * columns: [{ key, label, render(row), align: 'right', hide: 'sm' }]
  * fetch(params) => Promise<{items,total,page,pages,summary?}>
  */
-export function dataTable({ columns, fetch, filters = [], rowHref, query = {}, searchPlaceholder = t('Search…'), footer, emptyText = t('Nothing here yet.'), perPage = 25 }) {
+/**
+ * Optional: list(items, res) draws the rows itself (cards instead of a table);
+ * top(res) is shown above the rows (totals for the current filters).
+ * The returned set({ name: value }) changes filters from outside (quick date buttons).
+ */
+export function dataTable({ columns = [], fetch, filters = [], rowHref, query = {}, searchPlaceholder = t('Search…'), footer, emptyText = t('Nothing here yet.'), perPage = 25, list = null, top = null }) {
   const state = { page: Number(query.page || 1), search: query.search || '', filters: { ...query } };
   delete state.filters.page; delete state.filters.search;
   const body = h('div', { class: 'table-wrap' });
   const pager = h('div', { class: 'pager' });
   const foot = h('div', { class: 'table-foot' });
+  const head = h('div', { class: 'table-top' });
 
   const searchInput = h('input', { class: 'input search', type: 'search', placeholder: searchPlaceholder, value: state.search, 'aria-label': searchPlaceholder });
   const filterEls = filters.map((f) => {
@@ -262,6 +268,9 @@ export function dataTable({ columns, fetch, filters = [], rowHref, query = {}, s
     const items = res.items || [];
     if (!items.length) {
       mount(body, empty(state.search ? t('No results for "{q}".', { q: state.search }) : emptyText));
+    } else if (list) {
+      body.classList.add('is-list');
+      mount(body, list(items, res));
     } else {
       mount(body, h('table', { class: 'table' },
         h('thead', {}, h('tr', {}, columns.map((c) => h('th', { class: [c.align === 'right' ? 'num' : '', c.hide ? `hide-${c.hide}` : ''], scope: 'col' }, c.label)))),
@@ -282,6 +291,7 @@ export function dataTable({ columns, fetch, filters = [], rowHref, query = {}, s
         h('span', {}, `${state.page} / ${Math.max(1, res.pages || 1)}`),
         h('button', { class: 'btn btn-sm', type: 'button', disabled: state.page >= (res.pages || 1), onclick: () => { state.page += 1; load(); } }, t('Next'))));
     mount(foot, footer ? footer(res) : null);
+    mount(head, top ? top(res) : null);
   }
 
   // On phones the filters fold away behind one button so the list is visible.
@@ -293,9 +303,18 @@ export function dataTable({ columns, fetch, filters = [], rowHref, query = {}, s
   } }, icon('menu', 16), t('Filters')) : null;
   const el = h('div', { class: 'data-table' },
     h('div', { class: 'toolbar' }, searchInput, filterBtn, filterBox),
-    body, foot, pager);
+    head, body, foot, pager);
   load();
-  return { el, reload: load };
+  const set = (patch) => {
+    Object.entries(patch).forEach(([name, value]) => {
+      state.filters[name] = value;
+      const ctl = filters.map((f) => f.control).find((c) => c.name === name);
+      if (ctl) ctl.value = value;
+    });
+    state.page = 1;
+    load();
+  };
+  return { el, reload: load, set, filters: state.filters };
 }
 
 /** Static (non-paginated) table for reports. */

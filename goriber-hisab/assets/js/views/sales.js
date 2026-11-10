@@ -5,7 +5,7 @@ import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can, state } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { money, qty, date, datetime } from '../core/format.js';
+import { money, qty, date, datetime, today } from '../core/format.js';
 import { page, dataTable, badge, select, input, card, confirmDialog, toast, showError, simpleTable, downloadText } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
@@ -28,6 +28,41 @@ export default async function sales(el, params, query) {
     staff.forEach((u) => sellerFilter.append(h('option', { value: u.id }, u.name)));
     if (query.salesperson_id) sellerFilter.value = String(query.salesperson_id);
   }).catch(() => { sellerFilter.hidden = true; });
+  const showProfit = can('reports.profit');
+  const day = (offset) => { const d = new Date(`${today()}T12:00:00`); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
+  const RANGES = [
+    ['today', t('Today'), () => [today(), today()]],
+    ['yesterday', t('Yesterday'), () => [day(-1), day(-1)]],
+    ['7d', t('7 days'), () => [day(-6), today()]],
+    ['month', t('This month'), () => [`${today().slice(0, 8)}01`, today()]],
+    ['all', t('All'), () => ['', '']],
+  ];
+  const rangeChips = h('div', { class: 'chips sale-ranges', role: 'tablist' });
+  const activeRange = () => {
+    const f = table.filters;
+    return (RANGES.find(([, , r]) => { const [a, b] = r(); return (f.from || '') === a && (f.to || '') === b; }) || [''])[0];
+  };
+  const paintRanges = () => mount(rangeChips, RANGES.map(([key, label, r]) => h('button', {
+    class: `chip ${activeRange() === key ? 'active' : ''}`, type: 'button', role: 'tab',
+    onclick: () => { const [from, to] = r(); table.set({ from, to }); paintRanges(); },
+  }, label)));
+
+  const saleRow = (r) => {
+    const names = (r.items || []).map((i) => `${i.name}${Number(i.qty) !== 1 ? ` ×${qty(i.qty)}` : ''}`);
+    const more = (r.item_count || 0) - names.length;
+    const status = r.status === 'completed' ? r.payment_status : r.status;
+    return h('a', { class: `sale-row ${r.status === 'void' ? 'is-void' : ''}`, href: `#/sales/${r.id}` },
+      h('div', { class: 'sr-main' },
+        h('div', { class: 'sr-title' }, h('strong', {}, r.customer_name || t('Walk-in customer')), h('span', { class: 'sr-no' }, r.number)),
+        names.length ? h('div', { class: 'sr-items' }, names.join(', '), more > 0 ? ` +${t('{n} more', { n: more })}` : '') : null,
+        h('div', { class: 'sr-meta' }, timeOf(r.created_at), r.salesperson_name ? ` · ${r.salesperson_name}` : '', r.channel === 'online' ? ` · ${t('Online order')}` : '')),
+      h('div', { class: 'sr-side' },
+        h('strong', { class: 'sr-total' }, money(r.total)),
+        r.profit !== undefined ? h('span', { class: `sr-profit ${Number(r.profit) < 0 ? 'bad-text' : 'ok-text'}` }, `${Number(r.profit) < 0 ? t('Loss') : t('Profit')} ${money(String(Math.abs(Number(r.profit))))}`) : null,
+        Number(r.due_amount) ? h('span', { class: 'sr-due' }, `${t('Due')} ${money(r.due_amount)}`) : null,
+        badge(status)));
+  };
+
   const table = dataTable({
     query,
     searchPlaceholder: t('Invoice no., customer or phone'),
@@ -38,23 +73,22 @@ export default async function sales(el, params, query) {
       { control: input('from', '', { type: 'date', 'aria-label': t('From') }) },
       { control: input('to', '', { type: 'date', 'aria-label': t('To') }) },
     ],
-    fetch: (q) => api.get('sales', q),
-    rowHref: (r) => `/sales/${r.id}`,
-    columns: [
-      { label: t('Invoice'), render: (r) => h('strong', {}, r.number) },
-      { label: t('Date'), render: (r) => date(r.sale_date) },
-      { label: t('Customer'), render: (r) => r.customer_name || t('Walk-in') },
-      { label: t('Sold by'), hide: 'sm', render: (r) => r.salesperson_name || '—' },
-      { label: t('Total'), align: 'right', render: (r) => money(r.total) },
-      { label: t('Paid'), align: 'right', hide: 'sm', render: (r) => money(r.paid_amount) },
-      { label: t('Due'), align: 'right', render: (r) => (Number(r.due_amount) ? h('span', { class: 'warn-text' }, money(r.due_amount)) : '—') },
-      { label: t('Status'), render: (r) => badge(r.status === 'completed' ? r.payment_status : r.status) },
-    ],
-    footer: (res) => res.summary ? h('div', { class: 'sums' },
-      h('span', {}, t('Total'), ' ', h('strong', {}, money(res.summary.total))),
-      h('span', {}, t('Paid'), ' ', h('strong', {}, money(res.summary.paid))),
-      h('span', {}, t('Due'), ' ', h('strong', {}, money(res.summary.due)))) : null,
+    fetch: async (q) => { const res = await api.get('sales', q); setTimeout(paintRanges, 0); return res; },
+    // Totals for whatever is filtered, then the sales grouped by day.
+    top: (res) => (res.summary ? h('div', { class: 'sale-sums' },
+      h('div', { class: 'ss' }, h('span', {}, t('Sales')), h('strong', {}, String(res.summary.count ?? res.total ?? 0))),
+      h('div', { class: 'ss' }, h('span', {}, t('Total')), h('strong', {}, money(res.summary.total))),
+      showProfit && res.summary.profit !== undefined ? h('div', { class: 'ss ok' }, h('span', {}, t('Profit')), h('strong', {}, money(res.summary.profit))) : null,
+      h('div', { class: `ss ${Number(res.summary.due) ? 'warn' : ''}` }, h('span', {}, t('Due')), h('strong', {}, money(res.summary.due)))) : null),
+    list: (items) => {
+      const groups = [];
+      items.forEach((r) => { const g = groups[groups.length - 1]; if (g && g.date === r.sale_date) g.rows.push(r); else groups.push({ date: r.sale_date, rows: [r] }); });
+      return h('div', { class: 'sale-list' }, groups.map((g) => h('section', { class: 'sale-day' },
+        h('h3', { class: 'sale-date' }, g.date === today() ? t('Today') : (g.date === day(-1) ? t('Yesterday') : date(g.date))),
+        g.rows.map(saleRow))));
+    },
   });
+  p.body.append(rangeChips);
   p.body.append(table.el);
   mount(el, p.el);
 }
@@ -74,6 +108,7 @@ async function detail(el, id) {
   const actions = [
     can('invoices.print') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => printSale(s) }, icon('printer', 16), t('Receipt')) : null,
     can('invoices.print') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => openPrint('sale', id, { paper: state.settings['invoice.paper'] }) }, t('Invoice')) : null,
+    can('invoices.print') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: () => openPrint('sale', id, { paper: ['a4', 'a5'].includes(state.settings['invoice.paper']) ? state.settings['invoice.paper'] : 'a4', autoprint: false, extra: { download: '1' } }) }, icon('download', 16), t('Download')) : null,
     isDone && Number(s.due_amount) > 0 && can('payments.receive') && s.customer ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => collectPayment(s.customer, { sale: s, onDone: reload }) }, icon('cash', 16), t('Receive payment')) : null,
     s.status === 'held' && can('pos.use') ? h('a', { class: 'btn btn-primary btn-sm', href: '#/pos' }, t('Resume in POS')) : null,
     isDone && can('sales.return') ? h('a', { class: 'btn btn-sm', href: `#/sales/${id}/return` }, icon('return', 16), t('Return')) : null,
@@ -95,21 +130,27 @@ async function detail(el, id) {
       h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, t('Paid')), h('strong', { class: 'stat-value' }, money(s.paid_amount))),
       h('div', { class: `stat ${Number(s.due_amount) ? 'warn' : ''}` }, h('span', { class: 'stat-label' }, t('Due')), h('strong', { class: 'stat-value' }, money(s.due_amount))),
       profit ? h('div', { class: 'stat ok' }, h('span', { class: 'stat-label' }, t('Gross profit')), h('strong', { class: 'stat-value' }, money(s.gross_profit))) : null),
-    card(t('Items'), simpleTable([
-      { label: t('Item'), render: (i) => h('span', {}, i.name, Number(i.returned_qty) ? h('small', { class: 'warn-text' }, ` (${t('returned')} ${qty(i.returned_qty)})`) : null,
-        (i.components || []).length ? h('small', { class: 'muted recipe-used' }, `${t('Made from')}: ${i.components.map((c) => `${c.name} ${qty(c.qty)}${c.cost !== undefined ? ' (' + money(c.cost) + ')' : ''}`).join(', ')}`) : null) },
-      { label: t('Qty'), align: 'right', render: (i) => qty(i.qty) },
-      { label: t('Price'), align: 'right', render: (i) => money(i.unit_price) },
-      { label: t('Discount'), align: 'right', render: (i) => (Number(i.discount_amount) + Number(i.doc_discount) ? money(String(Number(i.discount_amount) + Number(i.doc_discount))) : '—') },
-      { label: state.settings['tax.label'], align: 'right', render: (i) => (Number(i.tax_amount) ? money(i.tax_amount) : '—') },
-      { label: t('Amount'), align: 'right', render: (i) => money(i.total) },
-    ], s.items),
+    card(t('Items'), h('div', { class: 'sale-items' }, s.items.map((i) => {
+      const disc = Number(i.discount_amount) + Number(i.doc_discount);
+      const hasProfit = profit && i.profit !== undefined;
+      return h('div', { class: 'si' },
+        h('div', { class: 'si-main' },
+          h('strong', {}, i.name),
+          h('div', { class: 'si-sub' }, `${qty(i.qty)} × ${money(i.unit_price)}`, disc ? ` · ${t('Discount')} ${money(String(disc))}` : '', Number(i.tax_amount) ? ` · ${state.settings['tax.label']} ${money(i.tax_amount)}` : '',
+            Number(i.returned_qty) ? h('span', { class: 'warn-text' }, ` · ${t('returned')} ${qty(i.returned_qty)}`) : null),
+          (i.components || []).length ? h('small', { class: 'muted recipe-used' }, `${t('Made from')}: ${i.components.map((c) => `${c.name} ${qty(c.qty)}${c.cost !== undefined ? ' (' + money(c.cost) + ')' : ''}`).join(', ')}`) : null),
+        h('div', { class: 'si-side' },
+          h('strong', {}, money(i.total)),
+          hasProfit ? h('span', { class: `si-profit ${Number(i.profit) < 0 ? 'bad' : 'ok'}` }, `${Number(i.profit) < 0 ? t('Loss') : t('Profit')} ${money(String(Math.abs(Number(i.profit))))}`) : null,
+          hasProfit ? h('small', { class: 'muted' }, `${t('Cost')} ${money(i.cost_amount)}`) : null));
+    })),
     h('div', { class: 'doc-totals right' },
       h('div', { class: 'tl' }, h('span', {}, t('Subtotal')), h('span', {}, money(s.subtotal))),
       Number(s.discount_amount) ? h('div', { class: 'tl' }, h('span', {}, t('Discount')), h('span', {}, '−' + money(s.discount_amount))) : null,
       Number(s.tax_amount) ? h('div', { class: 'tl' }, h('span', {}, state.settings['tax.label']), h('span', {}, money(s.tax_amount))) : null,
       Number(s.shipping_amount) ? h('div', { class: 'tl' }, h('span', {}, t('Shipping')), h('span', {}, money(s.shipping_amount))) : null,
-      h('div', { class: 'tl grand' }, h('span', {}, t('Total')), h('strong', {}, money(s.total))))),
+      h('div', { class: 'tl grand' }, h('span', {}, t('Total')), h('strong', {}, money(s.total))),
+      profit ? h('div', { class: 'tl profit-line2' }, h('span', {}, `${t('Cost of goods')} ${money(s.cost_amount)}`), h('strong', { class: Number(s.gross_profit) < 0 ? 'bad-text' : 'ok-text' }, `${Number(s.gross_profit) < 0 ? t('Loss') : t('Profit')} ${money(String(Math.abs(Number(s.gross_profit))))}`)) : null)),
     h('div', { class: 'grid-2' },
       card(t('Payments'), s.payments.length ? h('ul', { class: 'list' }, s.payments.map((pay) => h('li', {}, h('a', { href: `#/payments/${pay.id}` },
         h('span', {}, h('strong', {}, pay.number), h('small', { class: 'muted' }, ` ${date(pay.payment_date)} · ${pay.account_name}${pay.reference ? ' · ' + pay.reference : ''}`)),

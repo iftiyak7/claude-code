@@ -103,6 +103,23 @@
     });
   };
 
+  /** Ready-made canvases → PDF (invoices): pages = [{ canvas, wmm, hmm }]. A page taller than its canvas is padded with white. */
+  window.ghSavePdf = function (pages, name) {
+    save(name, buildPdf(pages.map(function (p) {
+      var c = p.canvas;
+      var want = Math.round(c.width * p.hmm / p.wmm);
+      if (want > c.height) {
+        var full = document.createElement('canvas');
+        full.width = c.width; full.height = want;
+        var g = full.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, full.width, full.height);
+        g.drawImage(c, 0, 0);
+        c = full;
+      }
+      return { w: c.width, h: c.height, wmm: p.wmm, hmm: p.hmm, jpeg: dataUrlBytes(c.toDataURL('image/jpeg', 0.92)) };
+    })));
+  };
+
   window.ghDownloadPdf = function (name, btn) {
     return window.ghPdfFrom(document.querySelectorAll('.lbl'), name, btn, 3);
   };

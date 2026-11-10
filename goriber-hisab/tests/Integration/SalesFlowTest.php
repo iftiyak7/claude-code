@@ -284,4 +284,20 @@ final class SalesFlowTest extends IntegrationTestCase {
 		$this->assertBooksBalanced( 'restored' );
 		$this->assertThrows( ConflictException::class, fn() => $this->k->sales->restore( $this->ctx, $sale['id'] ) );
 	}
+
+	public function testProfitPerProductAndInTheList(): void {
+		$a    = $this->product( 'Honey', '600', '440', '10' );
+		$b    = $this->product( 'Ghee', '1000', '700', '10' );
+		$sale = $this->k->sales->create( $this->ctx, array( 'items' => array( array( 'product_id' => $a, 'qty' => '2' ), array( 'product_id' => $b, 'qty' => '1' ) ), 'discount_type' => 'fixed', 'discount_value' => '220', 'payments' => array( array( 'amount' => '1980' ) ) ) );
+		$this->assertMoney( '400', $sale['gross_profit'], '1980 - 1580' );
+		$this->assertMoney( '200', $sale['items'][0]['profit'], 'honey: 1200 - 120 discount share - 880' );
+		$this->assertMoney( '200', $sale['items'][1]['profit'], 'ghee: 1000 - 100 - 700' );
+		$list = $this->k->sales->list( $this->ctx, array() );
+		$row  = $list['items'][0];
+		$this->assertSame( 2, $row['item_count'] );
+		$this->assertSame( 'Honey', $row['items'][0]['name'] );
+		$this->assertMoney( '400', $row['profit'] );
+		$this->assertMoney( '400', $list['summary']['profit'] );
+		$this->assertSame( 1, $list['summary']['count'] );
+	}
 }

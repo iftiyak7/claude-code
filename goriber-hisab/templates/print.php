@@ -27,6 +27,9 @@ $thermal  = in_array( $paper, array( '58mm', '80mm' ), true );
 $narrow   = '58mm' === $paper;
 $places   = (int) $biz['decimals'];
 $color    = preg_match( '/^#[0-9a-f]{6}$/i', (string) $settings['invoice.color'] ) ? $settings['invoice.color'] : '#16a34a';
+$rgb      = array_map( 'hexdec', str_split( ltrim( $color, '#' ), 2 ) );
+$tint     = static fn( float $k ): string => sprintf( '#%02x%02x%02x', (int) round( 255 - ( 255 - $rgb[0] ) * $k ), (int) round( 255 - ( 255 - $rgb[1] ) * $k ), (int) round( 255 - ( 255 - $rgb[2] ) * $k ) );
+$on_color = ( 0.299 * $rgb[0] + 0.587 * $rgb[1] + 0.114 * $rgb[2] ) > 165 ? '#0f172a' : '#ffffff'; // Text on the brand colour.
 $lang     = Landing::lang();
 $L        = static fn( string $bn, string $en ): string => 'bn' === $lang ? $bn : $en;
 $digits   = static fn( string $s ): string => 'bn' === $lang ? strtr( $s, array( '0' => '০', '1' => '১', '2' => '২', '3' => '৩', '4' => '৪', '5' => '৫', '6' => '৬', '7' => '৭', '8' => '৮', '9' => '৯' ) ) : $s;
@@ -120,7 +123,7 @@ $font         = 'serif' === $settings['invoice.font'] ? 'Georgia, "Noto Serif Be
 <title><?php echo esc_html( $titles[ $type ] . ( $number ? ' ' . $number : '' ) ); ?></title>
 <style>
 	@page { size: <?php echo esc_html( $thermal ? $paper . ' auto' : strtoupper( $paper ) ); ?>; margin: <?php echo $thermal ? '2mm' : '10mm'; ?>; }
-	:root { --c: <?php echo esc_html( $color ); ?>; --ink: #0f172a; --mut: #64748b; --line: #e2e8f0; --soft: color-mix(in srgb, var(--c) 8%, white); }
+	:root { --c: <?php echo esc_html( $color ); ?>; --on: <?php echo esc_html( $on_color ); ?>; --ink: #0f172a; --mut: #64748b; --line: #e2e8f0; --soft: <?php echo esc_html( $tint( 0.07 ) ); ?>; --soft2: <?php echo esc_html( $tint( 0.16 ) ); ?>; }
 	* { box-sizing: border-box; }
 	html { background: #e5e7eb; }
 	body { margin: 0; color: var(--ink); font: <?php echo $thermal ? ( $narrow ? '11px/1.35' : '12px/1.4' ) : '12.5px/1.5'; ?> <?php echo $font; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed list. ?>; }
@@ -129,7 +132,7 @@ $font         = 'serif' === $settings['invoice.font'] ? 'Georgia, "Noto Serif Be
 	.num { text-align: right; white-space: nowrap; }
 	.void { position: absolute; top: 38%; left: 0; right: 0; text-align: center; font-size: <?php echo $thermal ? '40px' : '96px'; ?>; color: rgba(220,38,38,.16); transform: rotate(-18deg); font-weight: 900; pointer-events: none; letter-spacing: .1em; }
 	.toolbar { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 9; }
-	.toolbar button { font: 600 14px system-ui, sans-serif; padding: 10px 18px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+	.toolbar button { font: 600 14px system-ui, sans-serif; white-space: nowrap; padding: 10px 18px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 	.toolbar .primary { background: var(--c); color: #fff; border-color: var(--c); }
 	.barcode svg { max-width: 100%; height: <?php echo $thermal ? '34px' : '38px'; ?>; }
 
@@ -154,66 +157,114 @@ $font         = 'serif' === $settings['invoice.font'] ? 'Georgia, "Noto Serif Be
 	.r-small { font-size: .85em; }
 
 	/* ---------------- A4 / A5 invoice */
-	.inv-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; padding-bottom: 14px; border-bottom: 3px solid var(--c); }
-	.inv-brand { display: flex; gap: 12px; align-items: flex-start; }
-	.inv-brand img { max-height: 64px; max-width: 140px; object-fit: contain; }
-	.inv-brand h1 { margin: 0 0 2px; font-size: 22px; letter-spacing: .01em; }
-	.inv-title { text-align: right; }
-	.inv-title h2 { margin: 0; font-size: 26px; letter-spacing: .08em; text-transform: uppercase; color: var(--c); font-weight: 900; }
-	.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 800; font-size: 11px; letter-spacing: .06em; margin-top: 6px; }
+	.inv-top { display: flex; justify-content: space-between; align-items: center; gap: 18px; background: var(--c); color: var(--on); padding: 18px 20px; border-radius: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.inv-brand { display: flex; gap: 14px; align-items: center; min-width: 0; }
+	.inv-brand img { max-height: 62px; max-width: 130px; object-fit: contain; background: #fff; border-radius: 10px; padding: 5px; }
+	.inv-brand h1 { margin: 0 0 3px; font-size: 22px; line-height: 1.2; letter-spacing: .01em; }
+	.inv-brand .contact { font-size: 11.5px; line-height: 1.5; opacity: .92; }
+	.inv-title { text-align: right; flex-shrink: 0; }
+	.inv-title h2 { margin: 0; font-size: 27px; line-height: 1.1; letter-spacing: .1em; text-transform: uppercase; font-weight: 900; }
+	.inv-no { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 6px; background: rgba(255,255,255,.2); font-weight: 800; font-size: 13.5px; letter-spacing: .03em; }
+	.pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-weight: 800; font-size: 11px; letter-spacing: .06em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	.pill.paid { background: #dcfce7; color: #166534; } .pill.partial { background: #fef9c3; color: #854d0e; } .pill.due { background: #fee2e2; color: #991b1b; }
-	.meta { display: grid; grid-template-columns: repeat(<?php echo 'a5' === $paper ? 2 : 3; ?>, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 14px 0; }
-	.meta div { background: #fff; padding: 7px 10px; }
-	.meta small { display: block; color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
-	.meta strong { font-size: 13px; }
-	.parties { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-	.box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
-	.box .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--c); font-weight: 800; margin-bottom: 4px; }
-	table.items { width: 100%; border-collapse: collapse; }
-	table.items th { background: var(--c); color: #fff; text-align: left; font-weight: 700; padding: 8px; font-size: 11.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-	table.items th:first-child { border-radius: 6px 0 0 6px; } table.items th:last-child { border-radius: 0 6px 6px 0; }
-	table.items td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-	table.items tbody tr:nth-child(even) td { background: #f8fafc; }
-	.after { display: grid; grid-template-columns: 1fr 44%; gap: 18px; margin-top: 12px; align-items: start; }
-	.totals { width: 100%; border-collapse: collapse; }
-	.totals td { padding: 5px 8px; }
-	.totals .grand td { background: var(--c); color: #fff; font-size: 16px; font-weight: 900; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-	.totals .due td { font-weight: 800; color: #b91c1c; border-top: 1px solid var(--line); }
-	.words { background: var(--soft); border-left: 4px solid var(--c); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; }
+	.inv-info { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; margin: 16px 0 14px; align-items: start; }
+	.inv-info.one { grid-template-columns: 1fr; }
+	.parties { display: grid; gap: 10px; order: 1; }
+	.box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+	.box .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--c); font-weight: 800; margin-bottom: 4px; }
+	.box.bill { border: 0; border-left: 4px solid var(--c); border-radius: 0 10px 10px 0; background: var(--soft); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.box.bill strong { font-size: 15px; }
+	.meta { order: 2; border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px; }
+	.meta div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+	.meta div:last-child { border-bottom: 0; }
+	.meta small { color: var(--mut); font-size: 11.5px; }
+	.meta strong { font-size: 12.5px; text-align: right; }
+	table.items { width: 100%; border-collapse: separate; border-spacing: 0; }
+	table.items th { background: var(--c); color: var(--on); text-align: left; font-weight: 700; padding: 9px 10px; font-size: 11.5px; letter-spacing: .03em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	table.items th:first-child { border-radius: 8px 0 0 8px; } table.items th:last-child { border-radius: 0 8px 8px 0; }
+	table.items th.num { text-align: right; }
+	table.items td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+	table.items tbody tr:nth-child(even) td { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	table.items tbody tr:last-child td { border-bottom: 2px solid var(--c); }
+	.after { display: grid; grid-template-columns: 1fr 42%; gap: 18px; margin-top: 14px; align-items: start; }
+	.totals { width: 100%; border-collapse: separate; border-spacing: 0; }
+	.totals td { padding: 5px 10px; }
+	.totals .grand td { background: var(--c); color: var(--on); font-size: 17px; font-weight: 900; padding: 9px 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.totals .grand td:first-child { border-radius: 8px 0 0 8px; } .totals .grand td:last-child { border-radius: 0 8px 8px 0; }
+	.totals .due td { font-weight: 800; color: #b91c1c; background: #fef2f2; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.totals .due td:first-child { border-radius: 8px 0 0 8px; } .totals .due td:last-child { border-radius: 0 8px 8px 0; }
+	.totals .saved td { color: var(--c); font-weight: 700; text-align: right; }
+	.words { background: var(--soft); border-left: 4px solid var(--c); padding: 8px 12px; border-radius: 0 8px 8px 0; margin-bottom: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	.words small { display: block; color: var(--mut); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }
 	.pay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 	.pay-table td { padding: 4px 0; border-bottom: 1px dotted var(--line); }
+	.pay-table tr:last-child td { border-bottom: 0; }
 	.acct { margin-top: 10px; }
-	.foot { margin-top: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: end; }
+	.foot { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: end; }
 	.sign { border-top: 1px solid var(--ink); text-align: center; padding-top: 4px; font-size: 11.5px; }
-	.thanks { text-align: center; margin-top: 18px; padding-top: 10px; border-top: 1px dashed var(--line); }
-	.powered { text-align: center; color: var(--mut); font-size: 10px; margin-top: 6px; }
+	.thanks { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: var(--soft); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.thanks strong { color: var(--c); font-size: 13.5px; }
+	.thanks .barcode { text-align: right; line-height: 1; }
+	.thanks .barcode svg { height: 30px; }
+	.thanks .barcode small { display: block; color: var(--mut); font-size: 9.5px; letter-spacing: .08em; margin-top: 2px; }
+	.powered { text-align: center; color: var(--mut); font-size: 10px; margin-top: 8px; }
 	table.plain { width: 100%; border-collapse: collapse; }
-	table.plain th { text-align: left; background: var(--soft); padding: 7px 8px; font-size: 11.5px; }
+	table.plain th { text-align: left; background: var(--soft); padding: 7px 8px; font-size: 11.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	table.plain td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
-	/* Templates */
-	body.tpl-modern .inv-top { background: var(--c); color: #fff; border: 0; padding: 16px; border-radius: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-	body.tpl-modern .inv-top .muted, body.tpl-modern .inv-title h2 { color: #fff; }
-	body.tpl-modern .inv-top .barcode svg g { fill: #fff; }
+	/* Templates: classic (default) = brand colour header; modern = minimal white header with a brand line. */
+	body.tpl-modern .inv-top { background: #fff; color: var(--ink); border-radius: 0; padding: 0 0 14px; border-bottom: 4px solid var(--c); }
+	body.tpl-modern .inv-title h2 { color: var(--c); }
+	body.tpl-modern .inv-no { background: var(--soft2); color: var(--ink); }
+	body.tpl-modern .inv-brand img { padding: 0; border-radius: 6px; }
+	body.tpl-modern .inv-brand .contact { color: var(--mut); opacity: 1; }
 	body.tpl-compact { font-size: 11px; }
 	body.tpl-compact table.items td, body.tpl-compact table.items th { padding: 4px 6px; }
-	body.tpl-compact .meta div { padding: 4px 8px; }
+	body.tpl-compact .meta div { padding: 3px 0; }
+	body.tpl-compact .inv-top { padding: 12px 14px; }
+	/* PDF download: always the paper's own width, whatever the screen. */
+	body.pdf { background: #fff; }
+	body.pdf .sheet { width: <?php echo esc_html( array( 'a4' => '210mm', 'a5' => '148mm', '80mm' => '80mm', '58mm' => '58mm' )[ $paper ] ); ?>; max-width: none; margin: 0; box-shadow: none; }
+	body.pdf .toolbar { display: none; }
 	@media print {
 		html { background: #fff; }
 		.toolbar { display: none; }
 		.sheet { box-shadow: none; margin: 0; max-width: none; padding: 0; }
 		body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	}
-	@media (max-width: 600px) { .sheet { margin: 0 0 80px; box-shadow: none; } .meta { grid-template-columns: 1fr 1fr; } .parties, .after { grid-template-columns: 1fr; } }
+	@media (max-width: 600px) {
+		.sheet { margin: 0 0 90px; box-shadow: none; padding: 12px; }
+		.inv-info, .after { grid-template-columns: 1fr; }
+		.inv-top { flex-direction: column; align-items: flex-start; }
+		.inv-title { text-align: left; }
+		.inv-title h2 { font-size: 20px; }
+		table.items th, table.items td { padding: 7px 6px; }
+		.foot { gap: 24px; }
+		.toolbar button { padding: 10px 14px; font-size: 13px; }
+	}
 </style>
+<script src="<?php echo esc_url( GORIBER_HISAB_URL . 'assets/vendor/html2canvas.min.js?v=' . GORIBER_HISAB_VERSION ); ?>" defer></script>
+<script src="<?php echo esc_url( GORIBER_HISAB_URL . 'assets/js/sticker-pdf.js?v=' . GORIBER_HISAB_VERSION ); ?>" defer></script>
 <script>
 function ghPrint(){var n=window.GoriberHisabNative;if(n&&n.printPage){n.printPage();}else{window.print();}}
+/* Download the document as a PDF file (same look as on screen, at the paper's width). */
+function ghDownload(btn){
+	if(typeof html2canvas!=='function'||!window.ghSavePdf){ghPrint();return;}
+	var label=btn?btn.textContent:'';if(btn){btn.disabled=true;btn.textContent='…';}
+	var done=function(){if(btn){btn.disabled=false;btn.textContent=label;}};
+	var wmm=<?php echo (int) array( 'a4' => 210, 'a5' => 148, '80mm' => 80, '58mm' => 58 )[ $paper ]; ?>;
+	html2canvas(document.querySelector('.sheet'),{scale:2.5,backgroundColor:'#ffffff',useCORS:true,logging:false,windowWidth:Math.round(wmm*96/25.4)+60,onclone:function(d){d.body.classList.add('pdf');}}).then(function(c){
+		var hmm=c.height/c.width*wmm;
+		window.ghSavePdf([{canvas:c,wmm:wmm,hmm:<?php echo $thermal ? 'hmm' : "Math.max(hmm," . ( 'a5' === $paper ? 210 : 297 ) . ")"; ?>}],<?php echo wp_json_encode( sanitize_file_name( ( $number ? $number : $type ) . '.pdf' ) ); ?>);
+		done();
+	},function(){done();ghPrint();});
+}
 function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.close();}}
 </script>
 </head>
 <body class="tpl-<?php echo esc_attr( sanitize_key( (string) $settings['invoice.template'] ) ); ?>">
 <div class="toolbar">
-	<button type="button" class="primary" onclick="ghPrint()"><?php echo esc_html( $L( 'প্রিন্ট / PDF', 'Print / PDF' ) ); ?></button>
+	<button type="button" class="primary" id="gh-dl" onclick="ghDownload(this)">⬇ <?php echo esc_html( $L( 'ডাউনলোড', 'Download' ) ); ?></button>
+	<button type="button" onclick="ghPrint()"><?php echo esc_html( $L( 'প্রিন্ট', 'Print' ) ); ?></button>
 	<button type="button" onclick="ghClose()"><?php echo esc_html( $L( 'বন্ধ করুন', 'Close' ) ); ?></button>
 </div>
 <div class="sheet">
@@ -347,7 +398,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 			<?php endif; ?>
 			<div>
 				<h1><?php echo esc_html( $biz['name'] ); ?></h1>
-				<div class="muted">
+				<div class="contact">
 					<?php echo nl2br( esc_html( $address ) ); ?><br>
 					<?php echo esc_html( $digits( trim( (string) ( $branch['phone'] ?? '' ) ?: (string) $biz['phone'] ) ) ); ?><?php echo $biz['email'] ? ' · ' . esc_html( $biz['email'] ) : ''; ?>
 					<?php if ( $biz['website'] ) : ?>
@@ -362,18 +413,17 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 		<div class="inv-title">
 			<h2><?php echo esc_html( $titles[ $type ] ); ?></h2>
 			<?php if ( $number ) : ?>
-				<div><strong># <?php echo esc_html( $number ); ?></strong></div>
-				<div class="barcode"><?php echo Barcode::svg( $number ); // phpcs:ignore WordPress.Security.EscapeOutput ?></div>
-			<?php endif; ?>
-			<?php if ( isset( $doc['payment_status'] ) && ! $is_void && isset( $status_tx[ $doc['payment_status'] ] ) ) : ?>
-				<span class="pill <?php echo esc_attr( $doc['payment_status'] ); ?>"><?php echo esc_html( $status_tx[ $doc['payment_status'] ] ); ?></span>
+				<div class="inv-no"># <?php echo esc_html( $number ); ?></div>
 			<?php endif; ?>
 		</div>
 	</div>
 
+	<div class="inv-info<?php echo 'statement' === $type ? ' one' : ''; ?>">
 	<?php if ( 'statement' !== $type ) : ?>
 	<div class="meta">
-		<div><small><?php echo esc_html( $L( 'নম্বর', 'Number' ) ); ?></small><strong><?php echo esc_html( $number ); ?></strong></div>
+		<?php if ( isset( $doc['payment_status'] ) && ! $is_void && isset( $status_tx[ $doc['payment_status'] ] ) ) : ?>
+			<div><small><?php echo esc_html( $L( 'অবস্থা', 'Status' ) ); ?></small><span class="pill <?php echo esc_attr( $doc['payment_status'] ); ?>"><?php echo esc_html( $status_tx[ $doc['payment_status'] ] ); ?></span></div>
+		<?php endif; ?>
 		<div><small><?php echo esc_html( $L( 'তারিখ', 'Date' ) ); ?></small><strong><?php echo esc_html( $date( $doc_date ) ); ?></strong></div>
 		<div><small><?php echo esc_html( $L( 'সময়', 'Time' ) ); ?></small><strong><?php echo esc_html( $doc_time ?: '—' ); ?></strong></div>
 		<?php if ( $order ) : ?>
@@ -404,7 +454,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 	<?php endif; ?>
 
 	<div class="parties">
-		<div class="box">
+		<div class="box bill">
 			<div class="lbl"><?php echo esc_html( 'purchase' === $type ? $L( 'সাপ্লায়ার', 'Supplier' ) : ( 'statement' === $type ? $L( 'হিসাবধারী', 'Account' ) : $L( 'ক্রেতা', 'Bill to' ) ) ); ?></div>
 			<?php if ( $party ) : ?>
 				<strong><?php echo esc_html( $party['name'] ); ?></strong><br>
@@ -430,6 +480,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 				<strong><?php echo esc_html( ( $doc['from'] ? $date( $doc['from'] ) : $L( 'শুরু থেকে', 'Beginning' ) ) . ' – ' . $date( $doc['to'] ) ); ?></strong>
 			</div>
 		<?php endif; ?>
+	</div>
 	</div>
 
 	<?php if ( 'statement' === $type ) : ?>
@@ -497,7 +548,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 						<?php if ( Decimal::of( $doc['tax_amount'] ?? 0 ) ) : ?>
 							<td class="num"><?php echo Decimal::of( $item['tax_amount'] ) ? esc_html( $money( $item['tax_amount'] ) ) : '—'; ?></td>
 						<?php endif; ?>
-						<td class="num"><strong><?php echo esc_html( $money( $item['total'] ) ); ?></strong></td>
+						<td class="num"><strong><?php echo esc_html( $money( Decimal::toString( Decimal::of( $item['total'] ) + Decimal::of( $item['doc_discount'] ?? 0 ) ) ) ); ?></strong></td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
@@ -557,7 +608,7 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 					<tr><td><?php echo esc_html( $L( 'ফেরত দেওয়া হয়েছে', 'Refunded' ) ); ?></td><td class="num"><?php echo esc_html( $money( $doc['refund_amount'] ) ); ?></td></tr>
 				<?php endif; ?>
 				<?php if ( 'sale' === $type && $saved > 0 ) : ?>
-					<tr><td colspan="2" class="num" style="color:var(--c);font-weight:700"><?php echo esc_html( sprintf( $L( 'আপনি সাশ্রয় করেছেন %s', 'You saved %s' ), $money( Decimal::toString( $saved ) ) ) ); ?></td></tr>
+					<tr class="saved"><td colspan="2"><?php echo esc_html( sprintf( $L( 'আপনি সাশ্রয় করেছেন %s', 'You saved %s' ), $money( Decimal::toString( $saved ) ) ) ); ?></td></tr>
 				<?php endif; ?>
 			</table>
 		</div>
@@ -576,13 +627,18 @@ function ghClose(){if(window.GoriberHisabNative){history.back();}else{window.clo
 			<div class="sign"><?php echo esc_html( $sign ); ?></div>
 		</div>
 	<?php endif; ?>
-	<?php if ( '' !== $footer ) : ?>
-		<div class="thanks"><strong><?php echo nl2br( esc_html( $footer ) ); ?></strong></div>
-	<?php endif; ?>
+	<div class="thanks">
+		<strong><?php echo nl2br( esc_html( $footer ) ); ?></strong>
+		<?php if ( $number && 'statement' !== $type ) : ?>
+			<div class="barcode"><?php echo Barcode::svg( $number ); // phpcs:ignore WordPress.Security.EscapeOutput ?><small><?php echo esc_html( $number ); ?></small></div>
+		<?php endif; ?>
+	</div>
 	<div class="powered"><?php echo esc_html( $L( 'প্রিন্ট', 'Printed' ) . ': ' . $digits( $now_local->format( 'd/m/Y h:i A' ) ) ); ?></div>
 <?php endif; ?>
 </div>
-<?php if ( $view['auto'] ) : ?>
+<?php if ( ! empty( $_GET['download'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification -- display flag only. ?>
+<script>window.addEventListener('load',function(){setTimeout(function(){ghDownload(document.getElementById('gh-dl'));},400);});</script>
+<?php elseif ( $view['auto'] ) : ?>
 <script>window.addEventListener('load',function(){setTimeout(ghPrint,250);});</script>
 <?php endif; ?>
 </body>

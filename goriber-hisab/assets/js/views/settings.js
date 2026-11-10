@@ -110,7 +110,7 @@ const RENDER = {
 
   invoice(S) {
     return settingsForm(S, [
-      ['invoice.template', t('Template'), 'select', { options: [['classic', t('Classic')], ['modern', t('Modern')], ['compact', t('Compact')]] }],
+      ['invoice.template', t('Template'), 'select', { options: [['classic', t('Brand colour header')], ['modern', t('Minimal (white header)')], ['compact', t('Compact')]] }],
       ['invoice.paper', t('Default paper'), 'select', { options: [['a4', 'A4'], ['a5', 'A5'], ['80mm', '80mm'], ['58mm', '58mm']] }],
       ['invoice.color', t('Brand colour'), 'color'],
       ['invoice.font', t('Font'), 'select', { options: [['system', t('System (supports Bangla)')], ['serif', t('Serif')], ['mono', t('Monospace')]] }],

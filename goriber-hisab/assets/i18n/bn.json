@@ -2014,5 +2014,12 @@
 "Supplier paid": "সাপ্লায়ারকে পরিশোধ",
 "Expense": "খরচ",
 "Purchase": "ক্রয়",
-"Discard this? It will not be recorded.": "এটা বাদ দেবেন? এটা হিসাবে উঠবে না।"
+"Discard this? It will not be recorded.": "এটা বাদ দেবেন? এটা হিসাবে উঠবে না।",
+"Brand colour header": "ব্র্যান্ড কালারের হেডার",
+"Minimal (white header)": "সাদামাটা (সাদা হেডার)",
+"7 days": "৭ দিন",
+"{n} more": "আরও {n}টা",
+"Loss": "ক্ষতি",
+"Cost of goods": "পণ্যের খরচ",
+"Download": "ডাউনলোড"
 }
