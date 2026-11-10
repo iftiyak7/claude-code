@@ -146,6 +146,92 @@ final class StockService extends Service {
 		);
 	}
 
+	/**
+	 * Stock entered before its purchase price was known sits at ৳0 cost, so
+	 * selling it shows the whole price as profit. Once the purchase price is
+	 * set: that stock takes it as its cost (it was already in the shop, so
+	 * the other side is opening balance, not profit), and sales that took it
+	 * out at ৳0 get the cost they should have had.
+	 *
+	 * @return array{stock:string,sales:int}
+	 */
+	public function fixZeroCost( BusinessContext $ctx, int $product_id, int $variant_id, int $unit ): array {
+		if ( $unit <= 0 ) {
+			return array( 'stock' => '0', 'sales' => 0 );
+		}
+		$st     = $this->db->table( 'stock_levels' );
+		$it     = $this->db->table( 'sale_items' );
+		$sa     = $this->db->table( 'sales' );
+		$mt     = $this->db->table( 'stock_movements' );
+		$levels = $this->db->rows( "SELECT * FROM {$st} WHERE business_id = %d AND product_id = %d AND variant_id = %d AND qty > 0 AND value <= 0", array( $ctx->business_id, $product_id, $variant_id ) );
+		$lines  = $this->db->rows(
+			"SELECT i.id, i.sale_id, i.qty, i.name, s.sale_date, s.number, s.branch_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id
+			WHERE i.business_id = %d AND i.product_id = %d AND i.variant_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND i.returned_qty = 0
+				AND (i.components IS NULL OR i.components = '' OR i.components = '[]') AND s.status = 'completed'",
+			array( $ctx->business_id, $product_id, $variant_id )
+		);
+		if ( ! $levels && ! $lines ) {
+			return array( 'stock' => '0', 'sales' => 0 );
+		}
+		$fixed_qty = 0;
+		$fixed     = 0;
+		$this->db->transaction(
+			function () use ( $ctx, $product_id, $variant_id, $unit, $levels, $lines, $st, $it, $sa, $mt, &$fixed_qty, &$fixed ) {
+				$worth = 0;
+				foreach ( $levels as $l ) {
+					$qty    = Decimal::of( $l['qty'] );
+					$value  = Decimal::mul( $qty, $unit );
+					$worth += $value;
+					$fixed_qty += $qty;
+					$this->db->update( $st, array( 'value' => Decimal::toString( $value ), 'avg_cost' => Decimal::toString( $unit ) ), array( 'id' => (int) $l['id'] ) );
+				}
+				$sold = array();
+				foreach ( $lines as $line ) {
+					try {
+						$this->assertOpenPeriod( $ctx, (string) $line['sale_date'] );
+					} catch ( \Throwable $e ) {
+						continue; // Closed books stay as they are.
+					}
+					$cost   = Decimal::mul( Decimal::of( $line['qty'] ), $unit );
+					$worth += $cost;
+					$sold[] = array( $line, $cost );
+				}
+				// The stock was already in the shop at this cost: opening balance, not profit.
+				if ( $worth > 0 ) {
+					$this->journal->post(
+						$ctx,
+						array( 'date' => $this->today( $ctx ), 'source' => 'stock_revalue', 'source_id' => $product_id, 'memo' => 'Purchase price set for stock entered at no cost' ),
+						array(
+							array( 'account' => 'inventory', 'debit' => $worth ),
+							array( 'account' => 'opening_balance', 'credit' => $worth ),
+						)
+					);
+				}
+				// Sales that took it out at ৳0 now carry the cost (reversed with the sale if it is voided).
+				foreach ( $sold as list( $line, $cost ) ) {
+					$sale_id = (int) $line['sale_id'];
+					$this->journal->post(
+						$ctx,
+						array( 'date' => (string) $line['sale_date'], 'source' => 'sale', 'source_id' => $sale_id, 'memo' => 'Cost of ' . $line['name'] . ' in ' . $line['number'] . ' (purchase price set later)' ),
+						array(
+							array( 'account' => 'cogs', 'debit' => $cost ),
+							array( 'account' => 'inventory', 'credit' => $cost ),
+						)
+					);
+					$this->db->update( $it, array( 'unit_cost' => Decimal::toString( $unit ), 'cost_amount' => Decimal::toString( $cost ) ), array( 'id' => (int) $line['id'] ) );
+					$this->db->execute( "UPDATE {$sa} SET cost_amount = cost_amount + %s WHERE id = %d", array( Decimal::toString( $cost ), $sale_id ) );
+					$this->db->execute(
+						"UPDATE {$mt} SET unit_cost = %s, value = %s WHERE business_id = %d AND reference_type = 'sale' AND reference_id = %d AND product_id = %d AND variant_id = %d AND value = 0",
+						array( Decimal::toString( $unit ), Decimal::toString( -$cost ), $ctx->business_id, $sale_id, $product_id, $variant_id )
+					);
+					++$fixed;
+				}
+				$this->audit->log( $ctx, 'update', 'stock', $product_id, sprintf( 'Cost set to %s for stock entered at no cost (%d sales corrected)', Decimal::toString( $unit, 2 ), $fixed ) );
+			}
+		);
+		return array( 'stock' => Decimal::toString( $fixed_qty ), 'sales' => $fixed );
+	}
+
 	/* ------------------------------------------------------------------ Recipes */
 
 	/**

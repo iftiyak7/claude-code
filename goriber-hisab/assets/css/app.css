@@ -1107,3 +1107,5 @@ button.kpi:active { transform: scale(.98); }
 .ol-weights { display: flex; flex-wrap: wrap; gap: 4px; }
 .ol-weights .chip { padding: 2px 10px; min-height: 28px; font-size: .8rem; }
 .ol-amount { font-size: .8rem; }
+.callout.warn { border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--border)); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+.callout.warn .btn { justify-self: start; }

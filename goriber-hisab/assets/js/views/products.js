@@ -85,6 +85,17 @@ async function detail(el, id, query = {}) {
         { label: t('Value'), align: 'right', render: (s) => (s.value === null ? '—' : money(s.value)) },
       ], pr.stock) : h('p', { class: 'muted' }, t('No stock yet.'))) : null,
       card(t('Barcode'), pr.barcode || pr.sku ? h('div', { class: 'barcode-box' }, barcodeSvg(pr.barcode || pr.sku), h('code', {}, pr.barcode || pr.sku)) : h('p', { class: 'muted' }, t('No barcode. Edit the product to add one, or let Goriber Hisab generate it.')), !pr.barcode && can('products.edit') ? h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { await api.post('products/barcodes', { ids: String(pr.id) }); toast(t('Barcode created')); reload(); } catch (err) { showError(err); } } }, icon('barcode', 16), t('Create barcode')) : null)),
+    pr.zero_cost && can('products.edit') ? h('div', { class: 'callout warn zero-cost' },
+      h('strong', {}, t('Some stock of this product is counted at ৳0 cost')),
+      h('p', { class: 'small' }, t('It was entered before the purchase price was set, so its sales show the whole price as profit. Fix it with the purchase price now set (for each size its own). Past sales of that stock get the right cost too; the stock counts as already in the shop, not as profit or loss.')),
+      h('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async (e) => {
+        e.currentTarget.disabled = true;
+        try {
+          const r = await api.post(`products/${pr.id}/fix-cost`);
+          if (!Number(r.stock) && !r.sales) { toast(t('Enter the purchase price first (Edit), then fix the cost.'), 'error'); e.currentTarget.disabled = false; return; }
+          toast(t('Cost fixed: {s} in stock, {n} sales corrected', { s: qty(r.stock), n: r.sales })); reload();
+        } catch (err) { showError(err); e.currentTarget.disabled = false; }
+      } }, icon('check', 14), t('Fix the cost'))) : null,
     variantsCard(pr, reload),
     recipeCard(pr, reload, { open: query.recipe === '1' }),
     pr.description ? card(t('Description'), h('p', { class: 'pre' }, pr.description)) : null,

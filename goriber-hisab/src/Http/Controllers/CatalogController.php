@@ -29,6 +29,7 @@ final class CatalogController extends Controller {
 			$this->route( 'GET', '/products/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $p->get( $c, self::id( $r ) ) ),
 			$this->route( 'PUT', '/products/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $p->update( $c, self::id( $r ), $a ) ),
 			$this->route( 'DELETE', '/products/(?P<id>\d+)', fn( BusinessContext $c, array $a, $r ) => $this->ok( $p->delete( $c, self::id( $r ) ) ) ),
+			$this->route( 'POST', '/products/(?P<id>\d+)/fix-cost', fn( BusinessContext $c, array $a, $r ) => $p->repairCost( $c, self::id( $r ) ) ),
 			$this->route( 'GET', '/products/(?P<id>\d+)/recipe', fn( BusinessContext $c, array $a, $r ) => $p->recipe( $c, self::id( $r ) ) ),
 			$this->route( 'PUT', '/products/(?P<id>\d+)/recipe', fn( BusinessContext $c, array $a, $r ) => $p->saveRecipe( $c, self::id( $r ), $a ) ),
 			$this->route( 'POST', '/products/(?P<id>\d+)/variants', fn( BusinessContext $c, array $a, $r ) => $p->saveVariant( $c, self::id( $r ), $a ), array( 'created' => true ) ),

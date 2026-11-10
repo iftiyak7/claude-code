@@ -1998,5 +1998,10 @@
 "Restored": "ফিরিয়ে আনা হয়েছে",
 "Reopen order": "অর্ডার আবার চালু করুন",
 "Bring {n} back? Stock and accounts are posted again with the same number. Payments taken before the void stay cancelled, so it comes back as due — receive the payment again if it was paid.": "{n} ফিরিয়ে আনবেন? একই নম্বরে স্টক আর হিসাব আবার যোগ হবে। বাতিলের আগে যে পেমেন্ট নেওয়া হয়েছিল সেটা বাতিলই থাকবে, তাই বিলটা বাকি হিসেবে ফিরবে — টাকা আগে পেয়ে থাকলে আবার 'Receive payment' দিয়ে নিন।",
-"Only a voided sale can be restored.": "শুধু বাতিল (void) বিক্রিই ফিরিয়ে আনা যায়।"
+"Only a voided sale can be restored.": "শুধু বাতিল (void) বিক্রিই ফিরিয়ে আনা যায়।",
+"Some stock of this product is counted at ৳0 cost": "এই পণ্যের কিছু স্টক ৳০ খরচে গোনা আছে",
+"It was entered before the purchase price was set, so its sales show the whole price as profit. Fix it with the purchase price now set (for each size its own). Past sales of that stock get the right cost too; the stock counts as already in the shop, not as profit or loss.": "ক্রয় মূল্য দেওয়ার আগে স্টক এন্ট্রি হয়েছিল, তাই এগুলো বিক্রি হলে পুরো দামটাই লাভ দেখায়। এখন যে ক্রয় মূল্য দেওয়া আছে (প্রতিটা সাইজের নিজেরটা) সেটা দিয়ে ঠিক করুন। আগের বিক্রিগুলোর খরচও ঠিক হয়ে যাবে; স্টকটা আগে থেকে দোকানে ছিল ধরা হবে — লাভ বা ক্ষতি নয়।",
+"Fix the cost": "খরচ ঠিক করুন",
+"Cost fixed: {s} in stock, {n} sales corrected": "খরচ ঠিক হয়েছে: স্টকে {s}টা, {n}টা বিক্রি সংশোধিত",
+"Enter the purchase price first (Edit), then fix the cost.": "আগে ক্রয় মূল্য দিন (এডিট), তারপর খরচ ঠিক করুন।"
 }

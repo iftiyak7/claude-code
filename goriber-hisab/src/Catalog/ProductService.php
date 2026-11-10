@@ -113,6 +113,9 @@ final class ProductService extends Service {
 		$product['stock_qty'] = Decimal::toString( Decimal::sum( array_map( static fn( $s ) => Decimal::of( $s['qty'] ), array_filter( $product['stock'], static fn( $s ) => (int) $s['branch_id'] === $ctx->branch_id ) ) ) );
 		$product['variants']  = $this->variants( $ctx, $id );
 		$product              = $this->withRecipes( $ctx, array( $product ) )[0];
+		// Stock counted at ৳0 cost although a purchase price is known: offer to fix it.
+		$st                   = $this->db->table( 'stock_levels' );
+		$product['zero_cost'] = $ctx->can( 'products.cost' ) ? (int) $this->db->value( "SELECT COUNT(*) FROM {$st} WHERE business_id = %d AND product_id = %d AND qty > 0 AND value <= 0", array( $ctx->business_id, $id ) ) : 0;
 		if ( $product['variants'] && null === $product['loose_qty'] ) {
 			$product['loose_qty'] = Decimal::toString( $this->stock->onHand( $ctx, $id, 0 ) ); // Stock without a size.
 		}
@@ -219,7 +222,46 @@ final class ProductService extends Service {
 				$this->audit->log( $ctx, 'update', 'product', $id, 'Product updated: ' . $clean['name'], AuditLogger::diff( $before, $clean ) );
 			}
 		);
-		return $this->get( $ctx, $id );
+		$fixed = $this->fixZeroCost( $ctx, $id, 0, $clean );
+		return array_merge( $this->get( $ctx, $id ), array( 'cost_fixed' => $fixed ) );
+	}
+
+	/**
+	 * Fix everything of this product (and its sizes) that sits at ৳0 cost
+	 * though a purchase price is set now.
+	 *
+	 * @return array{stock:string,sales:int}
+	 */
+	public function repairCost( BusinessContext $ctx, int $id ): array {
+		$ctx->authorize( 'products.edit' );
+		$ctx->authorize( 'products.cost' );
+		$product = $this->findScoped( $ctx, 'products', $id, 'Product' );
+		$total   = array( 'stock' => 0, 'sales' => 0 );
+		$rows    = array( array( 0, $product ) );
+		foreach ( $this->db->rows( 'SELECT * FROM ' . $this->db->table( 'product_variants' ) . ' WHERE business_id = %d AND product_id = %d AND deleted_at IS NULL', array( $ctx->business_id, $id ) ) as $v ) {
+			$rows[] = array( (int) $v['id'], $v );
+		}
+		foreach ( $rows as list( $vid, $row ) ) {
+			$r               = $this->fixZeroCost( $ctx, $id, $vid, $row );
+			$total['stock'] += Decimal::of( $r['stock'] );
+			$total['sales'] += $r['sales'];
+		}
+		return array( 'stock' => Decimal::toString( $total['stock'] ), 'sales' => $total['sales'] );
+	}
+
+	/**
+	 * A purchase price was saved: stock that came in at ৳0 cost (entered
+	 * before the price was known) takes it, and so do sales of that stock.
+	 *
+	 * @param array<string,mixed> $row Saved product / variant row.
+	 * @return array{stock:string,sales:int}
+	 */
+	private function fixZeroCost( BusinessContext $ctx, int $product_id, int $variant_id, array $row ): array {
+		$price = Decimal::of( $row['purchase_price'] ?? 0 );
+		if ( $price <= 0 || ! $ctx->can( 'products.cost' ) ) {
+			return array( 'stock' => '0', 'sales' => 0 );
+		}
+		return $this->stock->fixZeroCost( $ctx, $product_id, $variant_id, $price );
 	}
 
 	/**
@@ -493,7 +535,7 @@ final class ProductService extends Service {
 			'updated_at'     => $this->now(),
 		);
 
-		return $this->db->transaction(
+		$saved = $this->db->transaction(
 			function () use ( $ctx, $product, $product_id, $variant_id, $row, $vt, $data ) {
 				if ( $variant_id ) {
 					$this->findScoped( $ctx, 'product_variants', $variant_id, 'Variant' );
@@ -522,6 +564,8 @@ final class ProductService extends Service {
 				return $this->presentVariant( $ctx, (array) $v );
 			}
 		);
+		$saved['cost_fixed'] = $this->fixZeroCost( $ctx, $product_id, (int) $saved['id'], $saved );
+		return $saved;
 	}
 
 	public function deleteVariant( BusinessContext $ctx, int $product_id, int $variant_id ): void {
