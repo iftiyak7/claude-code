@@ -20,11 +20,20 @@ export function openTag(it) {
 export const saved = () => ls.get('saved', []);
 export const isSaved = id => saved().includes(id);
 const heart = id => `<button class="heartbtn ${isSaved(id) ? 'on' : ''}" data-save="${esc(id)}" aria-label="${T('সেভ')}">${icon('heart', 17)}</button>`;
+// Grid card: photo (with distance on it), then kind · area, the name on up to two lines, and open/price/rating in one row.
+function cardStatus(it) {
+  if (it.price) return `<span class="price">${money(it.price)}</span>`;
+  const o = isOpen(it);
+  if (o && it.hours === '24h') return `<span class="st ok">${T('২৪ ঘণ্টা খোলা')}</span>`;
+  return o === true ? `<span class="st ok">${T('এখন খোলা')}</span>` : o === false ? `<span class="st bad">${T('এখন বন্ধ')}</span>` : '';
+}
 export function gcard(it) {
-  return `<a class="gcard${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>${media(it)}${heart(it.id)}
+  const d = km(it);
+  return `<a class="gcard${it.sponsored ? ' spons' : ''}" href="#/p/${esc(it.id)}"${it.sponsored ? ` data-imp="${esc(it.id)}"` : ''}>
+    <div class="gtop">${media(it)}${d != null ? `<span class="dist">${icon('nav', 11)}${kmText(d)}</span>` : ''}</div>${heart(it.id)}
     ${it.sponsored ? '<span class="flag tag glass">Sponsored</span>' : it.demo ? `<span class="flag tag dark">${T('নমুনা')}</span>` : it.halal ? `<span class="flag tag halal">${icon('halal', 12)}${T('হালাল')}</span>` : ''}
-    <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b>${nameT(it)}</b>
-      <div class="meta"><span>${it.price ? money(it.price) : isOpen(it) === true ? T('এখন খোলা') : ''}</span>${it.rating ? `<span class="rate">${icon('star', 12)}${num(it.rating.toFixed(1))}</span>` : ''}</div></div></a>`;
+    <div class="cap"><small>${esc(subLabel(it))}${it.area ? ' · ' + esc(areaName(it.area)) : ''}</small><b class="gname">${nameT(it)}</b>
+      <div class="meta">${cardStatus(it)}${it.rating ? `<span class="rate">${icon('star', 12)}${num(it.rating.toFixed(1))}<em>(${num(it.reviews)})</em></span>` : ''}</div></div></a>`;
 }
 /* Paid promotion: sponsored listings take the first slots of every list and search, in an order that rotates
    per visit so every sponsor gets a fair share of the top spot. */

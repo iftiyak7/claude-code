@@ -16,7 +16,7 @@ window.I18N_EN = Object.assign(window.I18N_EN || {}, {
   'সিঙ্গেল রুম': 'Single room', 'ডাবল রুম': 'Double room', 'শেয়ারড সিট': 'Shared seat', 'ছেলে': 'Male', 'মেয়ে': 'Female',
   'ফুলটাইম': 'Full-time', 'পার্টটাইম': 'Part-time', 'ইন্টার্নশিপ': 'Internship', 'রিমোট': 'Remote',
   'সময়সূচি জানা নেই': 'Hours not known', '২৪ ঘণ্টা খোলা': 'Open 24 hours', '{n} মি.': '{n} m', '{n} কিমি': '{n} km',
-  '২৪ ঘণ্টা': '24 hours', 'খোলা': 'Open', 'বন্ধ': 'Closed', 'সেভ': 'Save', 'নমুনা': 'Sample', 'এখন খোলা': 'Open now', 'কল': 'Call', 'যশোর': 'Jashore',
+  '২৪ ঘণ্টা': '24 hours', 'খোলা': 'Open', 'বন্ধ': 'Closed', 'সেভ': 'Save', 'নমুনা': 'Sample', 'এখন খোলা': 'Open now', 'এখন বন্ধ': 'Closed now', 'কল': 'Call', 'যশোর': 'Jashore',
   '{n} রুম': '{n} rooms', 'মাসে': 'month', 'ফিরে যান': 'Go back', 'ফিল্টার': 'Filter', 'ক্যাটাগরি': 'Categories', 'সব': 'All',
   'বাজেট (জনপ্রতি)': 'Budget (per person)', '{n} পর্যন্ত': 'up to {n}', 'যেকোনো': 'Any', 'সাজানো': 'Sort', 'প্রাসঙ্গিক': 'Relevant', 'রেটিং': 'Rating',
   'কাছাকাছি': 'Nearby', 'শুধু এখন খোলা': 'Open now only', 'রিসেট': 'Reset', 'ফলাফল দেখুন': 'Show results', 'ঘোষণা ও আপডেট': 'Notices & updates',
