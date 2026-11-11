@@ -102,18 +102,49 @@ export function dist(o, p) {
   const a = Math.sin(dLa / 2) ** 2 + Math.cos(r(o.lat)) * Math.cos(r(p.lat)) * Math.sin(dLo / 2) ** 2;
   return 12742 * Math.asin(Math.sqrt(a));
 }
+// The map point of an area: the one saved for it, or else the middle of the places listed in it
+// (by their area, or with its name in the address).
+export function areaPoint(a) {
+  const g = S.D?.areaGeo?.[a];
+  if (g) return { lat: +g[0], lng: +g[1] };
+  const pts = items().filter(i => i.lat != null && i.cat !== 'emergency' && (i.area === a || (a.length > 2 && (i.address || '').includes(a))));
+  return pts.length ? { lat: pts.reduce((s, i) => s + i.lat, 0) / pts.length, lng: pts.reduce((s, i) => s + i.lng, 0) / pts.length } : null;
+}
+/* Town areas sorted by where they are: the centre first, then north, east, south and west of it. Inside each group the
+   areas follow each other on the map (each next one is the closest not yet listed), so neighbours sit side by side.
+   Areas with no known point go last, in the admin's order. */
+const SIDES = ['শহরের কেন্দ্র', 'উত্তর দিক', 'পূর্ব দিক', 'দক্ষিণ দিক', 'পশ্চিম দিক'];
+export function townGroups(town) {
+  const pts = new Map(town.map(a => [a, areaPoint(a)]).filter(([, p]) => p));
+  if (pts.size < 4) return [{ label: '', areas: town }];
+  const all = [...pts.values()];
+  const c = pts.get('দড়াটানা') || { lat: all.reduce((s, p) => s + p.lat, 0) / all.length, lng: all.reduce((s, p) => s + p.lng, 0) / all.length };
+  const groups = SIDES.map(label => ({ label, areas: [] }));
+  for (const [a, p] of pts) {
+    const deg = (Math.atan2((p.lng - c.lng) * Math.cos(c.lat * Math.PI / 180), p.lat - c.lat) * 180 / Math.PI + 360) % 360;
+    groups[dist(c, p) <= 1 ? 0 : 1 + Math.floor(((deg + 45) % 360) / 90)].areas.push(a);
+  }
+  for (const g of groups) {
+    const left = [...g.areas], out = [];
+    let at = c;
+    while (left.length) {
+      let best = 0;
+      left.forEach((a, i) => { if (dist(at, pts.get(a)) < dist(at, pts.get(left[best]))) best = i; });
+      at = pts.get(left[best]);
+      out.push(...left.splice(best, 1));
+    }
+    g.areas = out;
+  }
+  const rest = town.filter(a => !pts.has(a));
+  if (rest.length) groups.push({ label: 'অন্যান্য এলাকা', areas: rest });
+  return groups.filter(g => g.areas.length);
+}
 // Distances are measured from the phone's location, or else from the centre of the chosen area.
 export function origin() {
   if (S.here) return { lat: S.here.lat, lng: S.here.lng, gps: true };
   const a = ls.get('area', ''); if (!a || !S.D) return null;
   if (S.originCache?.a === a && S.originCache.v === S.D.v) return S.originCache.o;
-  const g = S.D.areaGeo?.[a];
-  let o = g ? { lat: +g[0], lng: +g[1] } : null;
-  if (!o) {
-    // no map point for the area: the middle of the places listed in it (by their area, or with its name in the address)
-    const pts = items().filter(i => i.lat != null && i.cat !== 'emergency' && (i.area === a || (a.length > 2 && (i.address || '').includes(a))));
-    if (pts.length) o = { lat: pts.reduce((s, i) => s + i.lat, 0) / pts.length, lng: pts.reduce((s, i) => s + i.lng, 0) / pts.length };
-  }
+  const o = areaPoint(a);
   if (o) o.area = a;
   S.originCache = { a, v: S.D.v, o };
   return o;

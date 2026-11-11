@@ -305,6 +305,10 @@ h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
 .sheet .shead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .sheet .shead h3 { font-size: 18px; }
 .sheet h4 { margin: 18px 0 10px; font-size: 14px; color: var(--ink-2); }
+.sheet .agroup { margin: 0 0 12px; padding: 12px; border-radius: 16px; background: var(--surface-2); }
+.sheet .agroup h5 { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.sheet .agroup h5::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+.sheet .agroup .pills.wrap { margin: 0; }
 .range { width: 100%; accent-color: var(--brand); }
 .rangeval { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
 .notice { padding: 14px 0; border-bottom: 1px solid var(--line); }

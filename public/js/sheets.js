@@ -2,7 +2,7 @@
 import { S } from './state.js';
 import { refresh } from './boot.js';
 import { empty } from './components.js';
-import { catName, catOf, isTown, nameOf } from './data.js';
+import { catName, catOf, isTown, nameOf, townGroups } from './data.js';
 import { doLocate, go, render } from './router.js';
 import { norm } from './search.js';
 import { T, api, areaName, compress, esc, fmtDate, loc, ls, money, num, toast } from './util.js';
@@ -74,7 +74,7 @@ export function areaSheet() {
     <p class="muted" style="margin:14px 0 10px;font-size:13px">${T('এলাকা বাছলে শুধু সেই এলাকার তথ্য ও বিজ্ঞাপন দেখাবে, আর দূরত্ব সেখান থেকে মাপা হবে।')}</p>
     <div class="search" style="margin-bottom:12px">${icon('search', 18)}<input type="search" placeholder="${T('এলাকা খুঁজুন')}" data-areaq></div>
     <div class="pills wrap">${pill('')}</div>
-    ${town.length ? `<h4>${T('যশোর শহর')}</h4><div class="pills wrap">${town.map(pill).join('')}</div>` : ''}
+    ${town.length ? `<h4>${T('যশোর শহর')}</h4>${townGroups(town).map(g => `<div class="agroup">${g.label ? `<h5>${T(g.label)}</h5>` : ''}<div class="pills wrap">${g.areas.map(pill).join('')}</div></div>`).join('')}` : ''}
     <h4>${T('উপজেলা')}</h4><div class="pills wrap">${upa.map(pill).join('')}</div>`, sh => {
     sh.addEventListener('click', async e => {
       const b = e.target.closest('[data-area]');
@@ -88,6 +88,7 @@ export function areaSheet() {
     sh.querySelector('[data-areaq]').addEventListener('input', e => {
       const q = norm(e.target.value);
       sh.querySelectorAll('[data-area]').forEach(x => x.hidden = !!q && !x.dataset.k.includes(q));
+      sh.querySelectorAll('.agroup').forEach(g => g.hidden = !g.querySelector('[data-area]:not([hidden])'));
     });
   });
 }
