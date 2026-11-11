@@ -87,6 +87,21 @@ def retire_text(c):
         c.execute("UPDATE settings SET value=? WHERE key='ads'", (json.dumps(ads, ensure_ascii=False),))
 
 
+RENAMED_CATS = {'religious': {'bn': ('মসজিদ ও উপাসনালয়', 'মসজিদ'), 'en': ('Mosques & worship', 'Mosques')}}   # old starter name -> new
+
+
+def rename_categories(c):
+    """Categories still carrying an old starter name get the new one; a name the admin chose stays."""
+    cats = get_setting(c, 'categories') or []
+    changed = False
+    for x in cats:
+        for f, (old, new) in RENAMED_CATS.get(x.get('id'), {}).items():
+            if x.get(f) == old:
+                x[f], changed = new, True
+    if changed:
+        c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
+
+
 OLD_TERMS = ('d94698f3e9f4a8204016af02152eb02c5c9428cb8092e24a2a60283ab97f27a5',)   # sha256 of earlier starter terms (Bangla)
 
 
@@ -174,6 +189,7 @@ def init_db():
         else:
             upgrade_seed(c, seed)
         retire_text(c)
+        rename_categories(c)
         renew_terms(c, seed)
 
 

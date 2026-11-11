@@ -94,6 +94,37 @@ class TermsRenewalTest(unittest.TestCase):
             srv.stop()
 
 
+class CategoryRenameTest(unittest.TestCase):
+    def test_old_mosque_name_is_renamed_but_admin_names_stay(self):
+        srv = Server()
+        try:
+            for bn, want in (('মসজিদ ও উপাসনালয়', 'মসজিদ'), ('আমার নাম', 'আমার নাম')):
+                srv.proc.terminate()
+                srv.proc.wait(10)
+                srv.proc.stderr.close()
+                db = sqlite3.connect(os.path.join(srv.data, 'jashore360.db'))
+                cats = json.loads(db.execute("SELECT value FROM settings WHERE key='categories'").fetchone()[0])
+                for x in cats:
+                    if x['id'] == 'religious':
+                        x['bn'], x['en'] = bn, 'Mosques & worship'
+                db.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
+                db.commit()
+                db.close()
+                srv.proc = subprocess.Popen([sys.executable, SERVER, '--data', srv.data, '--port', str(srv.port)],
+                                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=srv.env)
+                import time
+                for _ in range(100):
+                    try:
+                        d = srv.client().get('/bootstrap')[1]
+                        break
+                    except OSError:
+                        time.sleep(0.1)
+                rel = next(x for x in d['categories'] if x['id'] == 'religious')
+                self.assertEqual((rel['bn'], rel['en']), (want, 'Mosques'))
+        finally:
+            srv.stop()
+
+
 class OldUsersTableTest(unittest.TestCase):
     def test_users_from_before_google_keep_working(self):
         srv = Server()

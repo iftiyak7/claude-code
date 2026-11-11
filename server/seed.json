@@ -437,8 +437,8 @@
   {
    "id": "religious",
    "since": 2,
-   "bn": "মসজিদ ও উপাসনালয়",
-   "en": "Mosques & worship",
+   "bn": "মসজিদ",
+   "en": "Mosques",
    "icon": "mosque",
    "color": "#0b8a5f",
    "subs": {
