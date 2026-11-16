@@ -74,8 +74,9 @@ export function locate() {
       rej, { timeout: 9000, maximumAge: 600000 });
   });
 }
-// Wherever someone is, lists show the nearest places first. So the phone's position is taken by itself once per visit:
-// on list pages it may ask for permission (once; never again after "no"), elsewhere only if permission was already given.
+// Wherever someone is, lists show the nearest places first. The phone's position is taken by itself only when permission
+// was already given; the app never asks just because someone opened a page or searched — only when they tap
+// "my location" or sort by distance.
 let autoAsked = false;
 export function autoLocate(then, askIfNeeded = true) {
   if (autoAsked || !navigator.geolocation) return;

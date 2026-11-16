@@ -2,6 +2,7 @@
 import { S } from './state.js';
 import { adStrip } from './ads.js';
 import { empty, gcard, saved, ticket, topbar } from './components.js';
+import { googleBtn } from './page_account.js';
 import { KINDS, OPTS, catName, getItem, isTown, items, showClassifieds, subLabel, subName } from './data.js';
 import { cache } from './page_classifieds.js';
 import { pages } from './pages.js';
@@ -259,7 +260,7 @@ export function init() {
     return `${topbar(T('প্রোফাইল'))}
     ${S.ME ? `<a class="profilehead" href="#/account"><span class="avatar">${esc(S.ME.name[0])}</span><div style="flex:1"><b>${esc(S.ME.name)}</b><span class="muted" style="font-size:13px">${T('আমার ব্যবসা, বিজ্ঞাপন ও সেটিংস')}</span></div>${icon('chevR', 18)}</a>`
       : `<div class="authpromo"><span class="brandmark">${LOGO}</span><div><b>${T('অ্যাকাউন্ট খুলুন')}</b><small>${T('রিভিউ দিন, ব্যবসা যুক্ত করুন, ফ্রি বিজ্ঞাপন দিন')}</small></div>
-        <a class="btn sm" href="#/login?next=/account">${T('লগইন')}</a></div>`}
+        <a class="btn sm" href="#/login?next=/account">${T('লগইন')}</a></div>${googleBtn() ? `<div style="margin:10px 0 0">${googleBtn()}</div>` : ''}`}
     <div class="stat3"><div><b>${num(saved().length)}</b><small>${T('সেভ করা')}</small></div><div><b>${num(ls.get('recent', []).length)}</b><small>${T('দেখেছেন')}</small></div><div><b>${num(S.D.listings.length)}</b><small>${T('মোট তথ্য')}</small></div></div>
     <div class="panel">
       <div class="li"><span class="ib">${icon('globe', 18)}</span><div>${T('ভাষা')}</div><div class="seg" style="flex:none">${[['bn', 'বাংলা'], ['en', 'English']].map(([k, v]) => `<button class="${LANG() === k ? 'on' : ''}" data-setlang="${k}">${v}</button>`).join('')}</div></div>

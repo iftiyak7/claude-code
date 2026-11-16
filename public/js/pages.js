@@ -141,7 +141,7 @@ export function init() {
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
   pages.browse = p => {
-    autoLocate(render);
+    autoLocate(render, false);
     const qtext = p.get('q') || '', cat = p.get('cat') || '', sub = p.get('sub') || '', open = !!p.get('open'), budget = +p.get('budget') || 0, sort = p.get('sort') || '';
     const c = S.CAT[cat];
     let list, intent = null;
