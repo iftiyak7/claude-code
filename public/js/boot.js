@@ -76,5 +76,12 @@ export function init() {
     navigator.serviceWorker?.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     return;
   }
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    // After a site update the new helper takes over; if that happens while the page has just opened, reload once so
+    // the new app files are used straight away (later on, the next visit picks them up).
+    const had = !!navigator.serviceWorker.controller;
+    let done = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !done && performance.now() < 15000) { done = true; location.reload(); } });
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
+  }
 }

@@ -87,6 +87,13 @@ class SeoTest(ServerTest):
         for link in ('href="/terms"', 'href="/privacy"', 'href="/c/hospital"', 'href="/app/#/ads/rent"'):
             self.assertIn(link, page)
 
+    def test_service_worker_is_named_after_the_app_files(self):
+        st, js, h = self.get('/sw.js')
+        self.assertEqual(st, 200)
+        self.assertIn('javascript', h['Content-Type'])
+        self.assertRegex(js, r"const CACHE = 'j360-[0-9a-f]{12}'")             # a new name whenever the app files change
+        self.assertEqual(h['Cache-Control'], 'no-cache')
+
     def test_terms_and_privacy_pages(self):
         for path, title, word in (('/terms', 'শর্তাবলি', 'প্রযোজ্য আইন'), ('/privacy', 'গোপনীয়তা নীতি', 'আমরা কী তথ্য নিই')):
             st, page, h = self.get(path)

@@ -90,6 +90,12 @@ class TermsRenewalTest(unittest.TestCase):
             d = self.restart(srv, {'version': 1, 'updated': '2026-10-20', 'bn': old_bn, 'en': 'old'})
             self.assertEqual(d['terms']['version'], 2)
             self.assertIn('প্রযোজ্য আইন', d['terms']['bn'])
+            # the full terms of November 2026 are replaced by the longer A-to-Z terms in the same way
+            prev = sp.run(['git', '-C', os.path.dirname(os.path.dirname(SERVER)), 'show', '59a9849:server/seed.json'], capture_output=True, text=True).stdout
+            prev = json.loads(prev)['terms']
+            d = self.restart(srv, dict(prev, version=2))
+            self.assertEqual(d['terms']['version'], 3)
+            self.assertIn('ভেরিফায়েড চিহ্ন', d['terms']['bn'])
         finally:
             srv.stop()
 

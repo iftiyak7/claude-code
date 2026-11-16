@@ -102,7 +102,8 @@ def rename_categories(c):
         c.execute("UPDATE settings SET value=? WHERE key='categories'", (json.dumps(cats, ensure_ascii=False),))
 
 
-OLD_TERMS = ('d94698f3e9f4a8204016af02152eb02c5c9428cb8092e24a2a60283ab97f27a5',)   # sha256 of earlier starter terms (Bangla)
+OLD_TERMS = ('d94698f3e9f4a8204016af02152eb02c5c9428cb8092e24a2a60283ab97f27a5',    # sha256 of earlier starter terms (Bangla)
+             '544e3b013f930e215fd4f178d71615dc0b3a426f51ff46f89daaa5dcb1a5106d')
 
 
 def renew_terms(c, seed):

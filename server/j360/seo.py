@@ -6,6 +6,7 @@ The app itself runs on /app/#/… (hash links that search engines ignore). Each 
 link get the app, which jumps to the listing.
 """
 import gzip
+import hashlib
 import html
 import json
 import os
@@ -13,6 +14,7 @@ import re
 import time
 from .cache import home_domain
 from .config import PUBLIC
+from .shell import shell_manifest
 from .store import db, get_setting, resolve_lid
 from .util import today
 from .web import page
@@ -248,6 +250,15 @@ def legal_page(h, which):
         'terms_on': ' aria-current="page"' if which == 'terms' else '', 'privacy_on': ' aria-current="page"' if which == 'privacy' else '',
         'year': time.strftime('%Y') if en else bn(time.strftime('%Y'))})
     send_text(h, text, 'text/html; charset=utf-8', {'Cache-Control': 'no-cache'})
+
+
+@page(r'/sw\.js')
+def service_worker(h):
+    """The browser's offline helper, named after the app files it keeps. When an update changes those files the helper
+    changes too, so browsers take the new files at once instead of showing the old copy for one more visit."""
+    tag = hashlib.sha256(''.join(f['sha256'] for f in shell_manifest(PUBLIC)).encode()).hexdigest()[:12]
+    text = open(os.path.join(PUBLIC, 'sw.js'), encoding='utf-8').read().replace("'j360-v5'", f"'j360-{tag}'")
+    send_text(h, text, 'text/javascript; charset=utf-8', {'Cache-Control': 'no-cache'})
 
 
 @page(r'/robots\.txt')

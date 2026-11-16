@@ -1,5 +1,5 @@
 /* Offline support: app shell stale-while-revalidate, data network-first, uploads cache-first. */
-const CACHE = 'j360-v5';
+const CACHE = 'j360-v5';   // the server replaces this name with a fingerprint of the app files (see seo.py)
 const SHELL = ['/app/', '/app.css', '/icons.js', '/i18n.js', '/icon.svg', '/manifest.webmanifest',
   '/js/ads.js', '/js/boot.js', '/js/components.js', '/js/data.js', '/js/events.js', '/js/gates.js', '/js/main.js', '/js/page_account.js', '/js/page_classifieds.js', '/js/page_post.js', '/js/pages.js', '/js/router.js', '/js/search.js', '/js/sheets.js', '/js/state.js', '/js/util.js'];
 
