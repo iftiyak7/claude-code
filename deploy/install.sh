@@ -205,7 +205,11 @@ elif [ -f "$APP/android/base.apk" ]; then
   # Google Play: the same app as an App Bundle, signed with a separate upload key (/root/jashore360-upload).
   # The owner downloads it from Admin → App release and uploads it in Play Console.
   if [ -f "$APP/android/base.aab" ]; then
-    command -v jarsigner >/dev/null || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq default-jdk-headless) >/dev/null 2>&1 || true
+    if ! command -v jarsigner >/dev/null; then
+      say "Google Play-র AAB সাইন করার টুল (Java) বসানো হচ্ছে — প্রথমবার কয়েক মিনিট লাগতে পারে, অপেক্ষা করুন"
+      (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq default-jdk-headless) >/dev/null 2>&1 || true
+    fi
+    say "Google Play-র AAB"
     PLAYPKG=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("playPackage","com.jashore360.app"))' "$APP/android/version.json")
     OUTAAB=$(mktemp --suffix=.aab); CERT=$(mktemp --suffix=.pem)
     if python3 "$APP/server/sign_aab.py" "$APP/android/base.aab" "$OUTAAB" "$URL/app/" /root/jashore360-upload "${OLD_DOMAINS:-}" "${SNAP[@]}" 2>/tmp/jashore360-aab.log \
