@@ -103,6 +103,18 @@ python3 server/server.py --data ./data ensure-admin   # প্রথম অ্�
 নতুন ভার্সন: `android/AndroidManifest.xml`-এ `versionCode` বাড়িয়ে `android/build.sh` চালান, commit করুন, তারপর ইনস্টল কমান্ড আবার চালান।
 অ্যাপের ভেতরে পুরোনো ভার্সন থাকলে ব্যবহারকারী "নতুন ভার্সন এসেছে" দেখবেন।
 
+## Google Play (AAB)
+
+`android/build.sh` একই কোড থেকে দুটো ফাইল বানায়: ওয়েবসাইটের `base.apk` (প্যাকেজ `cloud.jashore360.app`) আর Google Play-র
+`base.aab` (প্যাকেজ `com.jashore360.app`, targetSdk 36)। ইনস্টলার VPS-এ AAB-তে সাইটের ঠিকানা, অ্যাপের ফাইল আর সেদিনের ডাটা বসিয়ে
+`/root/jashore360-upload`-এ তৈরি **upload key** দিয়ে সাইন করে (দরকার হলে `default-jdk-headless` বসায়)।
+অ্যাডমিন → অ্যাপ রিলিজ → "Google Play (AAB)" থেকে মালিক ফাইলটি নামিয়ে Play Console-এ আপলোড করেন।
+Play App Signing চালু রাখুন; প্রথম আপলোডের সাইনিং কী-ই upload key হয়ে যায়, তাই `/root/jashore360-upload`-এর ব্যাকআপ রাখুন
+(হারালে Play Console থেকে নতুন upload key চাওয়া যায় — অ্যাডমিন পেজে সার্টিফিকেট দেখায়)।
+
+Play-র নিয়মের জন্য: অ্যাকাউন্ট অ্যাপের ভেতর থেকে মোছা যায় (আমার অ্যাকাউন্ট → সেটিংস → অ্যাকাউন্ট মুছে ফেলুন),
+আর ওয়েবে `https://আপনার-ডোমেইন/delete-account` পাতায় নিয়ম লেখা আছে (Data safety ফর্মে এই লিংক দিন)।
+
 ## Google দিয়ে লগইন
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → নতুন প্রজেক্ট → APIs & Services → **OAuth consent screen** পূরণ করুন (অ্যাপের নাম Jashore360, সাপোর্ট ইমেইল, লোগো, প্রাইভেসি পলিসি লিংক) → Publish।

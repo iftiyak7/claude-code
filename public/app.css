@@ -603,3 +603,10 @@ html, body { overscroll-behavior-y: contain; }
 /* shown while there is no internet */
 .offbar { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 85; max-width: calc(100% - 32px); pointer-events: none;
   background: var(--dark); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 999px; box-shadow: var(--shadow-lg); text-align: center; }
+
+/* account deletion */
+.dangerbox { margin-top: 18px; border-radius: var(--r-md); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 35%, var(--line)); }
+.dangerbox summary { display: flex; align-items: center; gap: 8px; padding: 14px 16px; cursor: pointer; color: var(--danger); font-weight: 600; font-size: 14px; list-style: none; }
+.dangerbox summary::-webkit-details-marker { display: none; }
+.dangerbox form { padding: 0 16px 16px; }
+.btn.danger { background: var(--danger); color: #fff; }

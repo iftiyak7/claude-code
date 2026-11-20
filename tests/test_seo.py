@@ -108,6 +108,13 @@ class SeoTest(ServerTest):
             self.assertIn('<html lang="en">', en)
             self.assertIn('Jashore360 is', en) if path == '/terms' else self.assertIn('What we collect', en)
         self.assertIn('/privacy</loc>', self.get('/sitemap.xml')[1])
+        # how to delete an account: the web address Google Play asks for
+        st, page, _ = self.get('/delete-account')
+        self.assertEqual(st, 200)
+        self.assertIn('<h1>অ্যাকাউন্ট মুছে ফেলা</h1>', page)
+        self.assertIn('যা মুছে যায়', page)
+        self.assertIn('What is deleted', self.get('/delete-account?lang=en')[1])
+        self.assertIn('/delete-account</loc>', self.get('/sitemap.xml')[1])
         # the admin's text is shown escaped, and contact details from the settings are added
         adm = self.srv.admin()
         self.ok(adm.put('/admin/settings/privacy', {'bn': '## শিরোনাম <b>x</b>\n\n<script>alert(1)</script> লেখা', 'en': ''}))

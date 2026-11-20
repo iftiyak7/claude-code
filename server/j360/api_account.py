@@ -308,6 +308,51 @@ def my_edit_classified(h, cid):
     h.json({'ok': True})
 
 
+DELETE_WORDS = ('মুছুন', 'delete')
+
+
+@route('POST', '/my/delete-account', auth='user')
+def my_delete_account(h):
+    """Deletes the account and what belongs to it. The person types "মুছুন" (or "delete"), and gives their password if the
+    account has one. Kept: published business listings (as public business information, no longer linked to anyone) and
+    payment records the law asks us to keep (no longer linked to the account)."""
+    b = h.body()
+    uid = h.me['id']
+    if not rate_ok('delacct:%d' % uid, 5, 3600):
+        raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, পরে আবার চেষ্টা করুন')
+    if str(b.get('confirm') or '').strip().lower() not in DELETE_WORDS:
+        raise ApiError(400, 'নিশ্চিত করতে "মুছুন" লিখুন')
+    with db() as c:
+        u = c.execute('SELECT pass FROM users WHERE id=?', (uid,)).fetchone()
+        if u['pass'] and not check_pw(str(b.get('password') or ''), u['pass']):
+            raise ApiError(400, 'পাসওয়ার্ড ভুল')
+        c.execute('DELETE FROM classifieds WHERE user_id=?', (uid,))
+        c.execute('DELETE FROM reviews WHERE user_id=?', (uid,))
+        c.execute('DELETE FROM claims WHERE user_id=?', (uid,))
+        c.execute("DELETE FROM listings WHERE owner_id=? AND review IN ('unpaid','pending','rejected')", (uid,))
+        c.execute('UPDATE listings SET owner_id=NULL WHERE owner_id=?', (uid,))
+        c.execute('UPDATE coupons SET owner_id=NULL WHERE owner_id=?', (uid,))
+        c.execute('UPDATE payments SET user_id=NULL WHERE user_id=?', (uid,))
+        # uploaded photos and videos: removed unless a listing that stays still shows them
+        for m in c.execute('SELECT name FROM media WHERE user_id=?', (uid,)).fetchall():
+            if c.execute('SELECT 1 FROM listings WHERE doc LIKE ?', ('%/uploads/' + m['name'] + '%',)).fetchone():
+                c.execute('UPDATE media SET user_id=NULL WHERE name=?', (m['name'],))
+                continue
+            c.execute('DELETE FROM media WHERE name=?', (m['name'],))
+            try:
+                os.remove(os.path.join(config.UPLOADS, m['name']))
+            except OSError:
+                pass
+        c.execute('DELETE FROM oauth_codes WHERE user_id=?', (uid,))
+        c.execute('DELETE FROM oauth_states WHERE user_id=?', (uid,))
+        c.execute('DELETE FROM usessions WHERE user_id=?', (uid,))
+        c.execute('DELETE FROM users WHERE id=?', (uid,))
+        inc(c, 'account_deletions')
+    h.set_cookie('j360u', '', 0)
+    bump()
+    h.json({'ok': True})
+
+
 @route('POST', '/my/terms', auth='user')
 def my_terms(h):
     with db() as c:

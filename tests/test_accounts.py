@@ -1,4 +1,6 @@
-"""User accounts: sign-up rules, sign-in, sessions."""
+"""User accounts: sign-up rules, sign-in, sessions, deleting an account."""
+import json
+import os
 import unittest
 
 from helpers import ServerTest
@@ -64,6 +66,31 @@ class AccountTest(ServerTest):
         for path in ('/my', '/my/coupons'):
             self.assertEqual(c.get(path)[0], 401, path)
         self.assertEqual(c.post('/my/listings', {'name': 'x', 'cat': 'place'})[0], 401)
+
+    def test_delete_account(self):
+        u, other = self.srv.client(), self.srv.client()
+        u.register()
+        other.register()
+        cid = self.ok(u.post('/my/classifieds', {'kind': 'rent', 'title': 'বাসা ভাড়া', 'phone': u.phone, 'price': '8000'}))['id']
+        st, raw, _ = u.raw('POST', '/api/my/media', b'\xff\xd8\xff\xe0' + b'\x00' * 2000, {'Content-Type': 'image/jpeg'})
+        photo = json.loads(raw)['url']
+        self.assertTrue(os.path.isfile(os.path.join(self.srv.data, 'uploads', photo.split('/')[-1])))
+        # it has to be confirmed, with the password, and only the person's own account can go
+        self.assertEqual(u.post('/my/delete-account', {'password': u.password, 'confirm': 'হ্যাঁ'})[0], 400)
+        self.assertEqual(u.post('/my/delete-account', {'password': 'wrong-password', 'confirm': 'মুছুন'})[0], 400)
+        self.assertEqual(self.srv.client().post('/my/delete-account', {'confirm': 'মুছুন'})[0], 401)
+        self.ok(u.post('/my/delete-account', {'password': u.password, 'confirm': 'মুছুন'}))
+        self.assertIsNone(self.ok(u.get('/auth/me')))                                   # signed out
+        self.assertEqual(self.srv.client().post('/auth/login', {'phone': u.phone, 'password': u.password})[0], 401)
+        adm = self.srv.admin()
+        users = self.ok(adm.get('/admin/users'))
+        users = users.get('users', users) if isinstance(users, dict) else users
+        self.assertNotIn(u.phone, json.dumps(users, ensure_ascii=False))
+        self.assertNotIn(cid, json.dumps(self.ok(adm.get('/admin/classifieds')), ensure_ascii=False))
+        self.assertFalse(os.path.isfile(os.path.join(self.srv.data, 'uploads', photo.split('/')[-1])))   # the photo is gone too
+        self.assertEqual(self.ok(other.get('/auth/me'))['phone'], other.phone)          # nobody else is touched
+        # the same number can sign up again as a new account
+        self.ok(self.srv.client().post('/auth/register', {'name': 'নতুন', 'phone': u.phone, 'password': 'Jsr#2026again', 'terms': True}))
 
 
 if __name__ == '__main__':

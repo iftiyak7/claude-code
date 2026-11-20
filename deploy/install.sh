@@ -33,6 +33,7 @@ cp -r "$TMP/public" "$APP/public.new"; cp -r "$TMP/server" "$APP/server.new"
 echo "${VERSION:-unknown}" > "$APP/server.new/VERSION"
 rm -rf "$APP/public" "$APP/server"; mv "$APP/public.new" "$APP/public"; mv "$APP/server.new" "$APP/server"
 mkdir -p "$APP/android"; cp "$TMP/android/base.apk" "$TMP/android/version.json" "$APP/android/" 2>/dev/null || true
+cp "$TMP/android/base.aab" "$APP/android/" 2>/dev/null || true
 rm -rf "$TMP"
 chmod -R a+rX "$APP"
 
@@ -200,6 +201,22 @@ elif [ -f "$APP/android/base.apk" ]; then
       && systemctl restart "$SVC" || warn "APK যোগ করা যায়নি"
   else
     warn "APK সাইন করা যায়নি (বিস্তারিত: /tmp/jashore360-apk.log)। বাকি সব ঠিকঠাক চলছে; অ্যাডমিন প্যানেল → অ্যাপ থেকে নিজে APK আপলোড করতে পারবেন।"
+  fi
+  # Google Play: the same app as an App Bundle, signed with a separate upload key (/root/jashore360-upload).
+  # The owner downloads it from Admin → App release and uploads it in Play Console.
+  if [ -f "$APP/android/base.aab" ]; then
+    command -v jarsigner >/dev/null || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq default-jdk-headless) >/dev/null 2>&1 || true
+    PLAYPKG=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("playPackage","com.jashore360.app"))' "$APP/android/version.json")
+    OUTAAB=$(mktemp --suffix=.aab); CERT=$(mktemp --suffix=.pem)
+    if python3 "$APP/server/sign_aab.py" "$APP/android/base.aab" "$OUTAAB" "$URL/app/" /root/jashore360-upload "${OLD_DOMAINS:-}" "${SNAP[@]}" 2>/tmp/jashore360-aab.log \
+       && python3 "$APP/server/sign_aab.py" --cert /root/jashore360-upload > "$CERT" 2>>/tmp/jashore360-aab.log; then
+      chmod 644 "$OUTAAB" "$CERT"
+      sudo -u "$SVC_USER" python3 "$APP/server/server.py" --data "$DATA" import-aab "$OUTAAB" "$VNAME" "$VCODE" "$PLAYPKG" "$CERT" >/dev/null \
+        && say "Google Play-র AAB তৈরি — অ্যাডমিন প্যানেল → অ্যাপ রিলিজ থেকে নামান" || warn "AAB যোগ করা যায়নি"
+    else
+      warn "Google Play-র AAB সাইন করা যায়নি (বিস্তারিত: /tmp/jashore360-aab.log)। বাকি সব ঠিকঠাক চলছে।"
+    fi
+    rm -f "$OUTAAB" "$CERT"
   fi
   rm -f "$OUTAPK" "$BOOTSNAP"
 fi

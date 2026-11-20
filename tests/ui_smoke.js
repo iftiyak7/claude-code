@@ -6,7 +6,7 @@ const [base, password] = process.argv.slice(2);
 
 const APP = ['#/', '#/emergency', '#/c/hospital', '#/c/restaurant?sort=near', '#/search?q=কাচ্চি', '#/p/h-general', '#/explore', '#/saved',
   '#/profile', '#/offers', '#/ads/rent', '#/ads/job', '#/add', '#/terms', '#/privacy', '#/login', '#/nope'];
-const APP_SIGNED_IN = ['#/account', '#/account?tab=ads', '#/account?tab=coupons', '#/post/listing?mode=free', '#/post/listing?mode=paid', '#/post/rent',
+const APP_SIGNED_IN = ['#/account', '#/account?tab=settings', '#/account?tab=ads', '#/account?tab=coupons', '#/post/listing?mode=free', '#/post/listing?mode=paid', '#/post/rent',
   '#/post/job', '#/post/mess', '#/post/tuition'];
 const ADMIN = ['dashboard', 'listings', 'listings/h-general', 'listings/new', 'submissions', 'payments', 'coupons', 'users', 'classifieds', 'reviews',
   'reports', 'ads', 'notices', 'popup', 'categories', 'plans', 'settings', 'app', 'terms', 'admins'];

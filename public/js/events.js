@@ -154,6 +154,11 @@ export function init() {
         await api('/my/coupons', { ...v, maxClaims: toLatin(v.maxClaims || '') });
         toast(T('অফার জমা হয়েছে — অনুমোদনের পর দেখাবে')); pages.account.cpStale = true; return render();
       }
+      if (f.dataset.delaccount != null) {
+        const v = Object.fromEntries(new FormData(f));
+        await api('/my/delete-account', { password: v.password, confirm: v.confirm });
+        S.ME = null; cache.my = null; toast(T('আপনার অ্যাকাউন্ট মুছে ফেলা হয়েছে')); return go('#/');
+      }
       if (f.dataset.profile != null) {
         const v = Object.fromEntries(new FormData(f));
         if (v.phone) v.phone = toLatin(v.phone);

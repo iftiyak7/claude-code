@@ -103,7 +103,9 @@ def rename_categories(c):
 
 
 OLD_TERMS = ('d94698f3e9f4a8204016af02152eb02c5c9428cb8092e24a2a60283ab97f27a5',    # sha256 of earlier starter terms (Bangla)
-             '544e3b013f930e215fd4f178d71615dc0b3a426f51ff46f89daaa5dcb1a5106d')
+             '544e3b013f930e215fd4f178d71615dc0b3a426f51ff46f89daaa5dcb1a5106d',
+             '69cfb4d69a5f380042dea25622bd4a2fc497578693f3e4caa037265d5862b9b9')
+OLD_PRIVACY = ('11c8508711a070b96172eaba3b0857e6c9c6338b47654c78019e668a65fb24c3',)   # starter privacy policy before in-app account deletion
 
 
 def renew_terms(c, seed):
@@ -114,6 +116,13 @@ def renew_terms(c, seed):
         return
     new = dict(seed['terms'], version=(cur.get('version') or 0) + 1)
     c.execute("UPDATE settings SET value=? WHERE key='terms'", (json.dumps(new, ensure_ascii=False),))
+
+
+def renew_privacy(c, seed):
+    """A site still on the earlier starter privacy policy gets the current one; a policy the admin edited is left alone."""
+    cur = get_setting(c, 'privacy') or {}
+    if hashlib.sha256((cur.get('bn') or '').strip().encode()).hexdigest() in OLD_PRIVACY:
+        c.execute("UPDATE settings SET value=? WHERE key='privacy'", (json.dumps(seed['privacy'], ensure_ascii=False),))
 
 
 def init_db():
@@ -192,6 +201,7 @@ def init_db():
         retire_text(c)
         rename_categories(c)
         renew_terms(c, seed)
+        renew_privacy(c, seed)
 
 
 SEED_VERSION = 6

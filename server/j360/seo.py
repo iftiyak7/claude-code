@@ -209,6 +209,7 @@ def landing(h):
 
 
 LEGAL = {'terms': ('শর্তাবলি', 'Terms & Conditions', 'Jashore360 ব্যবহারের শর্তাবলি: অ্যাকাউন্ট, বিজ্ঞাপন, রিভিউ, দায় ও নিয়ম।'),
+         'delete-account': ('অ্যাকাউন্ট মুছে ফেলা', 'Delete your account', 'Jashore360 অ্যাকাউন্ট ও তথ্য কীভাবে মুছে ফেলবেন, কী মুছে যায় আর কী থাকে।'),
          'privacy': ('গোপনীয়তা নীতি', 'Privacy Policy', 'Jashore360 আপনার কোন তথ্য নেয়, কীভাবে ব্যবহার করে ও সুরক্ষিত রাখে।')}
 
 
@@ -228,11 +229,56 @@ def legal_html(text):
     return '\n'.join(out)
 
 
-@page(r'/(terms|privacy)/?')
+# How to delete an account — the web address Google Play asks for (Data safety → account deletion).
+DELETE_ACCOUNT = {'updated': '2026-11-20', 'bn': '''Jashore360 অ্যাকাউন্ট ও তার সাথে যুক্ত তথ্য আপনি নিজেই যেকোনো সময় মুছে ফেলতে পারেন।
+
+## অ্যাপ বা ওয়েবসাইট থেকে
+
+১. Jashore360 অ্যাপ খুলুন বা jashore360.com/app-এ লগইন করুন।
+
+২. প্রোফাইল → আমার অ্যাকাউন্ট → সেটিংস-এ যান।
+
+৩. নিচে "অ্যাকাউন্ট মুছে ফেলুন" চাপুন, পাসওয়ার্ড (থাকলে) দিন, "মুছুন" লিখে নিশ্চিত করুন।
+
+## যা মুছে যায়
+
+আপনার অ্যাকাউন্ট (নাম, মোবাইল নম্বর, ইমেইল, পাসওয়ার্ড, Google সংযোগ), আপনার দেওয়া বাসা ভাড়া, মেস, চাকরি ও টিউশনের বিজ্ঞাপন, রিভিউ, নেওয়া কুপন, অপ্রকাশিত তালিকা এবং আপলোড করা ছবি ও ভিডিও। সাথে সাথে মুছে যায়; ফেরত আনা যায় না।
+
+## যা থেকে যায়
+
+প্রকাশিত ব্যবসার তালিকা (যেমন দোকান বা প্রতিষ্ঠানের ঠিকানা ও নম্বর) সাধারণ তথ্য হিসেবে থেকে যায়, তবে আপনার অ্যাকাউন্টের সাথে আর যুক্ত থাকে না; সেটিও সরাতে চাইলে নিচের ঠিকানায় জানান। আইন অনুযায়ী পেমেন্টের হিসাব (পরিমাণ, Transaction ID, পাঠানোর নম্বর) প্রয়োজনীয় সময় পর্যন্ত রাখা হয়। নিরাপত্তার জন্য রাখা দৈনিক ব্যাকআপ থেকে ১৪ দিনের মধ্যে নিজে থেকে মুছে যায়।
+
+## লগইন করতে না পারলে
+
+নিচের যোগাযোগ ঠিকানায় আপনার অ্যাকাউন্টের মোবাইল নম্বর বা ইমেইল দিয়ে অনুরোধ পাঠান। আপনিই মালিক তা নিশ্চিত হওয়ার পর ৩০ দিনের মধ্যে মুছে দেওয়া হবে।''',
+                  'en': '''You can delete your Jashore360 account and the information linked to it yourself, at any time.
+
+## From the app or the website
+
+1. Open the Jashore360 app, or sign in at jashore360.com/app.
+
+2. Go to Profile → My account → Settings.
+
+3. Tap "Delete account" at the bottom, enter your password (if you have one) and type "delete" to confirm.
+
+## What is deleted
+
+Your account (name, mobile number, email, password, Google link), the house rent, mess, job and tuition ads you posted, your reviews, coupons you took, unpublished listings, and the photos and videos you uploaded. This happens at once and cannot be undone.
+
+## What is kept
+
+Published business listings (such as a shop's or organisation's address and number) stay as public information but are no longer linked to your account; to have one removed too, contact us below. Payment records (amount, Transaction ID, sending number) are kept for as long as the law requires. Daily safety backups are deleted automatically within 14 days.
+
+## If you cannot sign in
+
+Send a request to the contact address below with the mobile number or email of your account. Once we have confirmed it is yours, it will be deleted within 30 days.'''}
+
+
+@page(r'/(terms|privacy|delete-account)/?')
 def legal_page(h, which):
     en = h.query.get('lang') == 'en'
     with db() as c:
-        doc = get_setting(c, which) or {}
+        doc = DELETE_ACCOUNT if which == 'delete-account' else get_setting(c, which) or {}
         site = get_setting(c, 'site') or {}
     bn_title, en_title, desc = LEGAL[which]
     title = en_title if en else bn_title
@@ -274,7 +320,7 @@ def sitemap(h):
         cats = [x['id'] for x in get_setting(c, 'categories') or [] if x.get('active', True)]
         rows = list(public_listings(c))
     day = lambda t: time.strftime('%Y-%m-%d', time.gmtime(t or time.time()))
-    urls = [(base + '/', None), (base + '/app/', None), (base + '/terms', None), (base + '/privacy', None)] + [(f'{base}/c/{x}', None) for x in cats] + [(f'{base}/p/{i}', day(u)) for i, _, u in rows]
+    urls = [(base + '/', None), (base + '/app/', None), (base + '/terms', None), (base + '/privacy', None), (base + '/delete-account', None)] + [(f'{base}/c/{x}', None) for x in cats] + [(f'{base}/p/{i}', day(u)) for i, _, u in rows]
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
            + ''.join(f'  <url><loc>{ESC(u)}</loc>{f"<lastmod>{m}</lastmod>" if m else ""}</url>\n' for u, m in urls) + '</urlset>\n')
     send_text(h, xml, 'application/xml; charset=utf-8', {'Cache-Control': 'public, max-age=3600'})

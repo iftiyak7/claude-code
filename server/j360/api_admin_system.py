@@ -92,6 +92,48 @@ def store_apk(raw, version_name, version_code, notes, c):
     return app
 
 
+PLAY_KEY = '_play'      # the signed Google Play bundle: kept out of the public settings
+
+
+def play_dir():
+    return os.path.join(config.DATA, 'play')
+
+
+def store_aab(raw, version_name, version_code, package, cert, c):
+    """Keep the signed bundle (and the upload key's certificate) for the owner to download and upload to Google Play."""
+    if not raw.startswith(b'PK'):
+        raise ApiError(400, 'এটি সঠিক AAB ফাইল নয়')
+    os.makedirs(play_dir(), exist_ok=True)
+    name = 'jashore360-%s-%d.aab' % (re.sub(r'[^\w.]', '', version_name), version_code)
+    with open(os.path.join(play_dir(), name), 'wb') as f:
+        f.write(raw)
+    for fn in os.listdir(play_dir()):                   # only the newest bundle is kept
+        if fn.endswith('.aab') and fn != name:
+            os.remove(os.path.join(play_dir(), fn))
+    info = {'versionName': version_name, 'versionCode': version_code, 'package': package, 'file': name, 'size': len(raw),
+            'updated': today(), 'sha256': hashlib.sha256(raw).hexdigest(), 'cert': cert or None}
+    c.execute('INSERT OR REPLACE INTO settings VALUES (?,?)', (PLAY_KEY, json.dumps(info, ensure_ascii=False)))
+    return info
+
+
+@route('GET', '/admin/play', auth='owner')
+def adm_play(h):
+    with db() as c:
+        h.json(get_setting(c, PLAY_KEY))
+
+
+@route('GET', '/admin/play/aab', auth='owner')
+def adm_play_aab(h):
+    with db() as c:
+        info = get_setting(c, PLAY_KEY)
+    path = info and os.path.join(play_dir(), info['file'])
+    if not path or not os.path.isfile(path):
+        raise ApiError(404, 'AAB এখনো তৈরি হয়নি')
+    h.audit('app.aab.download', info['versionName'])
+    h.send(200, open(path, 'rb').read(), 'application/octet-stream',
+           {'Content-Disposition': 'attachment; filename="%s"' % info['file'], 'Cache-Control': 'no-store'})
+
+
 @route('POST', '/admin/apk', auth='owner')
 def adm_apk(h):
     n = int(h.headers.get('Content-Length') or 0)

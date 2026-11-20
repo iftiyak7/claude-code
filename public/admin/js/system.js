@@ -28,7 +28,7 @@ export function init() {
   /* ---------------- app release ---------------- */
   pages.app = async () => {
     await load(true);
-    const a = S.settings.app || {};
+    const a = S.settings.app || {}, play = owner() ? await api('/admin/play').catch(() => null) : null;
     shell('app', T('অ্যাপ রিলিজ (APK)'), '', `<div class="split"><div class="grid">
       <div class="card"><h3>${T('বর্তমান ভার্সন')}</h3><div class="cbody">${a.file ? `<div class="apkcur"><span class="thumb" style="--c:#0e9f6e;width:56px;height:56px">${icon('download', 26)}</span>
           <div><b style="font-size:20px">v${esc(a.versionName)}</b> <small class="muted">(${T('কোড')} ${num(a.versionCode)})</small><br><small class="muted">${esc(day(a.updated))} · ${a.size < 1048576 ? num(Math.max(1, Math.round(a.size / 1024))) + ' KB' : num((a.size / 1048576).toFixed(1)) + ' MB'}</small>
@@ -46,8 +46,23 @@ export function init() {
         <li>${T('নতুন APK আপলোড করলে ওয়েবসাইটের ডাউনলোড বাটন সাথে সাথে নতুন ফাইল দেয়।')}</li>
         <li>${T('যাদের ফোনে পুরনো অ্যাপ আছে, তারা অ্যাপের হোমপেজে "নতুন ভার্সন এসেছে" দেখবেন।')}</li>
         <li>${T('অ্যাপের ভেতরের তথ্য ও ডিজাইন ওয়েবসাইট থেকে আসে — সেগুলো বদলাতে নতুন APK লাগে না।')}</li>
-        <li>${T('একই সাইনিং কী দিয়ে তৈরি APK দিতে হবে, নইলে ব্যবহারকারীরা আপডেট করতে পারবেন না।')}</li></ol></div></div></div>`);
+        <li>${T('একই সাইনিং কী দিয়ে তৈরি APK দিতে হবে, নইলে ব্যবহারকারীরা আপডেট করতে পারবেন না।')}</li></ol></div></div>
+      ${owner() ? playCard(play) : ''}</div>`);
   };
+  // Google Play: the server builds and signs the App Bundle (.aab) at every update; the owner downloads it here and uploads it in Play Console.
+  function playCard(p) {
+    return `<div class="card"><h3>${T('Google Play (AAB)')}</h3><div class="cbody">${p?.file ? `<div class="apkcur"><span class="thumb" style="--c:#2f7cf6;width:56px;height:56px">${icon('download', 26)}</span>
+        <div><b style="font-size:20px">v${esc(p.versionName)}</b> <small class="muted">(${T('কোড')} ${num(p.versionCode)})</small><br>
+        <small class="muted">${esc(p.package)} · ${esc(day(p.updated))} · ${num(Math.max(1, Math.round(p.size / 1024)))} KB</small></div></div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><a class="btn dark" href="/api/admin/play/aab">${icon('download', 18)}${T('AAB ডাউনলোড')}</a></div>
+        <ol class="howto" style="margin-top:14px">
+          <li>${T('Play Console → আপনার অ্যাপ → Test and release → নতুন রিলিজ তৈরি করুন, তারপর এই .aab ফাইলটি আপলোড করুন।')}</li>
+          <li>${T('প্রথমবার "Play App Signing" চালু রাখুন (Google-এর পরামর্শ মতো)। এই ফাইলের সাইনিং কী তখন আপনার "upload key" হয়ে যায়।')}</li>
+          <li>${T('পরের প্রতিটি আপডেটে সার্ভার একই upload key দিয়ে নতুন AAB বানায় — এখান থেকে নামিয়ে আপলোড করলেই হবে।')}</li>
+          <li>${T('upload key সার্ভারের /root/jashore360-upload ফোল্ডারে থাকে। হারালে Play Console থেকে নতুন upload key-র আবেদন করা যায়; তখন নিচের সার্টিফিকেট কাজে লাগে।')}</li></ol>
+        ${p.cert ? `<details style="margin-top:10px"><summary>${T('upload key-র সার্টিফিকেট (PEM)')}</summary><pre style="white-space:pre-wrap;font-size:11px">${esc(p.cert)}</pre></details>` : ''}`
+      : empty(T('AAB এখনো তৈরি হয়নি'), T('সার্ভার আপডেট (install.sh) চালালে নিজে থেকে তৈরি হবে।'), 'download')}</div></div>`;
+  }
   /* ---------------- settings & admins ---------------- */
   pages.settings = async () => {
     await load();

@@ -23,18 +23,33 @@ def run(*cmd, **kw):
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, **kw)
 
 
-def ensure_key(keydir):
+def ensure_key(keydir, name='release', alias='jashore360'):
     os.makedirs(keydir, mode=0o700, exist_ok=True)
-    ks, pw = os.path.join(keydir, 'release.jks'), os.path.join(keydir, 'release.pass')
+    ks, pw = os.path.join(keydir, name + '.jks'), os.path.join(keydir, name + '.pass')
     if not os.path.exists(ks):
         with open(pw, 'w') as f:
             f.write(secrets.token_urlsafe(24))
         os.chmod(pw, 0o600)
-        run('keytool', '-genkeypair', '-keystore', ks, '-storetype', 'PKCS12', '-alias', 'jashore360',
+        run('keytool', '-genkeypair', '-keystore', ks, '-storetype', 'PKCS12', '-alias', alias,
             '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000', '-dname', 'CN=Jashore360',
             '-storepass:file', pw, '-keypass:file', pw)
         os.chmod(ks, 0o600)
     return ks, pw
+
+
+def add_assets(path, prefix, url, old_hosts='', www=None, boot=None):
+    """The site's address (and older domains still counted as its own), plus a copy of the app's files and of today's data."""
+    with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED) as z:
+        if prefix + 'config.json' not in z.namelist():
+            hosts = [h.strip() for h in old_hosts.split(',') if h.strip()]
+            z.writestr(prefix + 'config.json', json.dumps({'url': url, 'hosts': hosts}))
+        if www:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from j360.shell import shell_files
+            for p in shell_files(www):
+                z.write(os.path.join(www, p), prefix + 'www/' + p)
+        if boot:
+            z.write(boot, prefix + 'www/api/bootstrap.json')
 
 
 def main(base, out, url, keydir, old_hosts='', www=None, boot=None):
@@ -44,17 +59,7 @@ def main(base, out, url, keydir, old_hosts='', www=None, boot=None):
         raw = os.path.join(tmp, 'raw.apk')
         aligned = os.path.join(tmp, 'aligned.apk')
         shutil.copy(base, raw)
-        with zipfile.ZipFile(raw, 'a') as z:
-            if 'assets/config.json' not in z.namelist():
-                hosts = [h.strip() for h in old_hosts.split(',') if h.strip()]
-                z.writestr('assets/config.json', json.dumps({'url': url, 'hosts': hosts}))
-            if www:
-                sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-                from j360.shell import shell_files
-                for p in shell_files(www):
-                    z.write(os.path.join(www, p), 'assets/www/' + p)
-            if boot:
-                z.write(boot, 'assets/www/api/bootstrap.json')
+        add_assets(raw, 'assets/', url, old_hosts, www, boot)
         run('zipalign', '-f', '-p', '4', raw, aligned)
         env = dict(os.environ, J360_KS_PASS=open(pw).read().strip())
         run('apksigner', 'sign', '--ks', ks, '--ks-key-alias', 'jashore360', '--ks-pass', 'env:J360_KS_PASS',

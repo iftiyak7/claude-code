@@ -18,6 +18,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
@@ -43,6 +44,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -96,7 +100,10 @@ public class MainActivity extends Activity {
         offline = buildOffline();
         offline.setVisibility(View.GONE);
         root.addView(offline, new FrameLayout.LayoutParams(-1, -1));
+        root.setBackgroundColor(Color.parseColor("#0f1b2d"));
         setContentView(root);
+        fitSystemBars(root);
+        setupBack();
 
         setupWeb();
         if (offline()) web.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);   // photos seen before still show
@@ -535,11 +542,70 @@ public class MainActivity extends Activity {
         if (link != null && isOwn(link)) web.loadUrl(link.toString());
     }
 
-    @Override
-    public void onBackPressed() {
+    /*
+     * Android 15+ draws every app edge to edge (behind the status and navigation bars). The page is kept clear of the bars,
+     * the screen cutout and the keyboard by padding it by their size; the dark background shows in the bar areas, as before.
+     */
+    private void fitSystemBars(View root) {
+        if (Build.VERSION.SDK_INT < 35) return;               // older Android lays the page out below the bars itself
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                int l = in.getSystemWindowInsetLeft(), t = in.getSystemWindowInsetTop(), r = in.getSystemWindowInsetRight(), b = in.getSystemWindowInsetBottom();
+                try {      // WindowInsets.Type (Android 11+): bars, keyboard and cutout, read by name so the app builds against an older SDK
+                    Class<?> type = Class.forName("android.view.WindowInsets$Type");
+                    int mask = (Integer) type.getMethod("systemBars").invoke(null) | (Integer) type.getMethod("ime").invoke(null)
+                            | (Integer) type.getMethod("displayCutout").invoke(null);
+                    Object ins = WindowInsets.class.getMethod("getInsets", int.class).invoke(in, mask);
+                    Class<?> ic = ins.getClass();
+                    l = ic.getField("left").getInt(ins);
+                    t = ic.getField("top").getInt(ins);
+                    r = ic.getField("right").getInt(ins);
+                    b = ic.getField("bottom").getInt(ins);
+                } catch (Exception ignored) {
+                }
+                v.setPadding(l, t, r, b);
+                return in;
+            }
+        });
+        root.requestApplyInsets();
+    }
+
+    /*
+     * Back: one step back in the app, or out of it. Android 13+ sends the back gesture through OnBackInvokedCallback (and,
+     * for apps made for Android 16, only there); it is registered by name so the app still builds against an older SDK.
+     */
+    private void setupBack() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        try {
+            Class<?> cb = Class.forName("android.window.OnBackInvokedCallback");
+            Class<?> disp = Class.forName("android.window.OnBackInvokedDispatcher");
+            Object dispatcher = Activity.class.getMethod("getOnBackInvokedDispatcher").invoke(this);
+            Object callback = Proxy.newProxyInstance(cb.getClassLoader(), new Class<?>[]{cb}, new InvocationHandler() {
+                @Override
+                public Object invoke(Object self, Method m, Object[] args) {
+                    String n = m.getName();
+                    if (n.equals("onBackInvoked")) { goBack(); return null; }
+                    if (n.equals("hashCode")) return System.identityHashCode(self);
+                    if (n.equals("equals")) return self == args[0];
+                    if (n.equals("toString")) return "Jashore360Back";
+                    return null;
+                }
+            });
+            disp.getMethod("registerOnBackInvokedCallback", int.class, cb).invoke(dispatcher, 0, callback);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void goBack() {
         if (offline.getVisibility() == View.VISIBLE) { finish(); return; }
         if (web.canGoBack()) web.goBack();
-        else super.onBackPressed();
+        else moveTaskToBack(true);
+    }
+
+    @Override
+    public void onBackPressed() {      // Android 12 and older, and 13–15 when the system still uses this path
+        goBack();
     }
 
     @Override

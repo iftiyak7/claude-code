@@ -115,7 +115,13 @@ export function init() {
       ${S.ME.hasPassword ? `<label class="field"><span>${T('বর্তমান পাসওয়ার্ড')}</span><input name="password" type="password" autocomplete="current-password"></label>` : ''}
       <label class="field"><span>${T('নতুন পাসওয়ার্ড')}</span><input name="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
       <button class="btn block" type="submit">${T('সংরক্ষণ করুন')}</button></form>
-      <button class="btn block ghost" style="margin-top:12px;color:var(--danger)" data-logout>${icon('logout', 18)}${T('লগআউট')}</button>`;
+      <button class="btn block ghost" style="margin-top:12px;color:var(--danger)" data-logout>${icon('logout', 18)}${T('লগআউট')}</button>
+      <details class="dangerbox"><summary>${icon('trash', 16)}${T('অ্যাকাউন্ট মুছে ফেলুন')}</summary>
+        <form class="form" data-delaccount>
+          <p class="muted" style="margin:0;font-size:13.5px">${T('আপনার অ্যাকাউন্ট, বিজ্ঞাপন, রিভিউ, কুপন ও আপলোড করা ছবি স্থায়ীভাবে মুছে যাবে; আর ফেরত আনা যাবে না। প্রকাশিত ব্যবসার তথ্য সাধারণ তথ্য হিসেবে থেকে যাবে (আপনার নাম ছাড়া), আর আইন অনুযায়ী পেমেন্টের হিসাব রাখা হয়।')}</p>
+          ${S.ME.hasPassword ? `<label class="field"><span>${T('পাসওয়ার্ড')}</span><input name="password" type="password" required autocomplete="current-password"></label>` : ''}
+          <label class="field"><span>${T('নিশ্চিত করতে লিখুন: মুছুন')}</span><input name="confirm" required autocomplete="off"></label>
+          <button class="btn block danger" type="submit">${T('স্থায়ীভাবে মুছে ফেলুন')}</button></form></details>`;
     return `${topbar(T('আমার অ্যাকাউন্ট'))}
       <div class="profilehead"><span class="avatar">${esc(S.ME.name[0])}</span><div><b>${esc(S.ME.name)}</b><span class="muted" style="font-size:13px">${esc(S.ME.phone ? num(S.ME.phone) : S.ME.email || '')}</span></div></div>
       ${my ? `<div class="stat3"><div><b>${num(my.listings.length)}</b><small>${T('ব্যবসা')}</small></div><div><b>${num(my.classifieds.length)}</b><small>${T('বিজ্ঞাপন')}</small></div><div><b>${num(my.reviews)}</b><small>${T('রিভিউ')}</small></div></div>` : ''}

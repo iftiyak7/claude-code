@@ -1,4 +1,4 @@
-"""Command line: serve, ensure-admin, reset-password, import-apk, backup."""
+"""Command line: serve, ensure-admin, reset-password, import-apk, import-aab, backup."""
 import argparse
 import os
 import secrets
@@ -7,7 +7,7 @@ import time
 from http.server import ThreadingHTTPServer
 from . import api_account, api_admin_auth, api_admin_content, api_admin_system, api_coupons, api_google, api_public, seo
 from . import config
-from .api_admin_system import store_apk
+from .api_admin_system import store_aab, store_apk
 from .backup import backup_loop, make_backup
 from .config import HERE, set_paths
 from .geocode import geocode_loop
@@ -26,7 +26,7 @@ def main():
     ap.add_argument('--data', default=os.path.join(HERE, 'data'))
     ap.add_argument('--host', default='127.0.0.1')
     ap.add_argument('--port', type=int, default=8360)
-    ap.add_argument('cmd', nargs='?', default='serve', choices=['serve', 'ensure-admin', 'reset-password', 'import-apk', 'backup'])
+    ap.add_argument('cmd', nargs='?', default='serve', choices=['serve', 'ensure-admin', 'reset-password', 'import-apk', 'import-aab', 'backup'])
     ap.add_argument('args', nargs='*')
     a = ap.parse_args()
     set_paths(a.data)
@@ -58,6 +58,13 @@ def main():
                 return
             store_apk(open(path, 'rb').read(), vname, vcode, notes, c)
         print(f'APK {vname} ({vcode}) published')
+        return
+    if a.cmd == 'import-aab':                 # import-aab FILE VERSION_NAME VERSION_CODE PACKAGE [CERT.pem]
+        path, vname, vcode, package = a.args[0], a.args[1], int(a.args[2]), a.args[3]
+        cert = open(a.args[4]).read() if len(a.args) > 4 and os.path.isfile(a.args[4]) else ''
+        with db() as c:
+            store_aab(open(path, 'rb').read(), vname, vcode, package, cert, c)
+        print(f'AAB {vname} ({vcode}) ready for Google Play')
         return
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True

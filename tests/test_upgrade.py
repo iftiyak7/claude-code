@@ -50,13 +50,16 @@ class UpgradeTest(unittest.TestCase):
 class TermsRenewalTest(unittest.TestCase):
     OLD = '১. Jashore360 একটি স্বতন্ত্র তথ্য প্ল্যাটফর্ম।'
 
-    def restart(self, srv, terms):
+    def restart(self, srv, terms, privacy=None):
         srv.proc.terminate()
         srv.proc.wait(10)
         srv.proc.stderr.close()
         db = sqlite3.connect(os.path.join(srv.data, 'jashore360.db'))
         db.execute("UPDATE settings SET value=? WHERE key='terms'", (json.dumps(terms, ensure_ascii=False),))
-        db.execute("DELETE FROM settings WHERE key='privacy'")             # an install from before the privacy policy
+        if privacy:
+            db.execute("UPDATE settings SET value=? WHERE key='privacy'", (json.dumps(privacy, ensure_ascii=False),))
+        else:
+            db.execute("DELETE FROM settings WHERE key='privacy'")         # an install from before the privacy policy
         db.commit()
         db.close()
         srv.proc = subprocess.Popen([sys.executable, SERVER, '--data', srv.data, '--port', str(srv.port)],
@@ -96,6 +99,13 @@ class TermsRenewalTest(unittest.TestCase):
             d = self.restart(srv, dict(prev, version=2))
             self.assertEqual(d['terms']['version'], 3)
             self.assertIn('ভেরিফায়েড চিহ্ন', d['terms']['bn'])
+            # terms and privacy policy from before in-app account deletion get the versions that explain it
+            seed = json.loads(sp.run(['git', '-C', os.path.dirname(os.path.dirname(SERVER)), 'show', '32f6224:server/seed.json'],
+                                     capture_output=True, text=True).stdout)
+            d = self.restart(srv, dict(seed['terms'], version=3), seed['privacy'])
+            self.assertEqual(d['terms']['version'], 4)
+            self.assertIn('delete-account', d['terms']['bn'])
+            self.assertIn('delete-account', d['privacy']['bn'])
         finally:
             srv.stop()
 
