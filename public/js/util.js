@@ -20,6 +20,9 @@ export const areaName = a => (LANG() === 'en' && window.AREA_EN?.[a]) || a || ''
 export const fmtDate = (t, opts = { day: 'numeric', month: 'short', year: 'numeric' }) => t ? new Date(typeof t === 'number' ? t * 1000 : t).toLocaleDateString(LANG() === 'bn' ? 'bn-BD' : 'en-GB', opts) : '';
 export const LOGO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7.2-6.3-7.2-11.8a7.2 7.2 0 0 1 14.4 0c0 5.5-7.2 11.8-7.2 11.8z" fill="#fff"/><circle cx="12" cy="9.6" r="2.8" fill="#0e9f6e"/></svg>';
 export const APP_UA = navigator.userAgent.match(/Jashore360App\/(\d+)/);
+// Inside the Android app nothing is sold: Google Play's payments rules do not allow paid packages paid by bKash/Nagad there.
+// The website still offers them; the app does not link to them either.
+export const NO_PAY = !!APP_UA;
 let toastT;
 export function toast(msg) {
   const t = document.getElementById('toast');

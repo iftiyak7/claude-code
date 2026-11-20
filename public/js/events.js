@@ -8,7 +8,7 @@ import { MEDIA, contactRow, drawMedia, mediaBody, readCrows, setLoc } from './pa
 import { loadReviews, pages } from './pages.js';
 import { doLocate, go, render } from './router.js';
 import { areaSheet, closeSheet, filterSheet, noticesSheet, reportSheet, requireLogin, reviewSheet } from './sheets.js';
-import { LANG, T, api, applyTheme, beacon, ls, toLatin, toast, track } from './util.js';
+import { LANG, NO_PAY, T, api, applyTheme, beacon, ls, toLatin, toast, track } from './util.js';
 
 // Runs once at start-up, in the original order (main.js calls it after every module has loaded).
 export function init() {
@@ -177,7 +177,7 @@ export function init() {
         }
         const r = await api('/my/listings', body);
         cache.my = null;
-        if (r.needsPayment) { pages.pay.plan = v.plan; return go('#/pay/' + r.id); }
+        if (r.needsPayment && !NO_PAY) { pages.pay.plan = v.plan; return go('#/pay/' + r.id); }
         pages.post.done = 'আমাদের টিম যাচাই করে শীঘ্রই প্রকাশ করবে। ধন্যবাদ।'; return render();
       }
       if (f.dataset.addclassified) {

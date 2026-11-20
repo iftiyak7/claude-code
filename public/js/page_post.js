@@ -7,7 +7,7 @@ import { KINDS, OPTS, catName, getItem, isTown, items, showClassifieds, subLabel
 import { cache } from './page_classifieds.js';
 import { pages } from './pages.js';
 import { go, render } from './router.js';
-import { APP_UA, LANG, LOGO, T, api, app, areaName, compress, esc, fmtDate, loc, ls, money, num, toLatin, toast, upload } from './util.js';
+import { APP_UA, LANG, LOGO, NO_PAY, T, api, app, areaName, compress, esc, fmtDate, loc, ls, money, num, toLatin, toast, upload } from './util.js';
 
 const planName = pl => LANG() === 'en' ? pl.en || pl.bn : pl.bn;
 const planCards = sel => `<div class="plans">${(S.D.plans || []).map(pl => `<label class="plan ${sel === pl.id ? 'on' : ''}"><input type="radio" name="plan" value="${esc(pl.id)}" ${sel === pl.id ? 'checked' : ''}>
@@ -105,7 +105,7 @@ export function init() {
       ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন', 'ফ্রি']];
     return `${topbar(T('কী যোগ করতে চান?'))}
       ${S.ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
-      <div class="rows">${opts.filter(([to]) => to.startsWith('listing') || S.D.site?.classifieds !== 'hide').map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
+      <div class="rows">${opts.filter(([to]) => (to.startsWith('listing') || S.D.site?.classifieds !== 'hide') && !(NO_PAY && to.endsWith('paid'))).map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
         <span class="body"><b>${T(t)}</b><span class="sub" style="white-space:normal">${T(d)}</span><span class="meta"><span class="tag ${b === 'ফ্রি' ? 'ok' : 'ad'}">${T(b)}</span><span class="muted">${T('অ্যাডমিন যাচাইয়ের পর প্রকাশ')}</span></span></span>${icon('chevR', 18)}</a>`).join('')}</div>`;
   };
   pages.edit = ([type, id]) => {
@@ -130,7 +130,7 @@ export function init() {
     const editNote = edit ? `<div class="note warn">${icon('edit', 18)}<span>${T(edit.review === 'approved' || edit.review === 'rejected' ? 'পরিবর্তন জমা দিলে অ্যাডমিন আবার যাচাই করবেন, ততক্ষণ এটি অ্যাপে দেখাবে না।' : 'পরিবর্তন জমা দিন — অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>` : '';
     const editAttr = edit ? ` data-edit="${esc(edit.id)}"` : '';
     if (what === 'listing') {
-      const mode = edit ? (needsPay(edit) ? 'paid' : 'free') : p.get('mode') === 'paid' ? 'paid' : 'free', groups = listingCats(mode);
+      const mode = edit ? (needsPay(edit) ? 'paid' : 'free') : p.get('mode') === 'paid' && !NO_PAY ? 'paid' : 'free', groups = listingCats(mode);
       return `${topbar(T(edit ? 'তথ্য সম্পাদনা' : mode === 'paid' ? 'ব্যবসা যুক্ত করুন' : 'ফ্রি তথ্য যোগ করুন'))}
       ${editNote || `<div class="note">${icon(mode === 'paid' ? 'store' : 'landmark', 18)}<span>${T(mode === 'paid' ? 'তথ্য দিন, প্যাকেজ বাছুন, তারপর বিকাশ/নগদে পেমেন্ট করুন। যাচাইয়ের পর প্রকাশিত হবে।' : 'সরকারি, জনসেবামূলক বা দর্শনীয় স্থানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>`}
       <form class="form" data-addlisting="${mode}"${editAttr}>
@@ -218,6 +218,7 @@ export function init() {
     if (!my) { api('/my').then(r => { cache.my = r; render(); }).catch(e => toast(e.message)); return `${topbar(T('পেমেন্ট'))}<div class="boot"><div class="spinner"></div></div>`; }
     const l = my.listings.find(x => x.id === lid);
     if (!l) return `${topbar(T('পেমেন্ট'))}${empty(T('পাওয়া যায়নি'), '')}`;
+    if (NO_PAY) return `${topbar(T('পেমেন্ট'))}${empty(T('অ্যাপ থেকে প্যাকেজ কেনা যায় না'), T('আপনার তালিকার অবস্থা "আমার অ্যাকাউন্ট"-এ দেখতে পাবেন।'), `<a class="btn sm" href="#/account">${T('আমার অ্যাকাউন্ট')}</a>`, 'store')}`;
     if (l.state === 'payment_review') return `${topbar(T('পেমেন্ট'))}${empty(T('পেমেন্ট যাচাই চলছে'), T('আপনার পেমেন্ট পেয়েছি। যাচাই শেষে প্রকাশিত হবে।'), `<a class="btn sm" href="#/account">${T('আমার অ্যাকাউন্ট')}</a>`, 'clock')}`;
     const pay = S.D.payment || {}, sel = pages.pay.plan || l.plan || S.D.plans?.[0]?.id, plan = (S.D.plans || []).find(x => x.id === sel);
     const methods = [['bkash', 'বিকাশ'], ['nagad', 'নগদ'], ['rocket', 'রকেট']].filter(m => pay[m[0]]);
@@ -270,7 +271,7 @@ export function init() {
     </div>
     <div class="panel">
       ${android ? `<a class="li" href="/download/jashore360.apk"><span class="ib">${icon('download', 18)}</span><div>${T('অ্যান্ড্রয়েড অ্যাপ ডাউনলোড')}<small>v${esc(S.D.app.versionName)}</small></div>${icon('chevR', 18)}</a>` : ''}
-      <a class="li" href="#/add"><span class="ib">${icon('store', 18)}</span><div>${T('ব্যবসা যুক্ত করুন')}<small>${T('অ্যাকাউন্ট খুলে প্যাকেজ বেছে নিন')}</small></div>${icon('chevR', 18)}</a>
+      <a class="li" href="#/add"><span class="ib">${icon('store', 18)}</span><div>${T(NO_PAY ? 'তথ্য বা বিজ্ঞাপন যোগ করুন' : 'ব্যবসা যুক্ত করুন')}<small>${T(NO_PAY ? 'ফ্রি তথ্য, বাসা ভাড়া, মেস, চাকরি ও টিউশন' : 'অ্যাকাউন্ট খুলে প্যাকেজ বেছে নিন')}</small></div>${icon('chevR', 18)}</a>
       ${site.contactPhone ? `<a class="li" href="tel:${esc(site.contactPhone)}"><span class="ib">${icon('phone', 18)}</span><div>${T('যোগাযোগ')}<small>${num(site.contactPhone)}</small></div>${icon('chevR', 18)}</a>` : ''}
       ${site.facebook ? `<a class="li" href="${esc(site.facebook)}" target="_blank" rel="noopener"><span class="ib">${icon('facebook', 18)}</span><div>${T('ফেসবুক পেজ')}</div>${icon('external', 16)}</a>` : ''}
       <button class="li" data-notices><span class="ib">${icon('bell', 18)}</span><div>${T('ঘোষণা ও আপডেট')}</div>${icon('chevR', 18)}</button>

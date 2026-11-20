@@ -88,6 +88,13 @@ class ListingTest(ServerTest):
         self.assertEqual(st, 200)
         self.assertEqual(h['X-Content-Type-Options'], 'nosniff')
 
+    def test_nothing_is_sold_inside_the_android_app(self):
+        u = self.srv.client()
+        u.register()
+        st, raw, _ = u.raw('POST', '/api/my/payments', b'{"listing":"x","method":"bkash","trx":"ABC123","sender":"01711111111"}',
+                           {'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Jashore360App/6'})
+        self.assertEqual(st, 403)
+
     def _upload(self, c, data, ctype):
         st, raw, _ = c.raw('POST', '/api/my/media', data, {'Content-Type': ctype})
         return st, json.loads(raw) if raw else None

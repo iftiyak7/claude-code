@@ -149,6 +149,8 @@ def my_add_listing(h):
 
 @route('POST', '/my/payments', auth='user')
 def my_pay(h):
+    if 'Jashore360App/' in h.headers.get('User-Agent', ''):      # nothing is sold inside the Android app (Google Play's rules)
+        raise ApiError(403, 'অ্যাপ থেকে প্যাকেজ কেনা যায় না')
     b = h.body()
     if not rate_ok('pay:%d' % h.me['id'], 10, 86400):
         raise ApiError(429, 'অনেকবার চেষ্টা হয়েছে, পরে আবার চেষ্টা করুন')

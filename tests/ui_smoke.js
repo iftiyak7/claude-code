@@ -41,6 +41,21 @@ const ADMIN = ['dashboard', 'listings', 'listings/h-general', 'listings/new', 's
   for (const r of APP_SIGNED_IN) { at = r; await visit(p, base + '/app/' + r, '#app form, #app .tabs, #app .rows, #app > *'); }
   at = 'english'; await p.evaluate(() => localStorage.setItem('j360.lang', '"en"')); await visit(p, base + '/app/#/', '#app > *');
 
+  // inside the Android app nothing is sold (Google Play's payments rules): no paid-package choice, no package banners
+  at = 'android app';
+  const ua = (await (await browser.newContext()).newPage().then(async q => { const v = await q.evaluate(() => navigator.userAgent); await q.close(); return v; }));
+  const appCtx = await browser.newContext({ viewport: { width: 400, height: 860 }, userAgent: ua + ' Jashore360App/6' });
+  const ap = await appCtx.newPage(); watch(ap, () => at);
+  await ap.goto(base + '/app/'); await ap.waitForTimeout(800);
+  if (await ap.locator('[data-agree]').count()) { await ap.locator('[data-agree]').check(); await ap.click('[data-start]'); }
+  await visit(ap, base + '/app/#/add', '#app > *');
+  if (await ap.locator('a[href="#/post/listing?mode=paid"]').count()) errors.push('android app: the add page offers a paid package');
+  if (!(await ap.locator('a[href="#/post/listing?mode=free"]').count())) errors.push('android app: the free option is missing');
+  await visit(ap, base + '/app/#/', '#app > *');
+  if (await ap.locator('[data-ad][href="#/add"]').count()) errors.push('android app: a package banner is shown');
+  await visit(p, base + '/app/#/add', '#app > *');
+  if (!(await p.locator('a[href="#/post/listing?mode=paid"]').count())) errors.push('website: the add page lost the paid package');
+
   // admin
   const a = await (await browser.newContext({ viewport: { width: 1280, height: 860 } })).newPage();
   watch(a, () => at);

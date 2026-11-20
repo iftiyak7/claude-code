@@ -2,7 +2,7 @@
 import { S } from './state.js';
 import { rot } from './components.js';
 import { PARENT, dist, isTown } from './data.js';
-import { app, beacon, esc, loc, ls } from './util.js';
+import { NO_PAY, app, beacon, esc, loc, ls } from './util.js';
 
 /* ---------------- ads (managed by the main admin) ---------------- */
 // An ad may target areas: it then shows to people who chose one of them (or whose location is close to one).
@@ -12,7 +12,10 @@ function adAreaOk(a) {
   if (cur && a.areas.some(t => t === cur || PARENT[cur] === t || (t === 'যশোর সদর' && isTown(cur)))) return true;
   return !!S.here && a.areas.some(t => { const g = S.D.areaGeo?.[t]; return g && dist({ lat: +g[0], lng: +g[1] }, S.here) <= 2; });
 }
-export const adsFor = (placement, cat) => (S.D.ads || []).filter(a => (a.placement || 'home') === placement && (!a.category || !cat || a.category === cat) && adAreaOk(a))
+// In the app, banners that lead to buying a package (the "add your business" ones) are left out.
+const sellsPackage = a => /^#\/(add|pay|post\/listing\?mode=paid)/.test(a.link || '');
+export const adsFor = (placement, cat) => (S.D.ads || []).filter(a => (a.placement || 'home') === placement && (!a.category || !cat || a.category === cat) && adAreaOk(a)
+    && !(NO_PAY && sellsPackage(a)))
   .sort((x, y) => (!!(y.areas?.length) - !!(x.areas?.length)) || rot(x.id + placement) - rot(y.id + placement));
 const seenAds = new Set();
 export function adImpressions() {
