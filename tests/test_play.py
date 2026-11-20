@@ -24,6 +24,10 @@ class BundleTest(unittest.TestCase):
             self.assertIn(part, names)
         self.assertNotIn('resources.arsc', names)
         self.assertIn(b'com.jashore360.app', manifest)                                    # the package name on Google Play
+        # Play's automatic protection needs minSdkVersion 24 or more (proto attribute: name, then the value as text)
+        i = manifest.index(b'minSdkVersion')
+        self.assertIn(b'24', manifest[i:i + 40])
+        self.assertNotIn(b'21', manifest[i:i + 40])
 
     @unittest.skipUnless(shutil.which('jarsigner') and shutil.which('keytool'), 'needs a JDK')
     def test_signed_with_the_upload_key(self):

@@ -12,6 +12,7 @@ SDK=${ANDROID_SDK:-/usr/lib/android-sdk}
 JAR=$SDK/platforms/android-23/android.jar
 DX=$(ls "$SDK"/build-tools/*/dx | head -n1)
 PLAY_PACKAGE=com.jashore360.app
+PLAY_MIN_SDK=24
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 
@@ -23,7 +24,9 @@ aapt2 compile --dir res -o "$OUT/res.zip"
 mkdir -p "$OUT/gen" "$OUT/classes"
 aapt2 link -o "$OUT/res.apk" --manifest AndroidManifest.xml -I "$JAR" --java "$OUT/gen" \
   --emit-ids "$OUT/ids.txt" "$OUT/res.zip"
-aapt2 link --proto-format -o "$OUT/proto.zip" --manifest AndroidManifest.xml -I "$JAR" \
+# Google Play's automatic protection needs Android 7 (API 24) or newer; the website APK still runs on Android 5+.
+sed 's/android:minSdkVersion="[0-9]*"/android:minSdkVersion="'"$PLAY_MIN_SDK"'"/' AndroidManifest.xml > "$OUT/PlayManifest.xml"
+aapt2 link --proto-format -o "$OUT/proto.zip" --manifest "$OUT/PlayManifest.xml" -I "$JAR" \
   --stable-ids "$OUT/ids.txt" --rename-manifest-package "$PLAY_PACKAGE" "$OUT/res.zip"
 
 # code
