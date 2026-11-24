@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ ! -f .env ]]; then echo "Missing deploy/.env (copy .env.example)"; exit 1; fi
-git -C .. pull --ff-only || true
+GIT_TERMINAL_PROMPT=0 git -C .. pull --ff-only || true
 
 docker compose build --pull api
 docker compose up -d --remove-orphans

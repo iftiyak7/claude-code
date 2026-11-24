@@ -1,5 +1,5 @@
 # Tadbeer Daily — production stack on the VPS
-#   caddy  : HTTPS (auto Let's Encrypt) for www / api / app subdomains
+#   caddy  : optional HTTPS front (profile "caddy"); on CloudPanel servers nginx does this
 #   api    : Node.js sync + auth API (internal only)
 #   db     : PostgreSQL 16 (internal only, never exposed)
 name: tadbeer
@@ -33,6 +33,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       PORT: 8080
       LOG_LEVEL: info
+    # Only reachable from the server itself; CloudPanel (nginx) or Caddy proxies to it.
+    ports:
+      - "127.0.0.1:8080:8080"
     networks: [internal, edge]
     read_only: true
     tmpfs: [/tmp]
@@ -40,7 +43,9 @@ services:
     cap_drop: [ALL]
     mem_limit: 512m
 
+  # Only for a bare server without CloudPanel/nginx:  COMPOSE_PROFILES=caddy ./scripts/deploy.sh
   caddy:
+    profiles: ["caddy"]
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on: [api]
@@ -49,7 +54,7 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../web:/srv/www:ro

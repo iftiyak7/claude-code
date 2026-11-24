@@ -1,5 +1,22 @@
 # Deploying to the VPS (72.62.198.94)
 
+## Quick install (server with CloudPanel — current setup)
+
+As **root** on the VPS:
+
+```bash
+git clone -b claude/optimistic-galileo-y5dzn7 https://github.com/iftiyak7/claude-code.git /root/tadbeer-src
+bash /root/tadbeer-src/deploy/scripts/install.sh
+```
+
+It installs Docker, creates the `tadbeer` user, generates secrets, starts PostgreSQL + the API (bound to `127.0.0.1:8080` only) and schedules daily backups. CloudPanel's nginx stays in charge of ports 80/443:
+
+1. CloudPanel → **Sites → Add Site → Create a Reverse Proxy** — domain `api.tadbeerdaily.com`, reverse proxy URL `http://127.0.0.1:8080`.
+2. That site → **SSL/TLS → Actions → New Let's Encrypt Certificate**.
+3. Optional: **Add Site → Create a Static HTML Site** for `www.tadbeerdaily.com` and upload the files in `web/`.
+
+The sections below describe the alternative for a bare server **without** CloudPanel (Caddy handles HTTPS: `COMPOSE_PROFILES=caddy ./scripts/deploy.sh`).
+
 Stack: **Caddy** (automatic Let's Encrypt HTTPS) → **API** (Node) → **PostgreSQL**. Only ports 22/80/443 are open; the database is never reachable from the internet.
 
 | Host | Serves |
