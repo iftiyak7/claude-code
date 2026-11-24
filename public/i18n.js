@@ -380,6 +380,7 @@ Object.assign(window.I18N_EN, {
   "সার্ভার আপডেট (install.sh) চালালে নিজে থেকে তৈরি হবে।": "It is built automatically when you run the server update (install.sh).",
   'অ্যাপ থেকে প্যাকেজ কেনা যায় না': 'Packages cannot be bought in the app', 'আপনার তালিকার অবস্থা "আমার অ্যাকাউন্ট"-এ দেখতে পাবেন।': 'You can see your listing\'s status in "My account".',
   'তথ্য বা বিজ্ঞাপন যোগ করুন': 'Add information or an ad', 'ফ্রি তথ্য, বাসা ভাড়া, মেস, চাকরি ও টিউশন': 'Free information, house rent, mess, jobs and tuition',
+  'সংযোগ পাওয়া যাচ্ছে না — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে': 'Cannot connect — showing the information saved earlier',
   'যশোর শহর': 'Jashore town', 'শহরের কেন্দ্র': 'Town centre', 'উত্তর দিক': 'North side', 'পূর্ব দিক': 'East side', 'দক্ষিণ দিক': 'South side',
   'পশ্চিম দিক': 'West side', 'অন্যান্য এলাকা': 'Other areas',
   'উপজেলা': 'Upazilas',

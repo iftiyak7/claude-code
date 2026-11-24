@@ -24,17 +24,41 @@ export async function hardRefresh() {
   finally { refreshing = false; ptr.classList.remove('spin'); setPtr(0); }
 }
 let y0 = null, dy = 0;
-// Without internet the app shows the data it saved last time; a small bar says so, and it refreshes by itself when back online.
+// Without internet (or when the site cannot be reached) the app shows the data it saved last time. A small note says so for
+// a few seconds, and the app keeps trying in the background (sooner when the phone comes back online or the app is reopened);
+// as soon as fresh data arrives the page updates by itself.
+let barTimer = 0, retryTimer = 0, retryWait = 5000;
 function offlineBar(on) {
   let bar = document.querySelector('.offbar');
+  clearTimeout(barTimer);
   if (!on) return bar?.remove();
-  if (bar) return;
-  bar = document.createElement('div');
-  bar.className = 'offbar';
-  bar.setAttribute('role', 'status');
-  bar.textContent = T('ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে');
-  document.body.appendChild(bar);
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'offbar';
+    bar.setAttribute('role', 'status');
+    document.body.appendChild(bar);
+  }
+  bar.textContent = T(navigator.onLine === false ? 'ইন্টারনেট নেই — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে' : 'সংযোগ পাওয়া যাচ্ছে না — আগে সংরক্ষিত তথ্য দেখানো হচ্ছে');
+  barTimer = setTimeout(() => bar.remove(), 5000);
 }
+function retryLater(now) {
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(async () => {
+    if (document.hidden) return;                          // tried again when the app is opened
+    try {
+      const changed = await refresh();
+      retryWait = 5000;
+      offlineBar(false);
+      if (changed) render();
+    } catch {
+      retryWait = Math.min(retryWait * 2, 60000);
+      retryLater();
+    }
+  }, now ? 300 : retryWait);
+}
+let failing = false;
+function couldNotLoad() { failing = true; offlineBar(true); retryLater(); }
+function loaded() { failing = false; clearTimeout(retryTimer); retryWait = 5000; }
 /* ---------------- boot ---------------- */
 function setData(d) { S.D = d; S.CAT = Object.fromEntries(d.categories.map(c => [c.id, c])); buildKeys(); }
 export async function refresh() {
@@ -63,15 +87,17 @@ export function init() {
       S.ME = me;
       if (changed || me) render();
       welcome();
+      loaded();
       if (navigator.onLine === false) offlineBar(true);     // the app answered from its own copy
       else setTimeout(maybePopup, 900);
     } catch {
-      if (S.D) { offlineBar(true); welcome(); return; }
+      if (S.D) { couldNotLoad(); welcome(); return; }
       app.innerHTML = empty(T('সংযোগ নেই'), T('ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'), `<button class="btn sm" data-reload>${T('আবার চেষ্টা')}</button>`, 'globe');
     }
   })();
   window.addEventListener('offline', () => offlineBar(true));
-  window.addEventListener('online', () => { offlineBar(false); refresh().then(changed => changed && render()).catch(() => offlineBar(true)); });
+  window.addEventListener('online', () => { offlineBar(false); refresh().then(changed => { loaded(); if (changed) render(); }).catch(couldNotLoad); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && failing) retryLater(true); });
   if (APP_UA) {     // the Android app keeps its own offline copy; an older browser cache would only get in its way
     navigator.serviceWorker?.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     return;
