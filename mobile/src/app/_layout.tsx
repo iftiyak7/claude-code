@@ -1,3 +1,4 @@
+import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,6 +12,7 @@ import { reschedule, startScheduler } from '@/notifications/scheduler';
 import { LockGate } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { startAutoSync, syncNow } from '@/sync/engine';
+import { FONT_ASSETS } from '@/ui/fonts';
 import { useTheme } from '@/ui/theme';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -22,6 +24,8 @@ useData.getState().hydrate();
 export default function RootLayout() {
   const t = useTheme();
   const ready = useData((s) => s.ready);
+  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+  const fontsReady = fontsLoaded || !!fontError; // fall back to system fonts rather than block
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(t.bg).catch(() => undefined);
@@ -29,7 +33,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!ready) return;
-    void SplashScreen.hideAsync().catch(() => undefined);
     const stopScheduler = startScheduler();
     const stopSync = startAutoSync();
     const app = AppState.addEventListener('change', (s) => {
@@ -52,6 +55,12 @@ export default function RootLayout() {
       notifSub?.remove();
     };
   }, [ready]);
+
+  useEffect(() => {
+    if (ready && fontsReady) void SplashScreen.hideAsync().catch(() => undefined);
+  }, [ready, fontsReady]);
+
+  if (!fontsReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: t.bg }}>

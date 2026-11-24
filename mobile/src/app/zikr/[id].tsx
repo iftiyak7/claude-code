@@ -1,25 +1,18 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-  ZoomIn,
-} from 'react-native-reanimated';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { today } from '@/domain/dates';
 import { useLogCount } from '@/features/hooks';
 import { useNum, useT } from '@/i18n';
 import { useData } from '@/store/data';
-import { IconButton, Ionicons, IslamicPattern, ProgressRing } from '@/ui/components';
+import { Blob, IconButton, Ionicons, Khatam, ProgressRing, cardShadow } from '@/ui/components';
 import { haptic } from '@/ui/haptics';
+import { Text } from '@/ui/Text';
 import { font, radius, useTheme } from '@/ui/theme';
+
+const RING = 288;
 
 export default function ZikrCounter() {
   const { id, date: dateParam } = useLocalSearchParams<{ id: string; date?: string }>();
@@ -34,10 +27,7 @@ export default function ZikrCounter() {
 
   const pulse = useSharedValue(1);
   const ripple = useSharedValue(1); // 1 = finished (invisible)
-  const rippleStyle = useAnimatedStyle(() => ({
-    opacity: 1 - ripple.value,
-    transform: [{ scale: 0.6 + ripple.value * 0.9 }],
-  }));
+  const rippleStyle = useAnimatedStyle(() => ({ opacity: 0.5 * (1 - ripple.value), transform: [{ scale: 0.85 + ripple.value * 0.35 }] }));
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   const target = amal?.target ?? 33;
@@ -46,9 +36,9 @@ export default function ZikrCounter() {
   const tap = useCallback(() => {
     if (!amal) return;
     const c = useData.getState().bump('amal', amal.id, 1, date);
-    pulse.set(withSequence(withTiming(0.94, { duration: 60 }), withSpring(1, { damping: 10, stiffness: 300 })));
+    pulse.set(withSequence(withTiming(0.95, { duration: 60 }), withSpring(1, { damping: 10, stiffness: 300 })));
     ripple.set(0);
-    ripple.set(withTiming(1, { duration: 520 }));
+    ripple.set(withTiming(1, { duration: 560 }));
     if (c === amal.target) {
       haptic.success();
       setCelebrate(true);
@@ -66,7 +56,6 @@ export default function ZikrCounter() {
   }
 
   const done = count >= amal.target;
-  const progress = count / amal.target;
   const inRound = count === 0 ? 0 : count % round === 0 ? round : count % round;
 
   const reset = () => {
@@ -81,68 +70,80 @@ export default function ZikrCounter() {
     ]);
   };
 
-  return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={[t.heroA, t.heroB]} style={StyleSheet.absoluteFill} />
-      <IslamicPattern opacity={0.06} />
+  const barBg = t.dark ? '#242229' : '#16151A';
 
-      <View style={[styles.top, { paddingTop: insets.top + 10 }]}>
-        <IconButton icon="chevron-down" onPress={() => router.back()} bg="rgba(255,255,255,0.14)" color="#fff" />
-        <View style={{ flex: 1 }} />
-        <IconButton icon="create-outline" onPress={() => router.push(`/amal/edit?id=${amal.id}`)} bg="rgba(255,255,255,0.14)" color="#fff" />
+  return (
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+      <Blob size={300} />
+      <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
+        <IconButton icon="chevron-down" onPress={() => router.back()} />
+        <View style={[styles.pill, { backgroundColor: t.surface }]}>
+          <Khatam size={12} color={t.primary} />
+          <Text style={[font.tiny, { color: t.text }]}>{tr.zikr}</Text>
+        </View>
+        <IconButton icon="create-outline" onPress={() => router.push(`/amal/edit?id=${amal.id}`)} />
       </View>
 
       <Animated.View entering={FadeInDown.duration(450)} style={styles.texts}>
-        {amal.arabic ? <Text style={[font.arabic, styles.arabic]}>{amal.arabic}</Text> : null}
-        <Text style={[font.h2, { color: '#fff', textAlign: 'center' }]}>{amal.title}</Text>
-        {amal.meaning ? <Text style={[font.small, styles.meaning]}>{amal.meaning}</Text> : null}
+        {amal.arabic ? <Text style={[font.arabic, styles.arabic, { color: t.text }]}>{amal.arabic}</Text> : null}
+        <Text style={[font.h2, { color: t.text, textAlign: 'center' }]}>{amal.title}</Text>
+        {amal.meaning ? <Text style={[font.small, { color: t.muted, textAlign: 'center' }]}>{amal.meaning}</Text> : null}
       </Animated.View>
 
-      {/* the whole lower half is a tap target */}
+      {/* the whole middle area is the tap target */}
       <Pressable onPress={tap} style={styles.tapArea} accessibilityRole="button" accessibilityLabel={tr.tapToCount}>
-        <Animated.View style={[styles.ripple, rippleStyle]} pointerEvents="none" />
+        <Animated.View style={[styles.ripple, { borderColor: t.primary }, rippleStyle]} pointerEvents="none" />
         <Animated.View style={pulseStyle}>
-          <ProgressRing size={260} stroke={14} progress={progress} color={done ? '#F3D37A' : '#7BE0B8'} track="rgba(255,255,255,0.12)">
-            <View style={styles.inner}>
-              <Text style={styles.count}>{n(count)}</Text>
-              <Text style={[font.small, { color: 'rgba(255,255,255,0.75)' }]}>
-                / {n(amal.target)} {amal.unit ?? ''}
-              </Text>
+          <ProgressRing size={RING} stroke={16} progress={count / amal.target} color={done ? t.success : t.primary} track={t.dark ? t.surface2 : 'rgba(255,255,255,0.8)'}>
+            <View style={[styles.disc, cardShadow(t), { backgroundColor: t.surface }]}>
+              <Text style={[font.small, { color: t.muted }]}>{tr.todayCount}</Text>
+              <Text style={[styles.count, { color: t.text }]}>{n(count)}</Text>
+              <View style={[styles.targetPill, { backgroundColor: done ? t.successSoft : t.primarySoft }]}>
+                <Text style={[font.tiny, { color: done ? t.success : t.primaryDeep, fontSize: 12 }]}>
+                  {tr.target}: {n(amal.target)} {amal.unit ?? ''}
+                </Text>
+              </View>
             </View>
           </ProgressRing>
         </Animated.View>
-        <Text style={[font.small, styles.hint]}>
+        <Text style={[font.small, { color: t.muted, marginTop: 22 }]}>
           {done ? tr.completeToday : `${tr.round} ${n(inRound)}/${n(round)} · ${tr.tapToCount}`}
         </Text>
       </Pressable>
 
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + 20 }]}>
-        <Pressable
-          onPress={() => {
-            useData.getState().bump('amal', amal.id, -1, date);
-            haptic.tap();
-          }}
-          style={styles.action}
-        >
-          <Ionicons name="arrow-undo" size={20} color="#fff" />
-          <Text style={[font.small, { color: '#fff' }]}>{tr.undo}</Text>
-        </Pressable>
-        <View style={styles.remain}>
-          <Text style={[font.tiny, { color: 'rgba(255,255,255,0.7)' }]}>{tr.remaining}</Text>
-          <Text style={[font.h3, { color: '#fff' }]}>{n(Math.max(0, amal.target - count))}</Text>
+      <View style={[styles.bottomWrap, { paddingBottom: Math.max(insets.bottom, 14) + 6 }]}>
+        <View style={[styles.bottom, { backgroundColor: barBg }]}>
+          <Pressable
+            onPress={() => {
+              useData.getState().bump('amal', amal.id, -1, date);
+              haptic.tap();
+            }}
+            style={styles.circle}
+            accessibilityLabel={tr.undo}
+          >
+            <Ionicons name="arrow-undo" size={20} color="#16151A" />
+          </Pressable>
+          <View style={[styles.remain, { backgroundColor: t.primary }]}>
+            <Text style={[font.small, { color: '#fff', fontWeight: '600' }]}>
+              {tr.remaining} {n(Math.max(0, amal.target - count))}
+            </Text>
+          </View>
+          <Pressable onPress={reset} style={styles.circle} accessibilityLabel={tr.reset}>
+            <Ionicons name="refresh" size={20} color="#16151A" />
+          </Pressable>
         </View>
-        <Pressable onPress={reset} style={styles.action}>
-          <Ionicons name="refresh" size={20} color="#fff" />
-          <Text style={[font.small, { color: '#fff' }]}>{tr.reset}</Text>
-        </Pressable>
       </View>
 
       {celebrate && (
-        <Animated.View entering={FadeIn} style={[StyleSheet.absoluteFill, styles.center]} pointerEvents="none">
-          <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.badge}>
-            <Ionicons name="sparkles" size={42} color="#0A4A37" />
-            <Text style={[font.h3, { color: '#0A4A37', marginTop: 8, textAlign: 'center' }]}>{tr.completeToday}</Text>
-            <Text style={[font.body, { color: '#0A4A37', marginTop: 4 }]}>+{n(amal.points)} {tr.points}</Text>
+        <Animated.View entering={FadeIn} style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: 'rgba(22,21,26,0.25)' }]} pointerEvents="none">
+          <Animated.View entering={ZoomIn.springify().damping(12)} style={[styles.badge, { backgroundColor: t.surface }]}>
+            <View style={[styles.badgeIcon, { backgroundColor: t.primary }]}>
+              <Ionicons name="sparkles" size={30} color="#fff" />
+            </View>
+            <Text style={[font.h3, { color: t.text, marginTop: 14, textAlign: 'center' }]}>{tr.completeToday}</Text>
+            <Text style={[font.body, { color: t.primary, marginTop: 6, fontWeight: '700' }]}>
+              +{n(amal.points)} {tr.points}
+            </Text>
           </Animated.View>
         </Animated.View>
       )}
@@ -152,17 +153,19 @@ export default function ZikrCounter() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  top: { flexDirection: 'row', paddingHorizontal: 16 },
-  texts: { paddingHorizontal: 28, marginTop: 18, alignItems: 'center', gap: 8 },
-  arabic: { color: '#F3D37A', textAlign: 'center', fontSize: 34, lineHeight: 56 },
-  meaning: { color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill },
+  texts: { paddingHorizontal: 28, marginTop: 20, alignItems: 'center', gap: 6 },
+  arabic: { textAlign: 'center', fontSize: 36, lineHeight: 62 },
   tapArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  ripple: { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 2, borderColor: 'rgba(243,211,122,0.6)' },
-  inner: { alignItems: 'center' },
-  count: { color: '#fff', fontSize: 72, fontWeight: '800', fontVariant: ['tabular-nums'], letterSpacing: -2 },
-  hint: { color: 'rgba(255,255,255,0.8)', marginTop: 22 },
-  bottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28 },
-  action: { alignItems: 'center', gap: 4, padding: 10, minWidth: 64 },
-  remain: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 22, paddingVertical: 8, borderRadius: radius.pill },
-  badge: { backgroundColor: '#F3D37A', borderRadius: radius.xl, padding: 28, alignItems: 'center', maxWidth: 280 },
+  ripple: { position: 'absolute', width: RING + 20, height: RING + 20, borderRadius: (RING + 20) / 2, borderWidth: 2 },
+  disc: { width: RING - 56, height: RING - 56, borderRadius: (RING - 56) / 2, alignItems: 'center', justifyContent: 'center' },
+  count: { fontSize: 76, lineHeight: 88, fontWeight: '700', letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  targetPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.pill },
+  bottomWrap: { alignItems: 'center' },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 7, borderRadius: 40 },
+  circle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  remain: { height: 52, paddingHorizontal: 26, borderRadius: 26, alignItems: 'center', justifyContent: 'center', minWidth: 130 },
+  badge: { borderRadius: radius.xl, padding: 28, alignItems: 'center', maxWidth: 290 },
+  badgeIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
 });

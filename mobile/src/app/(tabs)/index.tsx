@@ -1,8 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentPrayer, nextPrayer } from '@/domain/prayer';
 import { amalDueOn, dayStats, medicineDueOn } from '@/domain/progress';
@@ -14,8 +13,25 @@ import { useNum, useT } from '@/i18n';
 import { notificationsGranted, requestNotificationPermission, reschedule } from '@/notifications/scheduler';
 import { useData } from '@/store/data';
 import { useLive, useSettings } from '@/store/hooks';
-import { Button, Card, Ionicons, IslamicPattern, PressableScale, ProgressRing, Row, Section, cardShadow } from '@/ui/components';
+import {
+  Avatar,
+  Blob,
+  Button,
+  Card,
+  IconButton,
+  Ionicons,
+  PressableScale,
+  ProgressBar,
+  ProgressRing,
+  Row,
+  Section,
+  SeeAll,
+  cardShadow,
+  type IconName,
+} from '@/ui/components';
 import { haptic } from '@/ui/haptics';
+import { MosqueScene } from '@/ui/Illustration';
+import { Text } from '@/ui/Text';
 import { font, radius, space, useTheme } from '@/ui/theme';
 
 export default function Today() {
@@ -56,77 +72,68 @@ export default function Today() {
   const medDoses = medsDue.reduce((s, m) => s + m.times.length, 0);
   const medTaken = medsDue.reduce((s, m) => s + m.times.filter((tm) => (logs[`${date}|medicine|${m.id}|${tm}`]?.count ?? 0) > 0).length, 0);
   const water = logs[`${date}|water|water`]?.count ?? 0;
+  const pct = stats.due ? stats.done / stats.due : 0;
 
   const hour = now.getHours();
-  const greet = hour < 5 ? tr.greet.night : hour < 12 ? tr.greet.morning : hour < 17 ? tr.greet.noon : hour < 20 ? tr.greet.evening : tr.greet.night;
+  const night = hour >= 18 || hour < 5;
   const hijri = hijriDate(now, lang);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.duration(500)}>
-          <LinearGradient colors={[t.heroA, t.heroB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
-            <IslamicPattern opacity={0.07} />
-            <Row style={{ justifyContent: 'space-between' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[font.small, styles.heroMuted]}>{tr.greet.salam}</Text>
-                <Text style={[font.h2, { color: '#fff', marginTop: 2 }]} numberOfLines={1}>
-                  {settings.name ? settings.name : greet}
-                </Text>
-              </View>
-              <PressableScale onPress={() => router.push('/settings')} style={styles.heroBtn} accessibilityLabel={tr.settings}>
-                <Ionicons name="settings-outline" size={20} color="#fff" />
+      <Blob size={280} />
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space(4), paddingBottom: insets.bottom + 130 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: space(5) }}>
+          {/* ── Greeting ─────────────────────────────────────── */}
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <Row gap={12}>
+              <PressableScale onPress={() => router.push('/profile')}>
+                <Avatar name={settings.name} size={52} />
               </PressableScale>
-            </Row>
-            <Text style={[font.small, styles.heroMuted, { marginTop: 6 }]}>
-              {gregorianDate(now, lang)}
-              {hijri ? `  ·  ${hijri}` : ''}
-            </Text>
-
-            <View style={styles.nextBox}>
               <View style={{ flex: 1 }}>
-                <Text style={[font.tiny, { color: '#F3D37A', textTransform: 'uppercase' }]}>{tr.nextPrayer}</Text>
-                <Text style={[font.h1, { color: '#fff', marginTop: 2 }]}>{tr.prayer[next.name]}</Text>
-                <Text style={[font.small, styles.heroMuted]}>
-                  {n(formatClock(next.time))} · {tr.in} {n(formatCountdown(next.time.getTime() - now.getTime(), lang))}
+                <Text style={[font.small, { color: t.muted }]}>{tr.greet.salam},</Text>
+                <Text style={[font.h3, { color: t.text, fontSize: 19 }]} numberOfLines={1}>
+                  {settings.name || tr.appName}
                 </Text>
               </View>
-              <View style={styles.moon}>
-                <Ionicons name={hour >= 18 || hour < 5 ? 'moon' : 'sunny'} size={34} color="#F3D37A" />
-              </View>
-            </View>
-            <PrayerStrip date={date} times={times} salah={salah} current={cur} />
-          </LinearGradient>
-        </Animated.View>
+              <IconButton icon="options-outline" onPress={() => router.push('/settings')} label={tr.settings} />
+            </Row>
+          </Animated.View>
 
-        <View style={{ paddingHorizontal: space(4) }}>
-          {/* ── Progress ───────────────────────────────────────── */}
-          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)}>
-            <Card style={[styles.progress, { marginTop: -28 }]}>
-              <ProgressRing size={96} stroke={10} progress={stats.due ? stats.done / stats.due : 0}>
-                <Text style={[font.h2, { color: t.text }]}>{n(stats.due ? Math.round((stats.done / stats.due) * 100) : 0)}%</Text>
-              </ProgressRing>
-              <View style={{ flex: 1, gap: 10 }}>
-                <Text style={[font.h3, { color: t.text }]}>{tr.todayProgress}</Text>
-                <Row gap={16}>
-                  <Stat icon="checkmark-done" color={t.primary} value={`${n(stats.done)}/${n(stats.due)}`} label={tr.amal} />
-                  <Stat icon="star" color={t.gold} value={n(stats.points)} label={tr.points} />
-                </Row>
-                <Row gap={16}>
-                  <Stat icon="moon" color={t.primary} value={`${n(stats.salahDone)}/${n(stats.salahDue)}`} label={tr.salah} />
-                </Row>
-              </View>
+          {/* ── Next prayer hero ─────────────────────────────── */}
+          <Animated.View entering={FadeInDown.delay(60).duration(450).springify().damping(18)}>
+            <Card style={styles.hero}>
+              <Row style={{ alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, paddingTop: 4 }}>
+                  <Text style={[font.small, { color: t.muted }]}>{tr.nextPrayer}</Text>
+                  <Text style={[font.display, { color: t.text, fontSize: 38, marginTop: 2 }]}>{tr.prayer[next.name]}</Text>
+                  <Text style={[font.body, { color: t.text, marginTop: 2 }]}>{n(formatClock(next.time, lang))}</Text>
+                  <View style={[styles.countdown, { backgroundColor: t.primarySoft }]}>
+                    <Ionicons name="time-outline" size={14} color={t.primaryDeep} />
+                    <Text style={[font.tiny, { color: t.primaryDeep, fontSize: 12 }]}>
+                      {tr.in} {n(formatCountdown(next.time.getTime() - now.getTime(), lang))}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ marginRight: -10, marginTop: -6 }}>
+                  <MosqueScene night={night} width={150} />
+                </View>
+              </Row>
+              <Text style={[font.tiny, { color: t.muted, marginTop: 12, marginBottom: 14, fontWeight: '500' }]}>
+                {gregorianDate(now, lang)}
+                {hijri ? `  ·  ${hijri}` : ''}
+              </Text>
+              <PrayerStrip date={date} times={times} salah={salah} current={cur} />
             </Card>
           </Animated.View>
 
           {!notifOk && (
             <Animated.View entering={FadeInDown}>
-              <Card style={[styles.notif, { backgroundColor: t.goldSoft, borderColor: t.gold + '55' }]}>
-                <Ionicons name="notifications-off-outline" size={22} color={t.gold} />
-                <Text style={[font.small, { color: t.text, flex: 1 }]}>{tr.notifOff}</Text>
+              <Card style={[styles.notif, { backgroundColor: t.ink }]}>
+                <Ionicons name="notifications-outline" size={22} color={t.onInk} />
+                <Text style={[font.small, { color: t.onInk, flex: 1 }]}>{tr.notifOff}</Text>
                 <Button
                   small
+                  kind="accent"
                   label={tr.enable}
                   onPress={async () => {
                     const ok = await requestNotificationPermission();
@@ -138,39 +145,55 @@ export default function Today() {
             </Animated.View>
           )}
 
-          {/* ── Quick health ───────────────────────────────────── */}
-          <Section delay={120}>
-            <Row gap={12}>
-              <MiniCard
+          {/* ── Progress ───────────────────────────────────────── */}
+          <Section title={tr.todayProgress} delay={100}>
+            <Card style={styles.progress}>
+              <ProgressRing size={104} stroke={12} progress={pct}>
+                <Text style={[font.h2, { color: t.text }]}>{n(Math.round(pct * 100))}%</Text>
+              </ProgressRing>
+              <View style={{ flex: 1, gap: 14 }}>
+                <Stat label={tr.amal} value={`${n(stats.done)}/${n(stats.due)}`} icon="checkmark-done" color={t.primary} bg={t.primarySoft} />
+                <Stat label={tr.salah} value={`${n(stats.salahDone)}/${n(stats.salahDue)}`} icon="moon" color={t.lavenderInk} bg={t.lavenderSoft} />
+                <Stat label={tr.points} value={n(stats.points)} icon="star" color={t.gold} bg={t.goldSoft} />
+              </View>
+            </Card>
+          </Section>
+
+          {/* ── Health ─────────────────────────────────────────── */}
+          <Section delay={140}>
+            <Row gap={12} style={{ alignItems: 'stretch' }}>
+              <HealthCard
                 icon="water"
                 color={t.water}
                 bg={t.waterSoft}
                 title={tr.water}
-                value={`${n(water)} / ${n(settings.waterGoalMl)}`}
-                sub={tr.ml}
+                value={n(water)}
+                unit={`/ ${n(settings.waterGoalMl)} ${tr.ml}`}
                 progress={water / settings.waterGoalMl}
-                onPress={() => {
+                actionIcon="add"
+                onAction={() => {
                   useData.getState().bump('water', 'water', settings.glassMl, date);
                   haptic.light();
                 }}
-                actionIcon="add"
+                onPress={() => router.push('/health')}
               />
-              <MiniCard
-                icon="medkit"
+              <HealthCard
+                icon="medical"
                 color={t.medicine}
                 bg={t.medicineSoft}
                 title={tr.medicine}
-                value={`${n(medTaken)} / ${n(medDoses)}`}
-                sub={tr.taken}
+                value={n(medTaken)}
+                unit={`/ ${n(medDoses)} ${tr.taken}`}
                 progress={medDoses ? medTaken / medDoses : 0}
+                actionIcon="arrow-forward"
+                onAction={() => router.push('/health')}
                 onPress={() => router.push('/health')}
-                actionIcon="chevron-forward"
               />
             </Row>
           </Section>
 
           {/* ── Amal ───────────────────────────────────────────── */}
-          <Section title={tr.otherAmal} delay={160} action={<Link label={tr.seeAll} onPress={() => router.push('/amal')} />}>
+          <Section title={tr.otherAmal} delay={180} action={<SeeAll label={tr.seeAll} onPress={() => router.push('/amal')} />}>
             {others.map((a, i) => (
               <AmalCard key={a.id} amal={a} date={date} index={i} />
             ))}
@@ -178,16 +201,17 @@ export default function Today() {
 
           {/* ── Tasks ──────────────────────────────────────────── */}
           {todayTasks.length > 0 && (
-            <Section title={tr.todayTasks} delay={200} action={<Link label={tr.seeAll} onPress={() => router.push('/plan')} />}>
+            <Section title={tr.todayTasks} delay={220} action={<SeeAll label={tr.seeAll} onPress={() => router.push('/plan')} />}>
               {todayTasks.map((task) => (
                 <Card key={task.id} style={styles.task} onPress={() => useData.getState().toggleTask(task.id)}>
-                  <View style={[styles.taskBox, { borderColor: task.date! < date ? t.danger : t.primary }]} />
+                  <View style={[styles.taskBox, { borderColor: task.date! < date ? t.danger : t.text }]} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[font.body, { color: t.text }]} numberOfLines={1}>
+                    <Text style={[font.body, { color: t.text, fontWeight: '600' }]} numberOfLines={1}>
                       {task.title}
                     </Text>
                     {task.time ? <Text style={[font.small, { color: t.muted }]}>{n(task.time)}</Text> : null}
                   </View>
+                  <Ionicons name="chevron-forward" size={18} color={t.faint} />
                 </Card>
               ))}
             </Section>
@@ -198,68 +222,63 @@ export default function Today() {
   );
 }
 
-function Stat({ icon, color, value, label }: { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; value: string; label: string }) {
+function Stat({ icon, color, bg, value, label }: { icon: IconName; color: string; bg: string; value: string; label: string }) {
   const t = useTheme();
   return (
-    <Row gap={6}>
-      <Ionicons name={icon} size={16} color={color} />
-      <Text style={[font.body, { color: t.text, fontWeight: '800' }]}>{value}</Text>
-      <Text style={[font.small, { color: t.muted }]}>{label}</Text>
+    <Row gap={10}>
+      <View style={[styles.statIcon, { backgroundColor: bg }]}>
+        <Ionicons name={icon} size={14} color={color} />
+      </View>
+      <Text style={[font.small, { color: t.muted, flex: 1 }]}>{label}</Text>
+      <Text style={[font.body, { color: t.text, fontWeight: '700' }]}>{value}</Text>
     </Row>
   );
 }
 
-function MiniCard(p: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+function HealthCard(p: {
+  icon: IconName;
   color: string;
   bg: string;
   title: string;
   value: string;
-  sub: string;
+  unit: string;
   progress: number;
+  actionIcon: IconName;
+  onAction: () => void;
   onPress: () => void;
-  actionIcon: React.ComponentProps<typeof Ionicons>['name'];
 }) {
   const t = useTheme();
   return (
-    <PressableScale onPress={p.onPress} style={[styles.mini, cardShadow(t), { backgroundColor: t.surface, borderColor: t.border }]}>
+    <PressableScale onPress={p.onPress} style={[styles.health, cardShadow(t), { backgroundColor: t.surface }]}>
       <Row style={{ justifyContent: 'space-between' }}>
-        <View style={[styles.miniIcon, { backgroundColor: p.bg }]}>
-          <Ionicons name={p.icon} size={18} color={p.color} />
+        <View style={[styles.healthIcon, { backgroundColor: p.bg }]}>
+          <Ionicons name={p.icon} size={20} color={p.color} />
         </View>
-        <View style={[styles.miniAct, { backgroundColor: p.bg }]}>
-          <Ionicons name={p.actionIcon} size={16} color={p.color} />
-        </View>
+        <PressableScale onPress={p.onAction} scaleTo={0.85} hitSlop={8} style={[styles.healthAct, { backgroundColor: t.ink }]}>
+          <Ionicons name={p.actionIcon} size={16} color={t.onInk} />
+        </PressableScale>
       </Row>
-      <Text style={[font.small, { color: t.muted, marginTop: 10 }]}>{p.title}</Text>
-      <Text style={[font.h3, { color: t.text }]}>{p.value}</Text>
-      <View style={{ height: 6, borderRadius: 3, backgroundColor: p.bg, marginTop: 8, overflow: 'hidden' }}>
-        <View style={{ width: `${Math.min(1, p.progress) * 100}%`, height: 6, backgroundColor: p.color, borderRadius: 3 }} />
+      <Text style={[font.small, { color: t.muted, marginTop: 14 }]}>{p.title}</Text>
+      <Text style={[font.h2, { color: t.text, marginTop: 2 }]}>{p.value}</Text>
+      <Text style={[font.tiny, { color: t.muted, fontWeight: '500' }]} numberOfLines={1}>
+        {p.unit}
+      </Text>
+      <View style={{ marginTop: 12 }}>
+        <ProgressBar progress={p.progress} color={p.color} track={p.bg} height={6} />
       </View>
     </PressableScale>
   );
 }
 
-function Link({ label, onPress }: { label: string; onPress: () => void }) {
-  const t = useTheme();
-  return (
-    <Text onPress={onPress} style={[font.small, { color: t.primary, fontWeight: '700' }]}>
-      {label}
-    </Text>
-  );
-}
-
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: space(5), paddingBottom: 52, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
-  heroMuted: { color: 'rgba(255,255,255,0.75)' },
-  heroBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
-  nextBox: { flexDirection: 'row', alignItems: 'center', marginTop: 18, padding: 16, borderRadius: radius.lg, backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  moon: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(243,211,122,0.14)', alignItems: 'center', justifyContent: 'center' },
-  progress: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  notif: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: space(4) },
-  mini: { flex: 1, borderRadius: radius.lg, padding: 14, borderWidth: StyleSheet.hairlineWidth },
-  miniIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  miniAct: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  task: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, paddingVertical: 12 },
+  hero: { marginTop: space(5), padding: space(5), borderRadius: radius.xl },
+  countdown: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, marginTop: 10 },
+  notif: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: space(4), paddingVertical: 12 },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: 22 },
+  statIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  health: { flex: 1, borderRadius: radius.lg, padding: 16 },
+  healthIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  healthAct: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  task: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10, paddingVertical: 16 },
   taskBox: { width: 22, height: 22, borderRadius: 7, borderWidth: 2 },
 });

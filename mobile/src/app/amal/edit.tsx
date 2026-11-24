@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '@/ui/Text';
 import { AMAL_ICONS, noReminder, PALETTE } from '@/domain/defaults';
 import type { Amal, AmalKind } from '@/domain/types';
 import { ColorPicker, FormCard, FormScreen, NumberInput, RecurrenceEditor, ReminderEditor } from '@/features/forms';
@@ -68,7 +69,7 @@ export default function EditAmal() {
       )}
 
       <Field label={tr.title} value={d.title} onChangeText={(title) => (patch({ title }), setErr(undefined))} error={err} placeholder="সুবহানাল্লাহ" />
-      <Field label={tr.arabic} value={d.arabic ?? ''} onChangeText={(arabic) => patch({ arabic })} style={{ textAlign: 'right', fontSize: 20 }} placeholder="سُبْحَانَ ٱللَّٰهِ" />
+      <Field label={tr.arabic} value={d.arabic ?? ''} onChangeText={(arabic) => patch({ arabic })} style={{ textAlign: 'right', fontSize: 22, fontFamily: 'arabic' }} placeholder="سُبْحَانَ ٱللَّٰهِ" />
       <Field label={tr.meaning} value={d.meaning ?? ''} onChangeText={(meaning) => patch({ meaning })} />
 
       {!isFard && (

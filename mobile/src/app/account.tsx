@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Platform, Text } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { Text } from '@/ui/Text';
 import { FormCard } from '@/features/forms';
 import { useNum, useT } from '@/i18n';
 import { useData } from '@/store/data';

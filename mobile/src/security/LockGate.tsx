@@ -4,7 +4,8 @@
  */
 import * as LocalAuthentication from 'expo-local-authentication';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, StyleSheet, View } from 'react-native';
+import { Text } from '@/ui/Text';
 import { useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { Button, Ionicons } from '@/ui/components';

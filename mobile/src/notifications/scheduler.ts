@@ -33,7 +33,7 @@ export async function setupChannels() {
       importance: Notifications.AndroidImportance.HIGH,
       enableVibrate: true,
       vibrationPattern: VIBRATE_SOFT,
-      lightColor: '#0F6B4F',
+      lightColor: '#F2703F',
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       ...cfg,
     });
@@ -156,7 +156,7 @@ async function rescheduleOnce() {
         vibrate: n.channel === 'alarm' ? VIBRATE_ALARM : VIBRATE_SOFT,
         priority: n.channel === 'alarm' ? Notifications.AndroidNotificationPriority.MAX : Notifications.AndroidNotificationPriority.HIGH,
         interruptionLevel: n.channel === 'alarm' ? 'timeSensitive' : 'active',
-        color: '#0F6B4F',
+        color: '#F2703F',
       },
       trigger: toTrigger(n),
     });

@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { amalDueOn } from '@/domain/progress';
+import { amalDueOn, countFor } from '@/domain/progress';
 import type { AmalKind } from '@/domain/types';
 import { AmalCard } from '@/features/AmalCard';
 import { useToday } from '@/features/hooks';
 import { WeekStrip } from '@/features/WeekStrip';
 import { useT } from '@/i18n';
+import { useData } from '@/store/data';
 import { useLive } from '@/store/hooks';
 import { EmptyState, Fab, Screen, Section, Segmented } from '@/ui/components';
 
@@ -18,6 +19,15 @@ export default function AmalScreen() {
   const [date, setDate] = useState(todayIso);
   const [filter, setFilter] = useState<Filter>('all');
   const amals = useLive('amals');
+  const logs = useData((s) => s.logs);
+  const completion = useMemo(
+    () => (d: string) => {
+      const due = amals.filter((a) => amalDueOn(a, d));
+      if (!due.length) return 0;
+      return due.filter((a) => countFor(logs, d, 'amal', a.id) >= a.target).length / due.length;
+    },
+    [amals, logs],
+  );
 
   const groups = useMemo(() => {
     const due = amals.filter((a) => amalDueOn(a, date)).sort((a, b) => a.order - b.order);
@@ -35,8 +45,8 @@ export default function AmalScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen title={tr.amal} subtitle={tr.privateNote}>
-        <WeekStrip value={date} today={todayIso} onChange={setDate} />
+      <Screen title={tr.amal}>
+        <WeekStrip value={date} today={todayIso} onChange={setDate} complete={completion} />
         <View style={{ marginTop: 16 }}>
           <Segmented<Filter>
             value={filter}

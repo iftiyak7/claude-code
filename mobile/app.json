@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#F6F3EC",
+    "backgroundColor": "#FBF1EB",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tadbeerdaily.app",
@@ -20,7 +20,7 @@
     "android": {
       "package": "com.tadbeerdaily.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0F6B4F",
+        "backgroundColor": "#F2703F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -51,16 +51,16 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
-          "backgroundColor": "#F6F3EC",
+          "backgroundColor": "#FBF1EB",
           "dark": {
-            "backgroundColor": "#0B1512"
+            "backgroundColor": "#111014"
           }
         }
       ],
       [
         "expo-notifications",
         {
-          "color": "#0F6B4F"
+          "color": "#F2703F"
         }
       ],
       [

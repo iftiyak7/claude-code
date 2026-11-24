@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import React, { useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Alert, Platform, View } from 'react-native';
+import { Text } from '@/ui/Text';
 import { DEFAULT_LOCATION } from '@/domain/prayer';
 import type { Settings } from '@/domain/types';
 import { FormCard } from '@/features/forms';
@@ -10,7 +11,7 @@ import { requestNotificationPermission, reschedule } from '@/notifications/sched
 import { authenticate, canUseBiometrics } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { useSettings } from '@/store/hooks';
-import { Button, Chip, Field, ListRow, Screen, Segmented, ToggleRow } from '@/ui/components';
+import { Button, Chip, Field, IconBadge, Row, Screen, Segmented, ToggleRow } from '@/ui/components';
 import { font, useTheme } from '@/ui/theme';
 
 const METHODS: Settings['calcMethod'][] = ['Karachi', 'MuslimWorldLeague', 'UmmAlQura', 'Egyptian', 'Dubai', 'Qatar', 'Singapore', 'Turkey', 'NorthAmerica'];
@@ -60,11 +61,11 @@ export default function SettingsScreen() {
     <Screen title={tr.settings} back>
       <Field label={tr.yourName} value={name} onChangeText={setName} onBlur={() => update({ name: name.trim() })} onSubmitEditing={() => update({ name: name.trim() })} />
 
-      <FormCard label={tr.language}>
+      <FormCard label={tr.language} bare>
         <Segmented value={s.language} onChange={(language) => update({ language })} options={[{ value: 'bn', label: 'বাংলা' }, { value: 'en', label: 'English' }]} />
       </FormCard>
 
-      <FormCard label={tr.theme}>
+      <FormCard label={tr.theme} bare>
         <Segmented
           value={s.theme}
           onChange={(theme) => update({ theme })}
@@ -73,9 +74,10 @@ export default function SettingsScreen() {
       </FormCard>
 
       <FormCard label={tr.location}>
-        <Text style={[font.body, { color: t.text }]}>
-          📍 {loc.label ?? `${n(loc.lat.toFixed(3))}, ${n(loc.lng.toFixed(3))}`}
-        </Text>
+        <Row gap={10}>
+          <IconBadge icon="location" color={t.primary} bg={t.primarySoft} size={36} />
+          <Text style={[font.body, { color: t.text, fontWeight: '600' }]}>{loc.label ?? `${n(loc.lat.toFixed(3))}, ${n(loc.lng.toFixed(3))}`}</Text>
+        </Row>
         {Platform.OS !== 'web' && <Button kind="soft" icon="locate" label={tr.useMyLocation} onPress={useMyLocation} disabled={locBusy} />}
         <Text style={[font.small, { color: t.muted }]}>{tr.calcMethod}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -89,9 +91,10 @@ export default function SettingsScreen() {
 
       <FormCard label={tr.notifications}>
         {Platform.OS !== 'web' && (
-          <ListRow
+          <Button
+            kind="soft"
             icon="notifications-outline"
-            label={tr.enable}
+            label={`${tr.notifications} · ${tr.enable}`}
             onPress={async () => {
               if (await requestNotificationPermission()) void reschedule();
             }}
@@ -101,7 +104,7 @@ export default function SettingsScreen() {
       </FormCard>
 
       {Platform.OS !== 'web' && (
-        <FormCard label="🔒">
+        <FormCard label={tr.security}>
           <ToggleRow icon="finger-print" label={tr.appLock} value={s.appLock} onChange={toggleLock} />
         </FormCard>
       )}

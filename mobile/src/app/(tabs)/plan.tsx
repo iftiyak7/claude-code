@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, View } from 'react-native';
+import { Text } from '@/ui/Text';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { hmFromDate, hmToMinutes, weekday } from '@/domain/dates';
 import { PRAYERS } from '@/domain/prayer';
@@ -246,7 +247,6 @@ function RemindersView() {
                 {r.title}
               </Text>
               <Text style={[font.small, { color: t.muted }]} numberOfLines={1}>
-                {r.alarm ? '⏰ ' : ''}
                 {describe(r)}
               </Text>
             </View>

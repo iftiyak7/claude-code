@@ -30,7 +30,8 @@
 | `notifications/scheduler.ts` | Rebuilds the plan (debounced) on every change and on app foreground, diffs against what the OS has scheduled, and only touches what changed. |
 | `sync/` | API client with transparent token refresh; tokens in the OS keystore (expo-secure-store). |
 | `security/LockGate.tsx` | Optional biometric lock, relocks after 30 s in background. |
-| `ui/`, `features/`, `app/` | Design system, shared widgets, screens. |
+| `ui/` | Design system: tokens (`theme.ts` — warm sand, coral accent, ink, lavender), bundled offline fonts (`fonts.ts` — Anek Bangla, Plus Jakarta Sans, Amiri), a font-aware `Text` that maps weights to real font files, and shared components. |
+| `features/`, `app/` | Shared widgets and screens (expo-router). |
 
 ### Data model
 

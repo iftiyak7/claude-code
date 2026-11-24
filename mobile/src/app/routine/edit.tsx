@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '@/ui/Text';
 import { AMAL_ICONS, PALETTE } from '@/domain/defaults';
 import { hmToMinutes } from '@/domain/dates';
 import type { RoutineBlock } from '@/domain/types';

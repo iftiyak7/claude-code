@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { today } from '@/domain/dates';
 import type { Recurrence, ReminderRule } from '@/domain/types';
@@ -54,12 +55,13 @@ export function FormScreen({
   );
 }
 
-export function FormCard({ label, children }: { label?: string; children: React.ReactNode }) {
+/** Labelled group. `bare` skips the card (for controls that are already pills). */
+export function FormCard({ label, children, bare }: { label?: string; children: React.ReactNode; bare?: boolean }) {
   const t = useTheme();
   return (
-    <View style={{ marginBottom: space(4) }}>
-      {label ? <Text style={[font.small, { color: t.muted, marginBottom: 8, fontWeight: '700' }]}>{label}</Text> : null}
-      <Card style={{ gap: 12 }}>{children}</Card>
+    <View style={{ marginBottom: space(5) }}>
+      {label ? <Text style={[font.small, { color: t.muted, marginBottom: 10, marginLeft: 4, fontWeight: '600' }]}>{label}</Text> : null}
+      {bare ? <View style={{ gap: 12 }}>{children}</View> : <Card style={{ gap: 14, padding: 18 }}>{children}</Card>}
     </View>
   );
 }

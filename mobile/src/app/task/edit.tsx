@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Text } from 'react-native';
+import { Text } from '@/ui/Text';
 import { today } from '@/domain/dates';
 import type { Task } from '@/domain/types';
 import { FormCard, FormScreen } from '@/features/forms';

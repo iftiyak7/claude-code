@@ -50,7 +50,7 @@ export function seedAmals(now = Date.now()): Amal[] {
     prayer: p,
     prayerOffset: 0,
     points: 10,
-    color: '#0F6B4F',
+    color: '#6D5AE6',
     icon: PRAYER_META[p].icon,
     order: i,
   }));
@@ -68,7 +68,7 @@ export function seedAmals(now = Date.now()): Amal[] {
       recurrence: { type: 'daily' },
       reminder: { ...noReminder(), mode: 'interval', intervalMinutes: 180, windowStart: '09:00', windowEnd: '21:00' },
       points: 10,
-      color: '#2E7D9A',
+      color: '#26B07A',
       icon: 'leaf-outline',
       order: 10,
     },
@@ -84,7 +84,7 @@ export function seedAmals(now = Date.now()): Amal[] {
       recurrence: { type: 'daily' },
       reminder: noReminder(),
       points: 10,
-      color: '#8B5CF6',
+      color: '#3E86F5',
       icon: 'sparkles-outline',
       order: 11,
     },
@@ -99,7 +99,7 @@ export function seedAmals(now = Date.now()): Amal[] {
       recurrence: { type: 'daily' },
       reminder: noReminder(),
       points: 5,
-      color: '#C9A227',
+      color: '#E9A93A',
       icon: 'heart-outline',
       order: 12,
     },
@@ -114,7 +114,7 @@ export function seedAmals(now = Date.now()): Amal[] {
       recurrence: { type: 'daily' },
       reminder: { ...noReminder(), mode: 'times', times: ['21:00'] },
       points: 10,
-      color: '#B45309',
+      color: '#F2703F',
       icon: 'book-outline',
       order: 20,
     },
@@ -122,7 +122,7 @@ export function seedAmals(now = Date.now()): Amal[] {
   return [...salah, ...zikr];
 }
 
-export const PALETTE = ['#0F6B4F', '#2E7D9A', '#8B5CF6', '#C9A227', '#B45309', '#C2547A', '#D64545', '#3B82F6', '#14B8A6', '#64748B'];
+export const PALETTE = ['#F2703F', '#6D5AE6', '#26B07A', '#3E86F5', '#E0578A', '#E9A93A', '#14B8A6', '#16151A', '#A855F7', '#64748B'];
 
 export const AMAL_ICONS = [
   'leaf-outline',

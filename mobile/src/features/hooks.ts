@@ -45,11 +45,17 @@ export function formatCountdown(ms: number, lang: 'bn' | 'en'): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function formatClock(d: Date): string {
+/** 12-hour clock; Bangla uses day-part words (ভোর/সকাল/দুপুর/বিকাল/সন্ধ্যা/রাত). */
+export function formatClock(d: Date, lang: 'bn' | 'en' = 'en', withPeriod = true): string {
   const h = d.getHours();
   const m = d.getMinutes();
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${m < 10 ? '0' : ''}${m} ${h < 12 ? 'AM' : 'PM'}`;
+  const hm = `${h % 12 === 0 ? 12 : h % 12}:${m < 10 ? '0' : ''}${m}`;
+  if (!withPeriod) return hm;
+  if (lang === 'bn') {
+    const part = h < 4 ? 'রাত' : h < 6 ? 'ভোর' : h < 12 ? 'সকাল' : h < 15 ? 'দুপুর' : h < 18 ? 'বিকাল' : h < 20 ? 'সন্ধ্যা' : 'রাত';
+    return `${part} ${hm}`;
+  }
+  return `${hm} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
 export function hijriDate(d: Date, lang: 'bn' | 'en'): string | null {

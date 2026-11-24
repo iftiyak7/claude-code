@@ -1,6 +1,7 @@
 import RNDateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/ui/Text';
 import { at, hmFromDate, isValidHM, isValidISODate, parseISODate, toISODate, today } from '@/domain/dates';
 import type { HM, ISODate } from '@/domain/types';
 import { useNum, useT } from '@/i18n';

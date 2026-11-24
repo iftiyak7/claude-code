@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/ui/Text';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { medicineDueOn } from '@/domain/progress';
@@ -22,6 +23,8 @@ export default function Health() {
   const [tab, setTab] = useState<Tab>('water');
   const todayIso = useToday();
   const [date, setDate] = useState(todayIso);
+  const logs = useData((s) => s.logs);
+  const waterGoal = useData((s) => s.settings.waterGoalMl);
   return (
     <View style={{ flex: 1 }}>
       <Screen title={tr.tabs.health}>
@@ -29,11 +32,11 @@ export default function Health() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'water', label: `💧 ${tr.water}` },
-            { value: 'medicine', label: `💊 ${tr.medicine}` },
+            { value: 'water', label: tr.water },
+            { value: 'medicine', label: tr.medicine },
           ]}
         />
-        <WeekStrip value={date} today={todayIso} onChange={setDate} />
+        <WeekStrip value={date} today={todayIso} onChange={setDate} complete={(d) => (logs[`${d}|water|water`]?.count ?? 0) / waterGoal} />
         {tab === 'water' ? <WaterView date={date} /> : <MedicineView date={date} />}
       </Screen>
       {tab === 'medicine' && <Fab onPress={() => router.push('/medicine/edit')} />}
@@ -96,7 +99,7 @@ function WaterView({ date }: { date: string }) {
                 / {n(s.waterGoalMl)} {tr.ml}
               </Text>
               <Text style={[font.body, { color: t.text, marginTop: 8 }]}>
-                🥛 {n(glasses)} {tr.glass}
+                {n(glasses)} {tr.glass}
               </Text>
               <Text style={[font.small, { color: progress >= 1 ? t.success : t.muted }]}>{n(Math.min(100, Math.round(progress * 100)))}%</Text>
             </View>
