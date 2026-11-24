@@ -9,9 +9,9 @@ git clone -b claude/optimistic-galileo-y5dzn7 https://github.com/iftiyak7/claude
 bash /root/tadbeer-src/deploy/scripts/install.sh
 ```
 
-It installs Docker, creates the `tadbeer` user, generates secrets, starts PostgreSQL + the API (bound to `127.0.0.1:8080` only) and schedules daily backups. CloudPanel's nginx stays in charge of ports 80/443:
+It installs Docker, creates the `tadbeer` user, generates secrets, starts PostgreSQL + the API (bound to `127.0.0.1:3807` only) and schedules daily backups. CloudPanel's nginx stays in charge of ports 80/443:
 
-1. CloudPanel → **Sites → Add Site → Create a Reverse Proxy** — domain `api.tadbeerdaily.com`, reverse proxy URL `http://127.0.0.1:8080`.
+1. CloudPanel → **Sites → Add Site → Create a Reverse Proxy** — domain `api.tadbeerdaily.com`, reverse proxy URL `http://127.0.0.1:3807`.
 2. That site → **SSL/TLS → Actions → New Let's Encrypt Certificate**.
 3. Optional: **Add Site → Create a Static HTML Site** for `www.tadbeerdaily.com` and upload the files in `web/`.
 

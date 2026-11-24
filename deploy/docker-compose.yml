@@ -35,7 +35,7 @@ services:
       LOG_LEVEL: info
     # Only reachable from the server itself; CloudPanel (nginx) or Caddy proxies to it.
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${API_PORT:-3807}:8080"
     networks: [internal, edge]
     read_only: true
     tmpfs: [/tmp]

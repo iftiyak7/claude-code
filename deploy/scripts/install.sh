@@ -59,10 +59,10 @@ su - "$USER_NAME" -c "cd $APP_DIR/deploy && ./scripts/deploy.sh"
 cat <<'MSG'
 
 ========================================================
- API is running on this server at http://127.0.0.1:8080
+ API is running on this server at http://127.0.0.1:3807
  Next: in CloudPanel, add a Reverse Proxy site
    Domain:            api.tadbeerdaily.com
-   Reverse Proxy Url: http://127.0.0.1:8080
+   Reverse Proxy Url: http://127.0.0.1:3807
  then issue a Let's Encrypt certificate for it.
 ========================================================
 MSG
