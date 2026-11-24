@@ -1,0 +1,69 @@
+# Tadbeer Daily — production stack on the VPS
+#   caddy  : HTTPS (auto Let's Encrypt) for www / api / app subdomains
+#   api    : Node.js sync + auth API (internal only)
+#   db     : PostgreSQL 16 (internal only, never exposed)
+name: tadbeer
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tadbeer
+      POSTGRES_USER: tadbeer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tadbeer -d tadbeer"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    shm_size: 128mb
+
+  api:
+    build: ../server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://tadbeer:${POSTGRES_PASSWORD}@db:5432/tadbeer
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PORT: 8080
+      LOG_LEVEL: info
+    networks: [internal, edge]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 512m
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../web:/srv/www:ro
+      - ./app-web:/srv/app:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    internal: true
+  edge:

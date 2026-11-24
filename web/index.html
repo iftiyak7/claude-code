@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tadbeer Daily — আমল, রুটিন ও স্বাস্থ্যের দৈনিক সঙ্গী</title>
+<meta name="description" content="নামাজ, যিকির, কুরআন, কাজ, রুটিন, পানি ও ওষুধ — সব আমল এক অ্যাপে ট্র্যাক করুন। অফলাইনে চলে, আপনার তথ্য শুধু আপনার।">
+<meta name="theme-color" content="#0F6B4F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Amiri&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F6F3EC;--surface:#fff;--text:#13201B;--muted:#66766F;--border:#E6E0D3;--primary:#0F6B4F;--deep:#0A3F30;--gold:#C9A227;--soft:#DCEFE6}
+@media (prefers-color-scheme:dark){:root{--bg:#0A1411;--surface:#111E1A;--text:#E9F1ED;--muted:#93A69D;--border:#1F302A;--primary:#34B98C;--soft:#16352B}}
+*{box-sizing:border-box;margin:0}
+body{font-family:"Hind Siliguri",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.hero{background:linear-gradient(135deg,#0F6B4F,#0A3F30);color:#fff;border-radius:0 0 40px 40px;padding:28px 0 72px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 9.2l4.8 8 8 4.8-8 4.8-4.8 8-4.8-8-8-4.8 8-4.8z' fill='none' stroke='%23fff'/%3E%3C/svg%3E")}
+nav{display:flex;justify-content:space-between;align-items:center;position:relative}
+.logo{display:flex;gap:10px;align-items:center;font-weight:700;font-size:20px}
+.logo i{width:38px;height:38px;border-radius:12px;background:#F3D37A;color:#0A4A37;display:grid;place-items:center;font-style:normal;font-family:Amiri,serif;font-size:22px}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;margin-top:48px;position:relative}
+h1{font-size:clamp(32px,5vw,52px);line-height:1.2}
+.arabic{font-family:Amiri,serif;color:#F3D37A;font-size:28px;margin-bottom:8px}
+.lead{opacity:.85;font-size:18px;margin:16px 0 28px}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:16px;font-weight:700;text-decoration:none}
+.btn.gold{background:#F3D37A;color:#0A4A37}.btn.ghost{border:1px solid rgba(255,255,255,.35)}
+.phone{justify-self:center;width:270px;border-radius:36px;background:#0A3F30;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15)}
+.screen{border-radius:26px;background:var(--bg);color:var(--text);padding:16px;min-height:460px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center}
+.dots{display:flex;justify-content:space-between;margin-top:10px}.dots span{width:34px;height:34px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:13px}
+.dots span.on{background:#F3D37A}
+.bar{height:6px;border-radius:6px;background:var(--soft);margin-top:8px}.bar b{display:block;height:6px;border-radius:6px;background:var(--primary)}
+section{padding:72px 0}
+h2{font-size:clamp(26px,3.5vw,36px);text-align:center}
+.sub{text-align:center;color:var(--muted);margin:8px auto 40px;max-width:560px}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.f{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:22px;transition:transform .2s}
+.f:hover{transform:translateY(-4px)}
+.f .ic{width:46px;height:46px;border-radius:14px;background:var(--soft);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
+.f h3{font-size:18px}.f p{color:var(--muted);font-size:15px}
+.privacy{background:var(--soft);border-radius:28px;padding:36px;display:flex;gap:24px;align-items:center}
+.privacy .big{font-size:48px}
+footer{padding:32px 0 48px;color:var(--muted);text-align:center;font-size:14px}
+footer a{margin:0 8px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.phone{margin-top:12px}.privacy{flex-direction:column;text-align:center}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <nav><div class="logo"><i>ت</i>Tadbeer Daily</div><a href="#features" style="opacity:.85;text-decoration:none">ফিচার</a></nav>
+    <div class="grid">
+      <div>
+        <div class="arabic">وَأَن لَّيْسَ لِلْإِنسَانِ إِلَّا مَا سَعَىٰ</div>
+        <h1>আপনার প্রতিদিনের আমল, এক সুন্দর জায়গায়</h1>
+        <p class="lead">নামাজ, যিকির, কুরআন, কাজ, রুটিন, পানি ও ওষুধ — সব সেট করুন, সময়মতো রিমাইন্ডার ও অ্যালার্ম পান, আর অগ্রগতি দেখুন। ইন্টারনেট ছাড়াই চলে।</p>
+        <div class="btns">
+          <a class="btn gold" href="#download">⬇ অ্যাপ ডাউনলোড</a>
+          <a class="btn ghost" href="#features">আরও জানুন</a>
+        </div>
+      </div>
+      <div class="phone" aria-hidden="true">
+        <div class="screen">
+          <div class="card" style="background:linear-gradient(135deg,#0F6B4F,#0A3F30);color:#fff;border:0">
+            <small style="color:#F3D37A">পরবর্তী নামাজ</small>
+            <div class="row"><b style="font-size:24px">আসর</b><span>৩:৩৫</span></div>
+            <div class="dots"><span class="on">✓</span><span class="on">✓</span><span>☁</span><span>☾</span><span>☆</span></div>
+          </div>
+          <div class="card"><div class="row"><b>আস্তাগফিরুল্লাহ</b><small>১২০/২০০</small></div><div class="bar"><b style="width:60%"></b></div></div>
+          <div class="card"><div class="row"><b>💧 পানি</b><small>১৫০০/২৫০০</small></div><div class="bar"><b style="width:60%;background:#2E8BC0"></b></div></div>
+          <div class="card"><div class="row"><b>💊 ওষুধ</b><small>রাত ৮:০০</small></div></div>
+          <div class="card"><div class="row"><b>⭐ আজকের পয়েন্ট</b><b style="color:#C9A227">৮৫</b></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="features"><div class="wrap">
+  <h2>এক অ্যাপে সব</h2>
+  <p class="sub">আপনার ইবাদত ও দৈনন্দিন জীবন — সুশৃঙ্খল, সহজ এবং সুন্দর।</p>
+  <div class="features">
+    <div class="f"><div class="ic">🕌</div><h3>নামাজ ট্র্যাকার</h3><p>লোকেশন অনুযায়ী অফলাইনে নামাজের সময়, আযানের সময় রিমাইন্ডার ও চেক-ইন।</p></div>
+    <div class="f"><div class="ic">📿</div><h3>যিকির কাউন্টার</h3><p>দৈনিক লক্ষ্য দিন (যেমন ২০০ বার), প্রতি ঘণ্টায় মনে করিয়ে দেবে — লক্ষ্য পূরণ হলে থেমে যাবে।</p></div>
+    <div class="f"><div class="ic">⏰</div><h3>ইউনিভার্সাল রিমাইন্ডার</h3><p>যেকোনো কিছু, যেকোনো দিন — প্রতিদিন, সপ্তাহের দিন, নির্দিষ্ট তারিখ বা প্রতি মাসে।</p></div>
+    <div class="f"><div class="ic">✅</div><h3>টাস্ক ম্যানেজার</h3><p>তারিখ, সময়, গুরুত্ব ও অ্যালার্ম সহ কাজের তালিকা।</p></div>
+    <div class="f"><div class="ic">🗓️</div><h3>রুটিন প্ল্যানার</h3><p>দিনের টাইমলাইন, নামাজের সময়ের সাথে মিলিয়ে।</p></div>
+    <div class="f"><div class="ic">💧</div><h3>পানি ট্র্যাকার</h3><p>দৈনিক লক্ষ্য, এক ট্যাপে গ্লাস যোগ, নির্দিষ্ট বিরতিতে রিমাইন্ডার।</p></div>
+    <div class="f"><div class="ic">💊</div><h3>ওষুধ রিমাইন্ডার</h3><p>ডোজ, খাবারের আগে/পরে, অ্যালার্ম, স্টক হিসাব।</p></div>
+    <div class="f"><div class="ic">⭐</div><h3>পয়েন্ট ও লেভেল</h3><p>প্রতিটি আমলে পয়েন্ট, ধারাবাহিকতা ও সাপ্তাহিক অগ্রগতি।</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="privacy">
+    <div class="big">🔒</div>
+    <div>
+      <h3 style="font-size:22px">আপনার আমল শুধু আপনার</h3>
+      <p style="color:var(--muted)">সব তথ্য প্রথমে আপনার ফোনেই থাকে। কোনো লিডারবোর্ড নেই, কেউ আপনার পয়েন্ট দেখতে পারে না। চাইলে অ্যাকাউন্ট খুলে এনক্রিপ্টেড সংযোগে ব্যাকআপ রাখুন, আর অ্যাপ লক দিয়ে সুরক্ষিত রাখুন।</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="download" style="padding-top:0"><div class="wrap" style="text-align:center">
+  <h2>শীঘ্রই Play Store ও App Store-এ</h2>
+  <p class="sub">Android ও iPhone — দুটোতেই।</p>
+</div></section>
+</main>
+
+<footer><div class="wrap">© <span id="y"></span> Tadbeer Daily · <a href="/privacy">গোপনীয়তা নীতি</a></div></footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body>
+</html>

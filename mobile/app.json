@@ -1,0 +1,87 @@
+{
+  "expo": {
+    "name": "Tadbeer Daily",
+    "slug": "tadbeer-daily",
+    "scheme": "tadbeer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F6F3EC",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tadbeerdaily.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.tadbeerdaily.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F6B4F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_BIOMETRIC"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "backgroundColor": "#F6F3EC",
+          "dark": {
+            "backgroundColor": "#0B1512"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0F6B4F"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Tadbeer Daily নামাজের সঠিক সময় হিসাব করতে আপনার লোকেশন ব্যবহার করে। লোকেশন কোথাও পাঠানো হয় না।"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "আপনার আমল ও তথ্য সুরক্ষিত রাখতে Face ID ব্যবহার করা হবে।"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "apiUrl": "https://api.tadbeerdaily.com"
+    }
+  }
+}
