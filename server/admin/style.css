@@ -99,3 +99,32 @@ tr:last-child td { border-bottom: 0; }
   .search input { min-width: 0; width: 100%; }
   #who { display: none; }
 }
+
+/* banners */
+.banner-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.bcard { position: relative; border-radius: 24px; padding: 18px; color: #fff; min-height: 150px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+.bcard .btag { align-self: flex-start; background: rgba(255,255,255,.22); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.bcard .bar { font-family: serif; font-size: 20px; }
+.bcard .bbody { font-weight: 600; line-height: 1.4; }
+.bcard .bsrc { font-size: 12px; opacity: .85; margin-top: auto; }
+.bcard .bcta { align-self: flex-end; background: #fff; color: #16151A; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
+.bcard.off { filter: grayscale(.8); opacity: .55; }
+.bmeta { display: flex; gap: 6px; margin-top: 8px; }
+.bmeta .btn { padding: 6px 12px; font-size: 13px; }
+.t-coral { background: linear-gradient(135deg, #F2703F, #E0578A); }
+.t-violet { background: linear-gradient(135deg, #6D5AE6, #A855F7); }
+.t-mint { background: linear-gradient(135deg, #26B07A, #14B8A6); }
+.t-ocean { background: linear-gradient(135deg, #3E86F5, #6D5AE6); }
+.t-gold { background: linear-gradient(135deg, #E9A93A, #F2703F); }
+.t-night { background: linear-gradient(135deg, #16151A, #3A3346); }
+.banner-form { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
+.bf-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; align-items: start; }
+.bf-fields { display: flex; flex-direction: column; gap: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+textarea, select { font: inherit; font-size: 16px; color: var(--text); background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 12px 16px; outline: none; }
+textarea:focus, select:focus { border-color: var(--primary); }
+.arabic-input { font-family: serif; font-size: 20px; }
+label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+.bf-actions { display: flex; gap: 10px; }
+.empty { color: var(--muted); padding: 20px; text-align: center; border: 1.5px dashed var(--border); border-radius: 20px; }
+@media (max-width: 860px) { .bf-grid, .row2 { grid-template-columns: 1fr; } }

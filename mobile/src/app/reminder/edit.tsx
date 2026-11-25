@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { AMAL_ICONS, PALETTE } from '@/domain/defaults';
 import type { Reminder } from '@/domain/types';
-import { ColorPicker, FormCard, FormScreen, RecurrenceEditor } from '@/features/forms';
+import { ColorPicker, FormCard, FormScreen, MoreToggle, RecurrenceEditor } from '@/features/forms';
 import { useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { Field, Ionicons, PressableScale, ToggleRow, type IconName } from '@/ui/components';
@@ -23,6 +23,7 @@ export default function EditReminder() {
     () => existing ?? { title: '', recurrence: { type: 'daily' }, times: ['09:00'], alarm: false, enabled: true, icon: 'notifications-outline', color: PALETTE[7] },
   );
   const [err, setErr] = useState<string>();
+  const [more, setMore] = useState(!!existing);
   const patch = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
 
   const save = () => {
@@ -45,17 +46,18 @@ export default function EditReminder() {
           : undefined
       }
     >
-      <Field label={tr.title} value={d.title} autoFocus={!existing} onChangeText={(title) => (patch({ title }), setErr(undefined))} error={err} />
-      <Field label={tr.note} value={d.note ?? ''} onChangeText={(note) => patch({ note })} />
+      <Field label={tr.title} value={d.title} autoFocus={!existing} placeholder={tr.quick.reminderPh} onChangeText={(title) => (patch({ title }), setErr(undefined))} error={err} style={{ fontSize: 18, paddingVertical: 16 }} />
       <FormCard label={tr.repeat}>
         <RecurrenceEditor value={d.recurrence} onChange={(recurrence) => patch({ recurrence })} />
       </FormCard>
       <FormCard label={tr.times}>
         <TimesEditor times={d.times} onChange={(times) => patch({ times })} />
         <ToggleRow icon="alarm-outline" label={tr.alarm} hint={tr.alarmHint} value={d.alarm} onChange={(alarm) => patch({ alarm })} />
-        <ToggleRow icon="power-outline" label={tr.enable} value={d.enabled} onChange={(enabled) => patch({ enabled })} />
+        {more && <ToggleRow icon="power-outline" label={tr.enable} value={d.enabled} onChange={(enabled) => patch({ enabled })} />}
       </FormCard>
-      <FormCard>
+      <MoreToggle open={more} onToggle={() => setMore((m) => !m)} />
+      {more && <Field label={tr.note} value={d.note ?? ''} onChangeText={(note) => patch({ note })} />}
+      {more && <FormCard>
         <ColorPicker colors={PALETTE} value={d.color} onChange={(color) => patch({ color })} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {ICONS.map((ic) => (
@@ -68,7 +70,7 @@ export default function EditReminder() {
             </PressableScale>
           ))}
         </View>
-      </FormCard>
+      </FormCard>}
     </FormScreen>
   );
 }

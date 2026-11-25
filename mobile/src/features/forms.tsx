@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { today } from '@/domain/dates';
 import type { Recurrence, ReminderRule } from '@/domain/types';
 import { useNum, useT } from '@/i18n';
-import { Button, Card, Chip, IconButton, Segmented, ToggleRow, Row } from '@/ui/components';
+import { Button, Card, Chip, IconButton, Ionicons, Segmented, ToggleRow, Row } from '@/ui/components';
 import { DateField, PickerPill, TimesEditor } from '@/ui/pickers';
 import { font, radius, space, useTheme } from '@/ui/theme';
 
@@ -213,3 +213,14 @@ const styles = StyleSheet.create({
   swatchRing: { padding: 3, borderRadius: 20, borderWidth: 2 },
   swatch: { width: 28, height: 28, borderRadius: 14 },
 });
+
+export function MoreToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const t = useTheme();
+  const tr = useT();
+  return (
+    <Pressable onPress={onToggle} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', padding: 10, marginBottom: 6 }} accessibilityRole="button">
+      <Text style={[font.body, { color: t.primary, fontWeight: '600' }]}>{open ? tr.quick.less : tr.quick.more}</Text>
+      <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={t.primary} />
+    </Pressable>
+  );
+}

@@ -148,3 +148,29 @@ test('admin: only listed emails, no record contents, suspension works', async ()
   assert.equal(page.statusCode, 200);
   assert.match(String(page.headers['content-security-policy']), /frame-ancestors 'none'/);
 });
+
+test('banners: admin manages, everyone reads active ones', async () => {
+  const boss = (await post('/v1/auth/login', { email: 'boss@example.com', password: 'correct horse battery' })).json();
+  const user = await register('reader@example.com');
+  const auth = (t: string) => ({ authorization: `Bearer ${t}` });
+  const banner = { tag: 'ঘোষণা', body: 'রমজান মোবারক', theme: 'violet', ctaLabel: 'খুলুন', ctaUrl: '/amal' };
+
+  const denied = await app.inject({ method: 'POST', url: '/v1/admin/banners', payload: banner, headers: auth(user.accessToken) });
+  assert.equal(denied.statusCode, 403);
+  const created = await app.inject({ method: 'POST', url: '/v1/admin/banners', payload: banner, headers: auth(boss.accessToken) });
+  assert.equal(created.statusCode, 201, created.body);
+  const id = created.json().id;
+
+  const bad = await app.inject({ method: 'POST', url: '/v1/admin/banners', payload: { ...banner, ctaUrl: 'javascript:alert(1)' }, headers: auth(boss.accessToken) });
+  assert.equal(bad.statusCode, 400, 'only in-app routes or https links');
+
+  const pub = await app.inject('/v1/banners');
+  assert.equal(pub.statusCode, 200);
+  assert.equal(pub.json().banners[0].body, 'রমজান মোবারক');
+
+  await app.inject({ method: 'PUT', url: `/v1/admin/banners/${id}`, payload: { ...banner, active: false }, headers: auth(boss.accessToken) });
+  assert.equal((await app.inject('/v1/banners')).json().banners.length, 0, 'inactive banners are hidden');
+
+  const del = await app.inject({ method: 'DELETE', url: `/v1/admin/banners/${id}`, headers: auth(boss.accessToken) });
+  assert.equal(del.statusCode, 204);
+});

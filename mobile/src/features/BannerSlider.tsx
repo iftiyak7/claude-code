@@ -5,13 +5,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons, Khatam, type IconName } from '@/ui/components';
 import { haptic } from '@/ui/haptics';
 import { Text } from '@/ui/Text';
 import { font, radius, useTheme } from '@/ui/theme';
 import { useData } from '@/store/data';
+import { BANNER_THEMES, useRemoteBanners, type RemoteBanner } from './remoteBanners';
 
 interface Slide {
   key: string;
@@ -74,6 +75,26 @@ const SLIDES: Slide[] = [
   },
 ];
 
+/** An admin-published banner becomes a slide (same text for both languages). */
+function fromRemote(b: RemoteBanner): Slide {
+  const same = (x: string) => ({ bn: x, en: x });
+  return {
+    key: `remote-${b.id}`,
+    tag: same(b.tag || 'Tadbeer'),
+    arabic: b.arabic || undefined,
+    text: same(b.body),
+    source: b.source ? same(b.source) : undefined,
+    colors: BANNER_THEMES[b.theme] ?? BANNER_THEMES.coral,
+    icon: 'megaphone',
+    cta: b.ctaUrl ? { ...same(b.ctaLabel || '→'), route: b.ctaUrl } : undefined,
+  };
+}
+
+function openCta(route: string) {
+  if (/^https:\/\//i.test(route)) void Linking.openURL(route);
+  else if (route.startsWith('/')) router.push(route as never);
+}
+
 const GAP = 12;
 const AUTO_MS = 6000;
 
@@ -94,7 +115,12 @@ export function BannerSlider() {
 
   // start on a different slide each day so it feels fresh
   const [startAt] = useState(() => Math.floor(Date.now() / 86_400_000) % SLIDES.length);
-  const slides = useMemo(() => [...SLIDES.slice(startAt), ...SLIDES.slice(0, startAt)], [startAt]);
+  const remote = useRemoteBanners();
+  // admin banners always lead; built-in ones rotate daily after them
+  const slides = useMemo(
+    () => [...remote.map(fromRemote), ...SLIDES.slice(startAt), ...SLIDES.slice(0, startAt)],
+    [remote, startAt],
+  );
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -131,7 +157,7 @@ export function BannerSlider() {
         {slides.map((s) => (
           <Pressable
             key={s.key}
-            onPress={s.cta ? () => router.push(s.cta!.route as never) : undefined}
+            onPress={s.cta ? () => openCta(s.cta!.route) : undefined}
             accessibilityRole={s.cta ? 'button' : 'text'}
           >
             <LinearGradient colors={s.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, { width: cardW }]}>

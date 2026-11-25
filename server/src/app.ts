@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { pool } from './db.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
+import { bannerRoutes } from './routes/banners.js';
 import { syncRoutes } from './routes/sync.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
@@ -25,7 +26,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   });
 
   await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } });
-  await app.register(cors, { origin: config.corsOrigins, methods: ['GET', 'POST', 'DELETE'], maxAge: 86400 });
+  await app.register(cors, { origin: config.corsOrigins, methods: ['GET', 'POST', 'PUT', 'DELETE'], maxAge: 86400 });
   await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
 
   app.setErrorHandler((err, req, reply) => {
@@ -45,5 +46,6 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   await app.register(authRoutes);
   await app.register(syncRoutes);
   await app.register(adminRoutes);
+  await app.register(bannerRoutes);
   return app;
 }

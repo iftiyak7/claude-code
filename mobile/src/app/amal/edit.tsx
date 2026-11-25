@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { Text } from '@/ui/Text';
 import { AMAL_ICONS, noReminder, PALETTE } from '@/domain/defaults';
 import type { Amal, AmalKind } from '@/domain/types';
-import { ColorPicker, FormCard, FormScreen, NumberInput, RecurrenceEditor, ReminderEditor } from '@/features/forms';
+import { ColorPicker, FormCard, FormScreen, MoreToggle, NumberInput, RecurrenceEditor, ReminderEditor } from '@/features/forms';
 import { useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { Chip, Field, Ionicons, PressableScale, Row, ToggleRow, type IconName } from '@/ui/components';
@@ -16,19 +16,19 @@ type Draft = Omit<Amal, 'id' | 'updatedAt'> & { id?: string };
 const KINDS: AmalKind[] = ['zikr', 'quran', 'dua', 'sadaqah', 'fasting', 'salah', 'custom'];
 
 export default function EditAmal() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, kind: kindParam } = useLocalSearchParams<{ id?: string; kind?: AmalKind }>();
   const existing = useData((s) => (id ? s.amals[id] : undefined));
   const t = useTheme();
   const tr = useT();
   const [d, setD] = useState<Draft>(
     () =>
       existing ?? {
-        kind: 'zikr',
+        kind: kindParam && KINDS.includes(kindParam) ? kindParam : 'zikr',
         title: '',
-        target: 100,
+        target: kindParam && kindParam !== 'zikr' ? 1 : 100,
         unit: useData.getState().settings.language === 'bn' ? 'বার' : 'times',
         recurrence: { type: 'daily' },
-        reminder: { ...noReminder(), mode: 'interval', intervalMinutes: 60 },
+        reminder: kindParam && kindParam !== 'zikr' ? { ...noReminder(), mode: 'times', times: ['09:00'] } : { ...noReminder(), mode: 'interval', intervalMinutes: 60 },
         points: 10,
         color: PALETTE[1],
         icon: 'leaf-outline',
@@ -36,6 +36,7 @@ export default function EditAmal() {
       },
   );
   const [err, setErr] = useState<string>();
+  const [more, setMore] = useState(!!existing);
   const patch = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
   const isFard = !!d.prayer;
 
@@ -68,11 +69,11 @@ export default function EditAmal() {
         </FormCard>
       )}
 
-      <Field label={tr.title} value={d.title} onChangeText={(title) => (patch({ title }), setErr(undefined))} error={err} placeholder="সুবহানাল্লাহ" />
-      <Field label={tr.arabic} value={d.arabic ?? ''} onChangeText={(arabic) => patch({ arabic })} style={{ textAlign: 'right', fontSize: 22, fontFamily: 'arabic' }} placeholder="سُبْحَانَ ٱللَّٰهِ" />
-      <Field label={tr.meaning} value={d.meaning ?? ''} onChangeText={(meaning) => patch({ meaning })} />
+      <Field label={tr.title} value={d.title} autoFocus={!existing} onChangeText={(title) => (patch({ title }), setErr(undefined))} error={err} placeholder={tr.quick.amalPh} style={{ fontSize: 18, paddingVertical: 16 }} />
+      {more && <Field label={tr.arabic} value={d.arabic ?? ''} onChangeText={(arabic) => patch({ arabic })} style={{ textAlign: 'right', fontSize: 22, fontFamily: 'arabic' }} placeholder="سُبْحَانَ ٱللَّٰهِ" />}
+      {more && <Field label={tr.meaning} value={d.meaning ?? ''} onChangeText={(meaning) => patch({ meaning })} />}
 
-      {!isFard && (
+      {!isFard && (d.kind === 'zikr' || d.target > 1 || more) && (
         <FormCard label={tr.target}>
           <Row style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <NumberInput value={d.target} onChange={(target) => patch({ target })} step={d.target >= 100 ? 10 : 1} />
@@ -82,19 +83,21 @@ export default function EditAmal() {
               ))}
             </View>
           </Row>
-          <Field label={tr.unit} value={d.unit ?? ''} onChangeText={(unit) => patch({ unit })} />
+          {more && <Field label={tr.unit} value={d.unit ?? ''} onChangeText={(unit) => patch({ unit })} />}
         </FormCard>
       )}
 
       {!isFard && (
         <FormCard label={tr.repeat}>
           <RecurrenceEditor value={d.recurrence} onChange={(recurrence) => patch({ recurrence })} />
-          <Row style={{ flexWrap: 'wrap' }}>
-            <Text style={[font.small, { color: t.muted }]}>{tr.startDate}</Text>
-            <DateField value={d.startDate} onChange={(startDate) => patch({ startDate })} placeholder="—" />
-            <Text style={[font.small, { color: t.muted }]}>{tr.endDate}</Text>
-            <DateField value={d.endDate} onChange={(endDate) => patch({ endDate })} placeholder="—" />
-          </Row>
+          {more && (
+            <Row style={{ flexWrap: 'wrap' }}>
+              <Text style={[font.small, { color: t.muted }]}>{tr.startDate}</Text>
+              <DateField value={d.startDate} onChange={(startDate) => patch({ startDate })} placeholder="—" />
+              <Text style={[font.small, { color: t.muted }]}>{tr.endDate}</Text>
+              <DateField value={d.endDate} onChange={(endDate) => patch({ endDate })} placeholder="—" />
+            </Row>
+          )}
         </FormCard>
       )}
 
@@ -116,11 +119,15 @@ export default function EditAmal() {
         )}
       </FormCard>
 
-      <FormCard label={tr.pointsEach}>
-        <NumberInput value={d.points} min={0} max={500} onChange={(points) => patch({ points })} />
-      </FormCard>
+      <MoreToggle open={more} onToggle={() => setMore((m) => !m)} />
 
-      {!isFard && (
+      {more && (
+        <FormCard label={tr.pointsEach}>
+          <NumberInput value={d.points} min={0} max={500} onChange={(points) => patch({ points })} />
+        </FormCard>
+      )}
+
+      {!isFard && more && (
         <FormCard>
           <ColorPicker colors={PALETTE} value={d.color} onChange={(color) => patch({ color })} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

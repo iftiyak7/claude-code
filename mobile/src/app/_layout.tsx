@@ -66,11 +66,20 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready || !fontsReady) return;
     const id = setTimeout(async () => {
+      const st = useData.getState();
+      if (!st.settings.onboarded) {
+        // people who already used the app don't need the wizard
+        if (Object.keys(st.logs).length > 0) st.updateSettings({ onboarded: true });
+        else {
+          router.replace('/welcome');
+          return;
+        }
+      }
       if (await shouldAutoPrompt()) {
         markAutoPrompted();
         router.push('/setup');
       }
-    }, 900);
+    }, 300);
     return () => clearTimeout(id);
   }, [ready, fontsReady]);
 
@@ -96,6 +105,8 @@ export default function RootLayout() {
             <Stack.Screen name="medicine/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="routine/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="setup" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="welcome" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="add" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           </Stack>
         </LockGate>
         <ToastHost />

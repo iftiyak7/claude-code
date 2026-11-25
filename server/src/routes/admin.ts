@@ -34,7 +34,7 @@ const CSP = [
 ].join('; ');
 
 /** preHandler: valid access token AND an email on the ADMIN_EMAILS list. */
-async function requireAdmin(req: FastifyRequest, reply: FastifyReply) {
+export async function requireAdmin(req: FastifyRequest, reply: FastifyReply) {
   await requireUser(req, reply);
   if (reply.sent) return;
   const { rows } = await pool.query<{ email: string; disabled: boolean }>(

@@ -11,7 +11,7 @@ import { WeekStrip } from '@/features/WeekStrip';
 import { useNum, useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { useLive } from '@/store/hooks';
-import { Badge, Card, EmptyState, Fab, Ionicons, PressableScale, Screen, Section, Segmented, type IconName } from '@/ui/components';
+import { Badge, Button, Card, EmptyState, Fab, Ionicons, PressableScale, Screen, Section, Segmented, type IconName } from '@/ui/components';
 import { haptic } from '@/ui/haptics';
 import { font, radius, useTheme } from '@/ui/theme';
 
@@ -157,7 +157,7 @@ function TasksView({ date, todayIso }: { date: string; todayIso: string }) {
 
   return (
     <>
-      {nothing && <EmptyState icon="checkbox-outline" text={tr.emptyTasks} />}
+      {nothing && <EmptyState icon="checkbox-outline" text={tr.emptyTasks} action={<Button label={tr.add_.oneTap} icon="flash-outline" kind="soft" onPress={() => router.push('/add')} />} />}
       {groups.overdue.length > 0 && <TaskGroup title={tr.overdue} items={groups.overdue} danger />}
       {groups.day.length > 0 && <TaskGroup title={date === todayIso ? tr.todayTasks : tr.tasks} items={groups.day} />}
       {groups.upcoming.length > 0 && <TaskGroup title={tr.upcoming} items={groups.upcoming} showDate />}

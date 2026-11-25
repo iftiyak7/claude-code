@@ -216,7 +216,99 @@ function onError(err) {
   $('#health').textContent = '● সংযোগ নেই';
 }
 
-const refreshAll = () => Promise.all([loadStats(), loadUsers()]).catch(onError);
+// ── banners ───────────────────────────────────────────────────────────────
+let banners = [];
+let editing = null; // banner id or 'new'
+const form = $('#banner-form');
+
+function bannerHtml(b) {
+  const cta = b.ctaLabel ? `<span class="bcta">${esc(b.ctaLabel)} →</span>` : '';
+  return `<div class="bcard t-${esc(b.theme)} ${b.active === false ? 'off' : ''}">
+    ${b.tag ? `<span class="btag">${esc(b.tag)}</span>` : ''}
+    ${b.arabic ? `<div class="bar" dir="rtl">${esc(b.arabic)}</div>` : ''}
+    <div class="bbody">${esc(b.body || 'আপনার লেখা এখানে দেখাবে')}</div>
+    ${b.source ? `<div class="bsrc">— ${esc(b.source)}</div>` : ''}${cta}
+  </div>`;
+}
+
+async function loadBanners() {
+  banners = (await call('/v1/admin/banners')).banners;
+  $('#banner-list').innerHTML = banners.length
+    ? banners.map((b) => `<div>${bannerHtml(b)}<div class="bmeta">
+        <button class="btn ghost small" data-bact="edit" data-id="${b.id}">এডিট</button>
+        <button class="btn ghost small" data-bact="toggle" data-id="${b.id}">${b.active ? 'বন্ধ করুন' : 'চালু করুন'}</button>
+        <button class="btn danger small" data-bact="delete" data-id="${b.id}">মুছুন</button></div></div>`).join('')
+    : '<div class="empty">এখনো কোনো ব্যানার নেই। অ্যাপ নিজের তৈরি আয়াত-হাদিসের ব্যানার দেখাচ্ছে।</div>';
+}
+
+const toLocal = (iso) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
+const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
+
+function readForm() {
+  const f = new FormData(form);
+  const route = f.get('ctaRoute');
+  return {
+    tag: f.get('tag') || '', arabic: f.get('arabic') || '', body: f.get('body') || '', source: f.get('source') || '',
+    theme: f.get('theme'), sort: Number(f.get('sort') || 0), ctaLabel: f.get('ctaLabel') || '',
+    ctaUrl: route === 'custom' ? (f.get('ctaUrl') || '') : route || '',
+    active: !!f.get('active'), startsAt: fromLocal(f.get('startsAt')), endsAt: fromLocal(f.get('endsAt')),
+  };
+}
+function preview() { $('#banner-preview').innerHTML = bannerHtml(readForm()); $('#cta-url-row').hidden = form.ctaRoute.value !== 'custom'; }
+
+function openForm(b) {
+  editing = b ? b.id : 'new';
+  form.reset();
+  if (b) {
+    for (const k of ['tag', 'arabic', 'body', 'source', 'theme', 'sort', 'ctaLabel']) form[k].value = b[k] ?? '';
+    const internal = [...form.ctaRoute.options].some((o) => o.value === b.ctaUrl);
+    form.ctaRoute.value = !b.ctaUrl ? '' : internal ? b.ctaUrl : 'custom';
+    form.ctaUrl.value = internal ? '' : b.ctaUrl;
+    form.active.checked = b.active;
+    form.startsAt.value = toLocal(b.startsAt);
+    form.endsAt.value = toLocal(b.endsAt);
+  }
+  $('#banner-error').textContent = '';
+  form.hidden = false;
+  preview();
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('#banner-new').addEventListener('click', () => openForm(null));
+$('#banner-cancel').addEventListener('click', () => { form.hidden = true; editing = null; });
+form.addEventListener('input', preview);
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = readForm();
+  try {
+    if (editing === 'new') await call('/v1/admin/banners', { method: 'POST', body: JSON.stringify(body) });
+    else await call(`/v1/admin/banners/${editing}`, { method: 'PUT', body: JSON.stringify(body) });
+    form.hidden = true; editing = null;
+    toast('ব্যানার সংরক্ষণ হয়েছে');
+    await loadBanners();
+  } catch (err) {
+    $('#banner-error').textContent = err.code === 'validation_error' ? 'তথ্য ঠিক নেই — মূল লেখা দিন, লিংক https:// দিয়ে শুরু হতে হবে' : 'সংরক্ষণ হয়নি';
+  }
+});
+$('#banner-list').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-bact]');
+  if (!btn) return;
+  const b = banners.find((x) => x.id === btn.dataset.id);
+  if (!b) return;
+  if (btn.dataset.bact === 'edit') return openForm(b);
+  if (btn.dataset.bact === 'delete') {
+    if (!confirm('ব্যানারটি মুছে ফেলবেন?')) return;
+    await call(`/v1/admin/banners/${b.id}`, { method: 'DELETE' });
+    toast('মুছে ফেলা হয়েছে');
+  } else {
+    const { id: _i, updatedAt: _u, ...rest } = b;
+    await call(`/v1/admin/banners/${b.id}`, { method: 'PUT', body: JSON.stringify({ ...rest, active: !b.active }) });
+    toast(b.active ? 'বন্ধ করা হয়েছে' : 'চালু হয়েছে');
+  }
+  await loadBanners();
+});
+
+const refreshAll = () => Promise.all([loadStats(), loadUsers(), loadBanners()]).catch(onError);
 
 async function start() {
   if (!access && !refresh) return showLogin();

@@ -19,6 +19,7 @@ import {
   Blob,
   Button,
   Card,
+  Fab,
   IconButton,
   Ionicons,
   PressableScale,
@@ -219,6 +220,7 @@ export default function Today() {
           )}
         </View>
       </ScrollView>
+      <Fab onPress={() => router.push('/add')} />
     </View>
   );
 }
