@@ -56,7 +56,7 @@ echo "15 3 * * * $USER_NAME $APP_DIR/deploy/scripts/backup.sh >> /home/$USER_NAM
 say "Updating the website (CloudPanel static site, if it exists)"
 for D in /home/*/htdocs/www.tadbeerdaily.com /home/*/htdocs/tadbeerdaily.com; do
   if [[ -d "$D" ]]; then
-    cp "$SRC"/web/*.html "$D"/
+    cp -r "$SRC"/web/. "$D"/
     chown -R "$(stat -c %U:%G "$D")" "$D"
     echo "website updated: $D"
   fi

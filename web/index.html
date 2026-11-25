@@ -3,140 +3,427 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tadbeer Daily — আমল, রুটিন ও স্বাস্থ্যের দৈনিক সঙ্গী</title>
-<meta name="description" content="নামাজ, যিকির, কুরআন, কাজ, রুটিন, পানি ও ওষুধ — সব আমল এক অ্যাপে ট্র্যাক করুন। অফলাইনে চলে, আপনার তথ্য শুধু আপনার।">
-<meta name="theme-color" content="#F2703F">
+<title>Tadbeer Daily — প্রতিটি আমল, ঠিক সময়মতো</title>
+<meta name="description" content="নামাজ, যিকির, কুরআন, কাজ, রুটিন, পানি ও ওষুধ — সব আমল এক অ্যাপে। সময়মতো রিমাইন্ডার ও অ্যালার্ম, ইন্টারনেট ছাড়াই চলে, আপনার তথ্য শুধু আপনার।">
+<meta name="theme-color" content="#FBF1EB">
+<meta property="og:title" content="Tadbeer Daily — প্রতিটি আমল, ঠিক সময়মতো">
+<meta property="og:description" content="নামাজ, যিকির, রুটিন, পানি ও ওষুধ — এক অ্যাপে। ফ্রি, অফলাইনে চলে।">
+<meta property="og:image" content="/assets/icon-512.png">
+<link rel="icon" href="/assets/icon-192.png">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700&family=Amiri&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#FBF1EB;--surface:#fff;--text:#16151A;--muted:#7D746F;--border:#EFE1D9;--primary:#F2703F;--deep:#16151A;--gold:#E9A93A;--soft:#FFE4D7;--lav:#C9B9FF}
-@media (prefers-color-scheme:dark){:root{--bg:#111014;--surface:#1B1A20;--text:#F5F0ED;--muted:#A39B97;--border:#2A2830;--primary:#FF8352;--soft:#3A2219;--lav:#3D3466}}
-*{box-sizing:border-box;margin:0}
-body{font-family:"Anek Bangla",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
-a{color:inherit}
-.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
-.hero{background:radial-gradient(circle at 100% 0,var(--lav) 0 300px,transparent 301px),var(--bg);color:var(--text);border-radius:0 0 40px 40px;padding:28px 0 72px;position:relative;overflow:hidden}
-.hero:before{content:"";position:absolute;inset:0;opacity:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 9.2l4.8 8 8 4.8-8 4.8-4.8 8-4.8-8-8-4.8 8-4.8z' fill='none' stroke='%23fff'/%3E%3C/svg%3E")}
-nav{display:flex;justify-content:space-between;align-items:center;position:relative}
-.logo{display:flex;gap:10px;align-items:center;font-weight:700;font-size:20px}
-.logo i{width:38px;height:38px;border-radius:12px;background:var(--primary);color:#fff;display:grid;place-items:center;font-style:normal;font-family:Amiri,serif;font-size:22px}
-.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;margin-top:48px;position:relative}
-h1{font-size:clamp(32px,5vw,52px);line-height:1.2}
-.arabic{font-family:Amiri,serif;color:var(--primary);font-size:28px;margin-bottom:8px}
-.lead{color:var(--muted);font-size:18px;margin:16px 0 28px}
-.btns{display:flex;gap:12px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:16px;font-weight:700;text-decoration:none}
-.btn.gold{background:var(--text);color:var(--bg);border-radius:999px}.btn.ghost{border:1px solid var(--border);border-radius:999px}
-.phone{justify-self:center;width:270px;border-radius:40px;background:#16151A;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15)}
-.screen{border-radius:26px;background:var(--bg);color:var(--text);padding:16px;min-height:460px}
-.card{background:var(--surface);border:0;border-radius:22px;box-shadow:0 8px 20px rgba(192,122,85,.08);padding:14px;margin-bottom:10px}
-.row{display:flex;justify-content:space-between;align-items:center}
-.dots{display:flex;justify-content:space-between;margin-top:10px}.dots span{width:34px;height:34px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:13px}
-.dots span.on{background:#DAF4E8;color:#26B07A}
-.bar{height:6px;border-radius:6px;background:var(--soft);margin-top:8px}.bar b{display:block;height:6px;border-radius:6px;background:var(--primary)}
-section{padding:72px 0}
-h2{font-size:clamp(26px,3.5vw,36px);text-align:center}
-.sub{text-align:center;color:var(--muted);margin:8px auto 40px;max-width:560px}
-.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
-.f{background:var(--surface);border:0;border-radius:28px;box-shadow:0 10px 24px rgba(192,122,85,.08);padding:22px;transition:transform .2s}
-.f:hover{transform:translateY(-4px)}
-.f .ic{width:50px;height:50px;border-radius:25px;background:var(--soft);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
-.f h3{font-size:18px}.f p{color:var(--muted);font-size:15px}
-.privacy{background:var(--soft);border-radius:28px;padding:36px;display:flex;gap:24px;align-items:center}
-.privacy .big{font-size:48px}
-.dl{background:var(--surface);border-radius:32px;padding:40px;display:grid;grid-template-columns:1.3fr .7fr;gap:32px;align-items:center;box-shadow:0 14px 34px rgba(192,122,85,.1)}
-.btn.big{padding:16px 26px;font-size:17px}
-.steps{margin:24px 0 0;padding-left:20px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
-.dl-qr{text-align:center;color:var(--muted);font-size:14px}
-.qr{width:190px;height:190px;background:#fff;border-radius:20px;padding:10px}
-@media(max-width:760px){.dl{grid-template-columns:1fr;padding:26px}.dl-qr{display:none}}
-footer{padding:32px 0 48px;color:var(--muted);text-align:center;font-size:14px}
-footer a{margin:0 8px}
-@media(max-width:760px){.grid{grid-template-columns:1fr}.phone{margin-top:12px}.privacy{flex-direction:column;text-align:center}}
+:root{
+  --sand:#FBF1EB;--sand2:#F6E4DA;--paper:#FFFFFF;--ink:#16151A;--ink2:#2A2830;--muted:#7D746F;--line:#EFE1D9;
+  --coral:#F2703F;--coral-soft:#FFE4D7;--rose:#E0578A;--lav:#C9B9FF;--lav-ink:#5B47C9;--lav-soft:#EEE8FF;
+  --mint:#26B07A;--mint-soft:#DAF4E8;--sky:#3E86F5;--sky-soft:#E1ECFF;--gold:#E9A93A;--gold-soft:#FFF0D4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:110px}
+body{font-family:"Anek Bangla",system-ui,sans-serif;background:var(--sand);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%;height:auto}
+.wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+.ar{font-family:Amiri,serif}
+h1{font-size:clamp(40px,6.4vw,82px);line-height:1.08;font-weight:800;letter-spacing:-1.5px}
+h2{font-size:clamp(32px,4.4vw,54px);line-height:1.12;font-weight:800;letter-spacing:-1px}
+h3{font-size:21px;font-weight:700;line-height:1.3}
+.muted{color:var(--muted)}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--coral)}
+.eyebrow:before{content:"";width:22px;height:2px;background:currentColor;border-radius:2px}
+section{padding:120px 0}
+.center{text-align:center}
+
+/* ── floating pill nav (echoes the app's tab bar) ── */
+.nav{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:6px;padding:7px;border-radius:40px;background:var(--ink);box-shadow:0 18px 40px rgba(22,21,26,.25);max-width:calc(100% - 24px)}
+.nav .brand{display:flex;align-items:center;gap:10px;padding:0 14px 0 6px;color:#fff;font-weight:800;white-space:nowrap}
+.nav .brand i{width:38px;height:38px;border-radius:50%;background:var(--coral);display:grid;place-items:center;font-style:normal;font-family:Amiri,serif;font-size:21px}
+.nav a.tab{color:#CFC8C4;padding:10px 16px;border-radius:30px;font-weight:600;font-size:15px;white-space:nowrap;transition:background .2s,color .2s}
+.nav a.tab:hover{background:#2A2830;color:#fff}
+.nav a.get{background:#fff;color:var(--ink);padding:10px 18px;border-radius:30px;font-weight:700;white-space:nowrap}
+
+/* ── hero: centred, sky changes with the day ── */
+.hero{position:relative;padding:150px 0 0;text-align:center;overflow:hidden}
+.sky{position:absolute;inset:0;background:linear-gradient(180deg,#FBF1EB 0%,#FBF1EB 55%,#FFE1CF 75%,#F9C9B4 100%);animation:sky 24s ease-in-out infinite alternate;z-index:-1}
+@keyframes sky{0%{filter:hue-rotate(0)}50%{filter:hue-rotate(-18deg)}100%{filter:hue-rotate(12deg) saturate(1.1)}}
+.blob{position:absolute;border-radius:50%;filter:blur(2px);z-index:-1}
+.b1{width:520px;height:520px;right:-180px;top:-160px;background:radial-gradient(circle,var(--lav) 0,rgba(201,185,255,.4) 55%,transparent 70%)}
+.b2{width:380px;height:380px;left:-160px;top:220px;background:radial-gradient(circle,rgba(242,112,63,.28),transparent 70%)}
+.hero .ayah{font-size:clamp(28px,3.6vw,40px);color:var(--lav-ink)}
+.hero .ayah-tr{font-size:15px;color:var(--muted);margin-top:-4px}
+.hero h1{margin:22px auto 18px;max-width:900px}
+.hero h1 em{font-style:normal;position:relative;white-space:nowrap}
+.hero h1 em:after{content:"";position:absolute;left:-2%;right:-2%;bottom:.22em;height:.3em;background:var(--coral);opacity:.28;border-radius:10px;z-index:-1}
+.hero p.lead{font-size:clamp(17px,1.7vw,21px);color:var(--muted);max-width:640px;margin:0 auto}
+.get-row{display:flex;justify-content:center;gap:12px;margin-top:34px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:12px;border-radius:40px;padding:15px 26px;font-weight:700;font-size:17px;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn.ink{background:var(--ink);color:#fff;box-shadow:0 16px 34px rgba(22,21,26,.25)}
+.btn.line{border:1.5px solid rgba(22,21,26,.15);background:rgba(255,255,255,.5)}
+.btn small{font-weight:500;opacity:.65;font-size:14px}
+.fan{position:relative;height:560px;margin-top:70px;display:flex;justify-content:center;align-items:flex-start}
+.phone{position:relative;width:260px;border-radius:42px;padding:9px;background:var(--ink);box-shadow:0 40px 70px rgba(80,40,20,.25)}
+.phone img{border-radius:34px}
+.phone:before{content:"";position:absolute;top:17px;left:50%;transform:translateX(-50%);width:80px;height:20px;border-radius:12px;background:var(--ink);z-index:2}
+.fan .phone{position:absolute;top:0;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.fan .p1{transform:translateX(-250px) translateY(70px) rotate(-12deg);z-index:1}
+.fan .p2{transform:translateY(0);z-index:3;width:280px}
+.fan .p3{transform:translateX(250px) translateY(70px) rotate(12deg);z-index:1}
+.hero:hover .fan .p1{transform:translateX(-270px) translateY(60px) rotate(-14deg)}
+.hero:hover .fan .p3{transform:translateX(270px) translateY(60px) rotate(14deg)}
+.chip-note{position:absolute;z-index:4;background:#fff;border-radius:20px;padding:10px 16px;font-weight:700;font-size:15px;box-shadow:0 16px 30px rgba(80,40,20,.15);display:flex;gap:8px;align-items:center;white-space:nowrap}
+.chip-note.c1{left:calc(50% + 150px);top:40px}
+.chip-note.c2{right:calc(50% + 150px);top:250px}
+
+/* ── a day with Tadbeer ── */
+.day{background:var(--ink);color:#fff;border-radius:48px;margin:0 14px;padding:110px 0 120px;overflow:hidden;position:relative}
+.day h2{color:#fff}
+.day .muted{color:#A39B97}
+.track{position:relative;margin-top:70px;display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.track:before{content:"";position:absolute;left:0;right:0;top:41px;height:4px;border-radius:4px;background:linear-gradient(90deg,#FFB37A,#FFE08A 30%,#F2BC57 50%,#F2703F 72%,#5B47C9 100%)}
+.slot{position:relative;text-align:left}
+.sun{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;font-size:34px;border:4px solid var(--ink);position:relative;z-index:1}
+.slot .when{margin-top:18px;font-size:14px;color:#A39B97;font-weight:600}
+.slot h3{color:#fff;margin-top:2px}
+.slot p{color:#CFC8C4;font-size:15px;margin-top:8px}
+.slot .tag{display:inline-block;margin-top:12px;font-size:13px;font-weight:700;padding:4px 12px;border-radius:20px;background:#2A2830;color:#FFB48A}
+
+/* ── bento ── */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:240px;gap:18px;margin-top:56px}
+.tile{background:var(--paper);border-radius:32px;padding:26px;position:relative;overflow:hidden;box-shadow:0 12px 30px rgba(192,122,85,.08);display:flex;flex-direction:column;transition:transform .3s}
+.tile:hover{transform:translateY(-4px)}
+.tile p{color:var(--muted);font-size:15px;margin-top:6px}
+.t-zikr{grid-column:span 2;grid-row:span 2;background:linear-gradient(160deg,#FFF,#FFF4EE)}
+.t-wide{grid-column:span 2}
+.t-dark{background:var(--ink);color:#fff}.t-dark p{color:#A39B97}
+.t-lav{background:var(--lav-soft)}
+.ring{width:230px;height:230px;margin:auto;position:relative;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring b{font-size:72px;line-height:1;font-weight:800}
+.ring small{display:block;color:var(--muted);text-align:center;font-weight:600}
+.minichips{display:flex;gap:8px;justify-content:center}
+.minichips span{border:1.5px solid var(--line);border-radius:20px;padding:6px 14px;font-weight:700;background:#fff}
+.minichips span.ok{background:var(--mint-soft);color:var(--mint);border-color:var(--mint-soft)}
+.caps{display:flex;gap:8px;margin-top:auto}
+.caps i{flex:1;height:62px;border-radius:31px;background:var(--sand2);display:grid;place-items:center;font-style:normal;font-weight:800;color:var(--mint)}
+.caps i.ok{background:var(--mint-soft)}
+.glass{margin-top:auto;display:flex;align-items:flex-end;gap:16px}
+.glass .g{width:62px;height:110px;border:3px solid #A9C7FA;border-radius:16px;background:var(--sky-soft);position:relative;overflow:hidden}
+.glass .g:after{content:"";position:absolute;left:0;right:0;bottom:0;height:62%;background:var(--sky);animation:fill 4s ease-in-out infinite alternate}
+@keyframes fill{from{height:35%}to{height:72%}}
+.glass b{font-size:34px;color:var(--sky);line-height:1}
+.pills{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.pills span{display:flex;justify-content:space-between;background:#2A2830;border-radius:16px;padding:9px 14px;font-weight:600;font-size:15px}
+.pills span em{font-style:normal;color:var(--mint)}
+.notifs{margin-top:auto;position:relative;height:120px}
+.notif{position:absolute;left:0;right:0;background:#fff;border-radius:18px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 24px rgba(80,40,20,.12)}
+.notif .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+.notif b{display:block;font-size:15px;line-height:1.25}.notif span{font-size:13px;color:var(--muted)}
+.n1{top:0;z-index:2}.n2{top:58px;transform:scale(.95);opacity:.8}
+.bars{margin-top:auto;display:flex;align-items:flex-end;gap:8px;height:110px}
+.bars i{flex:1;border-radius:12px;background:var(--coral-soft)}
+.bars i.on{background:var(--coral)}.bars i.today{background:var(--ink)}
+.todo{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.todo span{display:flex;gap:10px;align-items:center;font-weight:600}
+.todo span:before{content:"";width:20px;height:20px;border-radius:6px;border:2px solid var(--line)}
+.todo span.ok{color:var(--muted);text-decoration:line-through}
+.todo span.ok:before{background:var(--mint);border-color:var(--mint)}
+.lock{margin-top:auto;font-size:64px;line-height:1}
+
+/* ── tour ── */
+.tour{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:50px}
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{display:flex;gap:16px;align-items:flex-start;padding:20px 22px;border-radius:26px;cursor:pointer;border:1.5px solid transparent;transition:background .25s,border-color .25s;text-align:left;background:none;font:inherit;color:inherit}
+.step .n{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--sand2);transition:background .25s,color .25s}
+.step p{color:var(--muted);margin-top:2px}
+.step.on{background:#fff;border-color:var(--line);box-shadow:0 12px 28px rgba(192,122,85,.1)}
+.step.on .n{background:var(--coral);color:#fff}
+.step .bar{height:3px;border-radius:3px;background:var(--line);margin-top:12px;overflow:hidden;display:none}
+.step.on .bar{display:block}
+.step.on .bar i{display:block;height:100%;width:0;background:var(--coral);animation:prog 4.5s linear forwards}
+@keyframes prog{to{width:100%}}
+.stage{position:relative;display:grid;place-items:center;padding:30px 0}
+.stage:before{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:var(--lav);opacity:.55}
+.stage .phone{width:290px}
+.stage img{transition:opacity .35s}
+
+/* ── promises ── */
+.promise{background:var(--paper);border-radius:48px;padding:80px 70px;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(192,122,85,.1)}
+.promise .seal{position:absolute;right:-60px;top:-60px;width:280px;height:280px;opacity:.07}
+.plist{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:50px}
+.plist .num{font-family:Amiri,serif;font-size:56px;line-height:1;color:var(--coral)}
+.plist h3{margin-top:10px}
+.plist p{color:var(--muted);margin-top:8px}
+
+/* ── download ticket ── */
+.ticket{display:grid;grid-template-columns:1fr auto;background:var(--coral);color:#fff;border-radius:40px;overflow:hidden;position:relative}
+.ticket .main{padding:64px}
+.ticket h2{color:#fff}
+.ticket p{color:rgba(255,255,255,.88);font-size:19px;margin-top:12px}
+.ticket .btn.ink{margin-top:30px}
+.ticket .stub{position:relative;background:#FFF4EE;color:var(--ink);padding:44px 48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-left:3px dashed rgba(242,112,63,.45)}
+.ticket .stub:before,.ticket .stub:after{content:"";position:absolute;left:-22px;width:40px;height:40px;border-radius:50%;background:var(--sand)}
+.ticket .stub:before{top:-20px}.ticket .stub:after{bottom:-20px}
+.qr{width:180px;height:180px}
+.ticket .howto{display:flex;gap:26px;margin-top:34px;flex-wrap:wrap;color:#fff;font-weight:600}
+.ticket .howto span{display:flex;gap:10px;align-items:center}
+.ticket .howto b{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:14px}
+
+/* ── faq ── */
+.faq{max-width:780px;margin:50px auto 0}
+details{border-bottom:1.5px solid var(--line);padding:24px 4px}
+summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;font-weight:700;font-size:20px}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"";flex:none;width:14px;height:14px;border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);transform:rotate(45deg);transition:transform .25s;margin-right:6px}
+details[open] summary:after{transform:rotate(-135deg)}
+details p{color:var(--muted);margin-top:10px;font-size:17px}
+
+/* ── footer ── */
+footer{position:relative;padding:90px 0 40px;overflow:hidden}
+.wordmark{font-family:Amiri,serif;font-size:clamp(120px,22vw,300px);line-height:.9;color:var(--ink);opacity:.06;text-align:center;user-select:none;margin-bottom:-40px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;border-top:1.5px solid var(--line);padding-top:28px;color:var(--muted)}
+.foot nav{display:flex;gap:24px;flex-wrap:wrap}
+.foot a:hover{color:var(--ink)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}.sky,.glass .g:after{animation:none}}
+
+/* responsive */
+@media(max-width:980px){
+  .nav a.tab{display:none}
+  .track{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:240px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}
+  .slot{scroll-snap-align:start}
+  .track:before{width:1240px;right:auto}
+  .bento{grid-template-columns:1fr 1fr;grid-auto-rows:auto}
+  .tile{min-height:220px}
+  .t-zikr{grid-column:span 2;grid-row:auto}
+  .tour{grid-template-columns:1fr}
+  .plist{grid-template-columns:1fr}
+  .promise{padding:50px 28px}
+  .ticket{grid-template-columns:1fr}
+  .ticket .main{padding:40px 28px}
+  .ticket .stub{display:none}
+}
+@media(max-width:640px){
+  section{padding:90px 0}
+  .fan{height:430px;margin-top:50px}
+  .fan .phone{width:200px}.fan .p2{width:220px}
+  .fan .p1{transform:translateX(-120px) translateY(60px) rotate(-12deg)}
+  .fan .p3{transform:translateX(120px) translateY(60px) rotate(12deg)}
+  .chip-note{display:none}
+  .bento{grid-template-columns:1fr}
+  .t-zikr,.t-wide{grid-column:auto}
+  .day{border-radius:32px;margin:0 8px}
+  .stage .phone{width:240px}.stage:before{width:300px;height:300px}
+}
 </style>
 </head>
 <body>
+
+<nav class="nav" aria-label="মূল মেনু">
+  <a class="brand" href="#top"><i>ت</i>Tadbeer</a>
+  <a class="tab" href="#day">একটি দিন</a>
+  <a class="tab" href="#features">ফিচার</a>
+  <a class="tab" href="#tour">ঘুরে দেখুন</a>
+  <a class="tab" href="#faq">প্রশ্ন</a>
+  <a class="get" href="#download">ডাউনলোড</a>
+</nav>
+
+<main id="top">
+<!-- ═══ Hero ═══ -->
 <header class="hero">
-  <div class="wrap">
-    <nav><div class="logo"><i>ت</i>Tadbeer Daily</div><a href="#features" style="color:var(--muted);text-decoration:none">ফিচার</a></nav>
-    <div class="grid">
-      <div>
-        <div class="arabic">وَأَن لَّيْسَ لِلْإِنسَانِ إِلَّا مَا سَعَىٰ</div>
-        <h1>আপনার প্রতিদিনের আমল, এক সুন্দর জায়গায়</h1>
-        <p class="lead">নামাজ, যিকির, কুরআন, কাজ, রুটিন, পানি ও ওষুধ — সব সেট করুন, সময়মতো রিমাইন্ডার ও অ্যালার্ম পান, আর অগ্রগতি দেখুন। ইন্টারনেট ছাড়াই চলে।</p>
-        <div class="btns">
-          <a class="btn gold" href="https://github.com/iftiyak7/claude-code/releases/download/apk-latest/tadbeer-daily.apk" download>⬇ Android অ্যাপ ডাউনলোড</a>
-          <a class="btn ghost" href="#features">আরও জানুন</a>
-        </div>
-      </div>
-      <div class="phone" aria-hidden="true">
-        <div class="screen">
-          <div class="card" style="background:#16151A;color:#fff;border:0">
-            <small style="color:#FF8352">পরবর্তী নামাজ</small>
-            <div class="row"><b style="font-size:24px">আসর</b><span>৩:৩৫</span></div>
-            <div class="dots"><span class="on">✓</span><span class="on">✓</span><span>☁</span><span>☾</span><span>☆</span></div>
-          </div>
-          <div class="card"><div class="row"><b>আস্তাগফিরুল্লাহ</b><small>১২০/২০০</small></div><div class="bar"><b style="width:60%"></b></div></div>
-          <div class="card"><div class="row"><b>💧 পানি</b><small>১৫০০/২৫০০</small></div><div class="bar"><b style="width:60%;background:#2E8BC0"></b></div></div>
-          <div class="card"><div class="row"><b>💊 ওষুধ</b><small>রাত ৮:০০</small></div></div>
-          <div class="card"><div class="row"><b>⭐ আজকের পয়েন্ট</b><b style="color:#F2703F">৮৫</b></div></div>
-        </div>
-      </div>
+  <div class="sky"></div>
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="wrap rv">
+    <p class="ayah ar">وَأَن لَّيْسَ لِلْإِنسَانِ إِلَّا مَا سَعَىٰ</p>
+    <p class="ayah-tr">“মানুষ তা-ই পায়, যার জন্য সে চেষ্টা করে।” — সূরা আন-নাজম ৫৩:৩৯</p>
+    <h1>আপনার দিনটা সাজিয়ে দিই, <em>আমলের ছন্দে</em></h1>
+    <p class="lead">ফজর থেকে ইশা — নামাজ, যিকির, কুরআন, কাজ, পানি আর ওষুধ, প্রতিটি সময়মতো মনে করিয়ে দেবে Tadbeer। ইন্টারনেট না থাকলেও।</p>
+    <div class="get-row">
+      <a class="btn ink" href="https://github.com/iftiyak7/claude-code/releases/download/apk-latest/tadbeer-daily.apk" download>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+        Android-এ নামান <small>· ফ্রি</small>
+      </a>
+      <a class="btn line" href="#day">কীভাবে কাজে লাগে</a>
     </div>
+  </div>
+  <div class="fan">
+    <div class="phone p1"><img src="assets/screen-amal.webp" alt="আমল তালিকা" width="600" height="1021"></div>
+    <div class="phone p2"><img src="assets/screen-home.webp" alt="Tadbeer Daily হোম" width="600" height="1021"></div>
+    <div class="phone p3"><img src="assets/screen-zikr.webp" alt="যিকির কাউন্টার" width="600" height="1021"></div>
+    <div class="chip-note c1">🔔 মাগরিবের সময় হয়েছে</div>
+    <div class="chip-note c2">✅ আজ ৪/৫ ওয়াক্ত</div>
   </div>
 </header>
 
-<main>
-<section id="features"><div class="wrap">
-  <h2>এক অ্যাপে সব</h2>
-  <p class="sub">আপনার ইবাদত ও দৈনন্দিন জীবন — সুশৃঙ্খল, সহজ এবং সুন্দর।</p>
-  <div class="features">
-    <div class="f"><div class="ic">🕌</div><h3>নামাজ ট্র্যাকার</h3><p>লোকেশন অনুযায়ী অফলাইনে নামাজের সময়, আযানের সময় রিমাইন্ডার ও চেক-ইন।</p></div>
-    <div class="f"><div class="ic">📿</div><h3>যিকির কাউন্টার</h3><p>দৈনিক লক্ষ্য দিন (যেমন ২০০ বার), প্রতি ঘণ্টায় মনে করিয়ে দেবে — লক্ষ্য পূরণ হলে থেমে যাবে।</p></div>
-    <div class="f"><div class="ic">⏰</div><h3>ইউনিভার্সাল রিমাইন্ডার</h3><p>যেকোনো কিছু, যেকোনো দিন — প্রতিদিন, সপ্তাহের দিন, নির্দিষ্ট তারিখ বা প্রতি মাসে।</p></div>
-    <div class="f"><div class="ic">✅</div><h3>টাস্ক ম্যানেজার</h3><p>তারিখ, সময়, গুরুত্ব ও অ্যালার্ম সহ কাজের তালিকা।</p></div>
-    <div class="f"><div class="ic">🗓️</div><h3>রুটিন প্ল্যানার</h3><p>দিনের টাইমলাইন, নামাজের সময়ের সাথে মিলিয়ে।</p></div>
-    <div class="f"><div class="ic">💧</div><h3>পানি ট্র্যাকার</h3><p>দৈনিক লক্ষ্য, এক ট্যাপে গ্লাস যোগ, নির্দিষ্ট বিরতিতে রিমাইন্ডার।</p></div>
-    <div class="f"><div class="ic">💊</div><h3>ওষুধ রিমাইন্ডার</h3><p>ডোজ, খাবারের আগে/পরে, অ্যালার্ম, স্টক হিসাব।</p></div>
-    <div class="f"><div class="ic">⭐</div><h3>পয়েন্ট ও লেভেল</h3><p>প্রতিটি আমলে পয়েন্ট, ধারাবাহিকতা ও সাপ্তাহিক অগ্রগতি।</p></div>
+<!-- ═══ A day with Tadbeer ═══ -->
+<section id="day" class="day">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow" style="color:#FFB48A">Tadbeer-এর সাথে একটি দিন</span>
+      <h2 style="margin-top:14px;max-width:760px">পাঁচ ওয়াক্তের ফাঁকে ফাঁকে, প্রতিটি কাজের পাশে</h2>
+      <p class="muted" style="font-size:19px;margin-top:12px;max-width:620px">আপনার লোকেশন অনুযায়ী নামাজের সময় হিসাব করে, পুরো দিনটা Tadbeer নিজেই সাজিয়ে নেয়।</p>
+    </div>
+    <div class="track">
+      <div class="slot rv"><div class="sun" style="background:#FFB37A">🌅</div><p class="when">ভোর</p><h3>ফজর</h3><p>অ্যালার্মে ঘুম ভাঙে, নামাজ শেষে এক ট্যাপে চেক-ইন।</p><span class="tag">অ্যালার্ম</span></div>
+      <div class="slot rv"><div class="sun" style="background:#FFE08A">☀️</div><p class="when">দুপুর</p><h3>যোহর</h3><p>কাজের ফাঁকে প্রতি ঘণ্টায় যিকিরের মৃদু রিমাইন্ডার।</p><span class="tag">যিকির ১০০/১০০</span></div>
+      <div class="slot rv"><div class="sun" style="background:#F2BC57">🌤️</div><p class="when">বিকাল</p><h3>আসর</h3><p>পানির গ্লাস, দুপুরের ওষুধ — কিছুই বাদ পড়ে না।</p><span class="tag">💧 ১৫০০ মি.লি.</span></div>
+      <div class="slot rv"><div class="sun" style="background:#F2703F">🌇</div><p class="when">সন্ধ্যা</p><h3>মাগরিব</h3><p>সূর্যাস্তের সাথে সাথে নোটিফিকেশন, তারপর দিনের কাজের হিসাব।</p><span class="tag">কাজ ৩/৪</span></div>
+      <div class="slot rv"><div class="sun" style="background:#6D5AE6">🌙</div><p class="when">রাত</p><h3>ইশা</h3><p>কুরআন তিলাওয়াত, আর দিন শেষে আজকের পয়েন্ট ও ধারাবাহিকতা।</p><span class="tag">⭐ +৮৫ পয়েন্ট</span></div>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section><div class="wrap">
-  <div class="privacy">
-    <div class="big">🔒</div>
-    <div>
-      <h3 style="font-size:22px">আপনার আমল শুধু আপনার</h3>
-      <p style="color:var(--muted)">সব তথ্য প্রথমে আপনার ফোনেই থাকে। কোনো লিডারবোর্ড নেই, কেউ আপনার পয়েন্ট দেখতে পারে না। চাইলে অ্যাকাউন্ট খুলে এনক্রিপ্টেড সংযোগে ব্যাকআপ রাখুন, আর অ্যাপ লক দিয়ে সুরক্ষিত রাখুন।</p>
+<!-- ═══ Bento features ═══ -->
+<section id="features">
+  <div class="wrap">
+    <div class="center rv">
+      <span class="eyebrow">ভেতরে যা আছে</span>
+      <h2 style="margin-top:14px">ছোট ছোট অভ্যাস, বড় পরিবর্তন</h2>
+    </div>
+    <div class="bento">
+      <div class="tile t-zikr rv">
+        <h3>যিকির কাউন্টার</h3>
+        <p>দৈনিক লক্ষ্য দিন, প্রতি ঘণ্টায় মনে করাবে — পূরণ হলেই থামবে।</p>
+        <div class="ring">
+          <svg viewBox="0 0 230 230"><circle cx="115" cy="115" r="100" fill="none" stroke="#F6E4DA" stroke-width="16"/><circle cx="115" cy="115" r="100" fill="none" stroke="#F2703F" stroke-width="16" stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="207"/></svg>
+          <div><b>৬৭</b><small>/ ১০০ বার</small></div>
+        </div>
+        <div class="minichips"><span>+১০</span><span>+৩৩</span><span class="ok">✓ সম্পন্ন</span></div>
+      </div>
+      <div class="tile t-wide rv">
+        <h3>পাঁচ ওয়াক্ত নামাজ</h3>
+        <p>ওয়াক্ত শুরু হলেই চেক-ইন, আগে নয়।</p>
+        <div class="caps"><i class="ok">✓</i><i class="ok">✓</i><i class="ok">✓</i><i></i><i></i></div>
+      </div>
+      <div class="tile rv" style="background:var(--sky-soft)">
+        <h3>পানি</h3>
+        <div class="glass"><div class="g"></div><div><b>১.৫L</b><p>/ ২.৫ লিটার</p></div></div>
+      </div>
+      <div class="tile t-dark rv">
+        <h3>ওষুধ</h3>
+        <div class="pills"><span>সকাল ৮:০০ <em>✓ খেয়েছি</em></span><span>রাত ৮:০০ <em style="color:#FFB48A">⏰ অ্যালার্ম</em></span></div>
+      </div>
+      <div class="tile t-wide t-lav rv">
+        <h3>যেকোনো কিছুর রিমাইন্ডার</h3>
+        <div class="notifs">
+          <div class="notif n1"><div class="ic" style="background:var(--coral-soft)">🔔</div><div><b>কুরআন তিলাওয়াত</b><span>আজ ০/২ পৃষ্ঠা — রাত ৯:০০</span></div></div>
+          <div class="notif n2"><div class="ic" style="background:var(--mint-soft)">📞</div><div><b>আম্মুকে ফোন</b><span>প্রতি শুক্রবার</span></div></div>
+        </div>
+      </div>
+      <div class="tile rv">
+        <h3>পয়েন্ট ও লেভেল</h3>
+        <div class="bars"><i class="on" style="height:40%"></i><i class="on" style="height:70%"></i><i class="on" style="height:55%"></i><i class="on" style="height:90%"></i><i class="on" style="height:62%"></i><i style="height:30%"></i><i class="today" style="height:80%"></i></div>
+      </div>
+      <div class="tile rv" style="background:var(--gold-soft)">
+        <h3>কাজ ও রুটিন</h3>
+        <div class="todo"><span class="ok">বাজার করা</span><span class="ok">অফিসের রিপোর্ট</span><span>বাচ্চার স্কুল ফি</span></div>
+      </div>
     </div>
   </div>
-</div></section>
+</section>
 
-<section id="download" style="padding-top:0"><div class="wrap">
-  <div class="dl">
-    <div class="dl-text">
-      <h2 style="text-align:left">অ্যাপটি ডাউনলোড করুন</h2>
-      <p class="sub" style="text-align:left;margin:8px 0 22px">Android ফোনে এখনই ইনস্টল করুন, সম্পূর্ণ ফ্রি। iPhone ভার্সন শীঘ্রই আসছে।</p>
-      <a class="btn gold big" href="https://github.com/iftiyak7/claude-code/releases/download/apk-latest/tadbeer-daily.apk" download>
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22a11.5 11.5 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5"/></svg>
-        Android অ্যাপ ডাউনলোড (APK)
-      </a>
-      <ol class="steps">
-        <li>উপরের বোতামে চাপুন, ফাইলটি ডাউনলোড হবে</li>
-        <li>ডাউনলোড শেষ হলে ফাইলটি খুলুন</li>
-        <li>"অজানা অ্যাপ ইনস্টল" অনুমতি চাইলে <b>Allow</b> দিন, তারপর <b>Install</b></li>
-        <li>অ্যাপ খুলে রিমাইন্ডারের অনুমতিগুলো দিন, ব্যস!</li>
-      </ol>
+<!-- ═══ Tour ═══ -->
+<section id="tour" style="padding-top:20px">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">অ্যাপটা ঘুরে দেখুন</span>
+      <h2 style="margin-top:14px">হাতে নেওয়ার আগেই চিনে নিন</h2>
     </div>
-    <div class="dl-qr">
-      <svg role="img" aria-label="QR code" class="qr" width="33mm" height="33mm" version="1.1" viewBox="0 0 33 33" xmlns="http://www.w3.org/2000/svg"><path d="M2,2H3V3H2zM3,2H4V3H3zM4,2H5V3H4zM5,2H6V3H5zM6,2H7V3H6zM7,2H8V3H7zM8,2H9V3H8zM11,2H12V3H11zM12,2H13V3H12zM14,2H15V3H14zM16,2H17V3H16zM17,2H18V3H17zM19,2H20V3H19zM20,2H21V3H20zM21,2H22V3H21zM24,2H25V3H24zM25,2H26V3H25zM26,2H27V3H26zM27,2H28V3H27zM28,2H29V3H28zM29,2H30V3H29zM30,2H31V3H30zM2,3H3V4H2zM8,3H9V4H8zM10,3H11V4H10zM15,3H16V4H15zM16,3H17V4H16zM17,3H18V4H17zM18,3H19V4H18zM19,3H20V4H19zM20,3H21V4H20zM21,3H22V4H21zM22,3H23V4H22zM24,3H25V4H24zM30,3H31V4H30zM2,4H3V5H2zM4,4H5V5H4zM5,4H6V5H5zM6,4H7V5H6zM8,4H9V5H8zM11,4H12V5H11zM12,4H13V5H12zM16,4H17V5H16zM18,4H19V5H18zM20,4H21V5H20zM22,4H23V5H22zM24,4H25V5H24zM26,4H27V5H26zM27,4H28V5H27zM28,4H29V5H28zM30,4H31V5H30zM2,5H3V6H2zM4,5H5V6H4zM5,5H6V6H5zM6,5H7V6H6zM8,5H9V6H8zM14,5H15V6H14zM17,5H18V6H17zM20,5H21V6H20zM24,5H25V6H24zM26,5H27V6H26zM27,5H28V6H27zM28,5H29V6H28zM30,5H31V6H30zM2,6H3V7H2zM4,6H5V7H4zM5,6H6V7H5zM6,6H7V7H6zM8,6H9V7H8zM10,6H11V7H10zM11,6H12V7H11zM12,6H13V7H12zM15,6H16V7H15zM16,6H17V7H16zM17,6H18V7H17zM19,6H20V7H19zM21,6H22V7H21zM24,6H25V7H24zM26,6H27V7H26zM27,6H28V7H27zM28,6H29V7H28zM30,6H31V7H30zM2,7H3V8H2zM8,7H9V8H8zM11,7H12V8H11zM12,7H13V8H12zM13,7H14V8H13zM16,7H17V8H16zM17,7H18V8H17zM18,7H19V8H18zM19,7H20V8H19zM21,7H22V8H21zM22,7H23V8H22zM24,7H25V8H24zM30,7H31V8H30zM2,8H3V9H2zM3,8H4V9H3zM4,8H5V9H4zM5,8H6V9H5zM6,8H7V9H6zM7,8H8V9H7zM8,8H9V9H8zM10,8H11V9H10zM12,8H13V9H12zM14,8H15V9H14zM16,8H17V9H16zM18,8H19V9H18zM20,8H21V9H20zM22,8H23V9H22zM24,8H25V9H24zM25,8H26V9H25zM26,8H27V9H26zM27,8H28V9H27zM28,8H29V9H28zM29,8H30V9H29zM30,8H31V9H30zM15,9H16V10H15zM18,9H19V10H18zM19,9H20V10H19zM20,9H21V10H20zM21,9H22V10H21zM2,10H3V11H2zM4,10H5V11H4zM6,10H7V11H6zM8,10H9V11H8zM13,10H14V11H13zM14,10H15V11H14zM15,10H16V11H15zM17,10H18V11H17zM18,10H19V11H18zM19,10H20V11H19zM20,10H21V11H20zM22,10H23V11H22zM26,10H27V11H26zM29,10H30V11H29zM2,11H3V12H2zM3,11H4V12H3zM6,11H7V12H6zM7,11H8V12H7zM10,11H11V12H10zM18,11H19V12H18zM22,11H23V12H22zM24,11H25V12H24zM27,11H28V12H27zM30,11H31V12H30zM4,12H5V13H4zM6,12H7V13H6zM7,12H8V13H7zM8,12H9V13H8zM9,12H10V13H9zM12,12H13V13H12zM13,12H14V13H13zM16,12H17V13H16zM18,12H19V13H18zM19,12H20V13H19zM22,12H23V13H22zM23,12H24V13H23zM24,12H25V13H24zM28,12H29V13H28zM29,12H30V13H29zM30,12H31V13H30zM3,13H4V14H3zM4,13H5V14H4zM9,13H10V14H9zM10,13H11V14H10zM14,13H15V14H14zM15,13H16V14H15zM17,13H18V14H17zM18,13H19V14H18zM19,13H20V14H19zM21,13H22V14H21zM22,13H23V14H22zM23,13H24V14H23zM26,13H27V14H26zM29,13H30V14H29zM2,14H3V15H2zM4,14H5V15H4zM5,14H6V15H5zM6,14H7V15H6zM8,14H9V15H8zM10,14H11V15H10zM12,14H13V15H12zM13,14H14V15H13zM15,14H16V15H15zM17,14H18V15H17zM18,14H19V15H18zM19,14H20V15H19zM22,14H23V15H22zM23,14H24V15H23zM24,14H25V15H24zM27,14H28V15H27zM29,14H30V15H29zM30,14H31V15H30zM3,15H4V16H3zM5,15H6V16H5zM6,15H7V16H6zM7,15H8V16H7zM10,15H11V16H10zM13,15H14V16H13zM15,15H16V16H15zM16,15H17V16H16zM18,15H19V16H18zM19,15H20V16H19zM22,15H23V16H22zM23,15H24V16H23zM24,15H25V16H24zM25,15H26V16H25zM27,15H28V16H27zM30,15H31V16H30zM2,16H3V17H2zM3,16H4V17H3zM5,16H6V17H5zM6,16H7V17H6zM8,16H9V17H8zM10,16H11V17H10zM11,16H12V17H11zM18,16H19V17H18zM19,16H20V17H19zM20,16H21V17H20zM22,16H23V17H22zM24,16H25V17H24zM25,16H26V17H25zM27,16H28V17H27zM29,16H30V17H29zM30,16H31V17H30zM3,17H4V18H3zM6,17H7V18H6zM9,17H10V18H9zM11,17H12V18H11zM12,17H13V18H12zM13,17H14V18H13zM14,17H15V18H14zM15,17H16V18H15zM18,17H19V18H18zM19,17H20V18H19zM20,17H21V18H20zM27,17H28V18H27zM29,17H30V18H29zM2,18H3V19H2zM3,18H4V19H3zM7,18H8V19H7zM8,18H9V19H8zM9,18H10V19H9zM10,18H11V19H10zM12,18H13V19H12zM13,18H14V19H13zM15,18H16V19H15zM17,18H18V19H17zM18,18H19V19H18zM19,18H20V19H19zM23,18H24V19H23zM24,18H25V19H24zM25,18H26V19H25zM27,18H28V19H27zM29,18H30V19H29zM30,18H31V19H30zM5,19H6V20H5zM7,19H8V20H7zM10,19H11V20H10zM13,19H14V20H13zM18,19H19V20H18zM22,19H23V20H22zM23,19H24V20H23zM24,19H25V20H24zM27,19H28V20H27zM28,19H29V20H28zM30,19H31V20H30zM2,20H3V21H2zM4,20H5V21H4zM5,20H6V21H5zM6,20H7V21H6zM8,20H9V21H8zM9,20H10V21H9zM10,20H11V21H10zM12,20H13V21H12zM13,20H14V21H13zM14,20H15V21H14zM19,20H20V21H19zM23,20H24V21H23zM24,20H25V21H24zM25,20H26V21H25zM29,20H30V21H29zM30,20H31V21H30zM3,21H4V22H3zM4,21H5V22H4zM5,21H6V22H5zM7,21H8V22H7zM9,21H10V22H9zM10,21H11V22H10zM12,21H13V22H12zM13,21H14V22H13zM14,21H15V22H14zM15,21H16V22H15zM16,21H17V22H16zM18,21H19V22H18zM19,21H20V22H19zM20,21H21V22H20zM21,21H22V22H21zM22,21H23V22H22zM23,21H24V22H23zM27,21H28V22H27zM29,21H30V22H29zM2,22H3V23H2zM4,22H5V23H4zM5,22H6V23H5zM7,22H8V23H7zM8,22H9V23H8zM9,22H10V23H9zM11,22H12V23H11zM13,22H14V23H13zM14,22H15V23H14zM15,22H16V23H15zM19,22H20V23H19zM22,22H23V23H22zM23,22H24V23H23zM24,22H25V23H24zM25,22H26V23H25zM26,22H27V23H26zM10,23H11V24H10zM14,23H15V24H14zM18,23H19V24H18zM21,23H22V24H21zM22,23H23V24H22zM26,23H27V24H26zM28,23H29V24H28zM29,23H30V24H29zM30,23H31V24H30zM2,24H3V25H2zM3,24H4V25H3zM4,24H5V25H4zM5,24H6V25H5zM6,24H7V25H6zM7,24H8V25H7zM8,24H9V25H8zM21,24H22V25H21zM22,24H23V25H22zM24,24H25V25H24zM26,24H27V25H26zM27,24H28V25H27zM29,24H30V25H29zM30,24H31V25H30zM2,25H3V26H2zM8,25H9V26H8zM11,25H12V26H11zM12,25H13V26H12zM13,25H14V26H13zM14,25H15V26H14zM15,25H16V26H15zM18,25H19V26H18zM19,25H20V26H19zM20,25H21V26H20zM22,25H23V26H22zM26,25H27V26H26zM27,25H28V26H27zM29,25H30V26H29zM30,25H31V26H30zM2,26H3V27H2zM4,26H5V27H4zM5,26H6V27H5zM6,26H7V27H6zM8,26H9V27H8zM10,26H11V27H10zM12,26H13V27H12zM13,26H14V27H13zM14,26H15V27H14zM16,26H17V27H16zM17,26H18V27H17zM18,26H19V27H18zM19,26H20V27H19zM20,26H21V27H20zM22,26H23V27H22zM23,26H24V27H23zM24,26H25V27H24zM25,26H26V27H25zM26,26H27V27H26zM2,27H3V28H2zM4,27H5V28H4zM5,27H6V28H5zM6,27H7V28H6zM8,27H9V28H8zM12,27H13V28H12zM13,27H14V28H13zM14,27H15V28H14zM15,27H16V28H15zM18,27H19V28H18zM26,27H27V28H26zM28,27H29V28H28zM29,27H30V28H29zM30,27H31V28H30zM2,28H3V29H2zM4,28H5V29H4zM5,28H6V29H5zM6,28H7V29H6zM8,28H9V29H8zM10,28H11V29H10zM11,28H12V29H11zM14,28H15V29H14zM18,28H19V29H18zM19,28H20V29H19zM21,28H22V29H21zM22,28H23V29H22zM25,28H26V29H25zM26,28H27V29H26zM27,28H28V29H27zM30,28H31V29H30zM2,29H3V30H2zM8,29H9V30H8zM11,29H12V30H11zM12,29H13V30H12zM13,29H14V30H13zM16,29H17V30H16zM17,29H18V30H17zM18,29H19V30H18zM19,29H20V30H19zM20,29H21V30H20zM21,29H22V30H21zM22,29H23V30H22zM23,29H24V30H23zM26,29H27V30H26zM29,29H30V30H29zM2,30H3V31H2zM3,30H4V31H3zM4,30H5V31H4zM5,30H6V31H5zM6,30H7V31H6zM7,30H8V31H7zM8,30H9V31H8zM10,30H11V31H10zM16,30H17V31H16zM18,30H19V31H18zM19,30H20V31H19zM21,30H22V31H21zM22,30H23V31H22zM25,30H26V31H25zM26,30H27V31H26zM27,30H28V31H27zM29,30H30V31H29zM30,30H31V31H30z" id="qr-path" fill="#000000" fill-opacity="1" fill-rule="nonzero" stroke="none"/></svg>
-      <p>কম্পিউটার থেকে দেখছেন?<br>ফোনের ক্যামেরা দিয়ে স্ক্যান করুন</p>
+    <div class="tour">
+      <div class="steps rv" id="steps">
+        <div role="button" tabindex="0" class="step on" data-img="home"><span class="n">১</span><span><h3>আজকের পাতা</h3><p>পরবর্তী নামাজ, কাউন্টডাউন, দিনের অগ্রগতি আর আয়াত-হাদিসের ব্যানার।</p><span class="bar"><i></i></span></span></div>
+        <div role="button" tabindex="0" class="step" data-img="zikr"><span class="n">২</span><span><h3>যিকির</h3><p>বড় ট্যাপ এরিয়া, ভাইব্রেশন, তসবিহের জন্য এক ট্যাপে সম্পন্ন।</p><span class="bar"><i></i></span></span></div>
+        <div role="button" tabindex="0" class="step" data-img="amal"><span class="n">৩</span><span><h3>সব আমল</h3><p>গত সাত দিনের হিসাব, নামাজ-যিকির-অন্যান্য আলাদা করে।</p><span class="bar"><i></i></span></span></div>
+        <div role="button" tabindex="0" class="step" data-img="health"><span class="n">৪</span><span><h3>স্বাস্থ্য</h3><p>পানির লক্ষ্য আর ওষুধের ডোজ, অ্যালার্মসহ।</p><span class="bar"><i></i></span></span></div>
+        <div role="button" tabindex="0" class="step" data-img="profile"><span class="n">৫</span><span><h3>প্রোফাইল</h3><p>পয়েন্ট, লেভেল আর ধারাবাহিকতা — শুধু আপনার জন্য।</p><span class="bar"><i></i></span></span></div>
+      </div>
+      <div class="stage rv"><div class="phone"><img id="tour-img" src="assets/screen-home.webp" alt="অ্যাপের স্ক্রিন" width="600" height="1021"></div></div>
     </div>
   </div>
-</div></section>
+</section>
+
+<!-- ═══ Promises ═══ -->
+<section style="padding-top:40px">
+  <div class="wrap">
+    <div class="promise rv">
+      <svg class="seal" viewBox="0 0 100 100"><path d="M50 4 L61 25 L83 17 L75 39 L96 50 L75 61 L83 83 L61 75 L50 96 L39 75 L17 83 L25 61 L4 50 L25 39 L17 17 L39 25 Z" fill="#16151A"/></svg>
+      <span class="eyebrow">আমাদের প্রতিশ্রুতি</span>
+      <h2 style="margin-top:14px;max-width:700px">আমল একান্ত আপনার। আমরা শুধু মনে করিয়ে দিই।</h2>
+      <div class="plist">
+        <div><div class="num">١</div><h3>কেউ দেখবে না</h3><p>কোনো লিডারবোর্ড বা পাবলিক প্রোফাইল নেই। আপনার আমল ও পয়েন্ট শুধু আপনিই দেখতে পারেন।</p></div>
+        <div><div class="num">٢</div><h3>বিজ্ঞাপন নেই, খরচ নেই</h3><p>সম্পূর্ণ ফ্রি। কোনো বিজ্ঞাপন, ট্র্যাকার বা সাবস্ক্রিপশন নেই।</p></div>
+        <div><div class="num">٣</div><h3>ফোনেই থাকে সব</h3><p>অফলাইনে সব চলে। চাইলে অ্যাকাউন্ট খুলে সুরক্ষিত ব্যাকআপ রাখুন, যেকোনো সময় মুছে ফেলুন।</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Download ticket ═══ -->
+<section id="download" style="padding-top:20px">
+  <div class="wrap">
+    <div class="ticket rv">
+      <div class="main">
+        <h2>আজ থেকেই শুরু করুন</h2>
+        <p>Android ফোনে ফ্রি। iPhone ভার্সন আসছে শীঘ্রই, ইন শা আল্লাহ।</p>
+        <a class="btn ink" href="https://github.com/iftiyak7/claude-code/releases/download/apk-latest/tadbeer-daily.apk" download>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+          Android অ্যাপ নামান <small>· প্রায় ৫৭ MB</small>
+        </a>
+        <div class="howto"><span><b>১</b>ডাউনলোড</span><span><b>২</b>ফাইল খুলে “Allow”</span><span><b>৩</b>Install</span></div>
+      </div>
+      <div class="stub">
+        <svg role="img" aria-label="ডাউনলোড QR কোড" class="qr" width="31mm" height="31mm" version="1.1" viewBox="0 0 31 31" xmlns="http://www.w3.org/2000/svg"><path d="M1,1H2V2H1zM2,1H3V2H2zM3,1H4V2H3zM4,1H5V2H4zM5,1H6V2H5zM6,1H7V2H6zM7,1H8V2H7zM10,1H11V2H10zM11,1H12V2H11zM13,1H14V2H13zM15,1H16V2H15zM16,1H17V2H16zM18,1H19V2H18zM19,1H20V2H19zM20,1H21V2H20zM23,1H24V2H23zM24,1H25V2H24zM25,1H26V2H25zM26,1H27V2H26zM27,1H28V2H27zM28,1H29V2H28zM29,1H30V2H29zM1,2H2V3H1zM7,2H8V3H7zM9,2H10V3H9zM14,2H15V3H14zM15,2H16V3H15zM16,2H17V3H16zM17,2H18V3H17zM18,2H19V3H18zM19,2H20V3H19zM20,2H21V3H20zM21,2H22V3H21zM23,2H24V3H23zM29,2H30V3H29zM1,3H2V4H1zM3,3H4V4H3zM4,3H5V4H4zM5,3H6V4H5zM7,3H8V4H7zM10,3H11V4H10zM11,3H12V4H11zM15,3H16V4H15zM17,3H18V4H17zM19,3H20V4H19zM21,3H22V4H21zM23,3H24V4H23zM25,3H26V4H25zM26,3H27V4H26zM27,3H28V4H27zM29,3H30V4H29zM1,4H2V5H1zM3,4H4V5H3zM4,4H5V5H4zM5,4H6V5H5zM7,4H8V5H7zM13,4H14V5H13zM16,4H17V5H16zM19,4H20V5H19zM23,4H24V5H23zM25,4H26V5H25zM26,4H27V5H26zM27,4H28V5H27zM29,4H30V5H29zM1,5H2V6H1zM3,5H4V6H3zM4,5H5V6H4zM5,5H6V6H5zM7,5H8V6H7zM9,5H10V6H9zM10,5H11V6H10zM11,5H12V6H11zM14,5H15V6H14zM15,5H16V6H15zM16,5H17V6H16zM18,5H19V6H18zM20,5H21V6H20zM23,5H24V6H23zM25,5H26V6H25zM26,5H27V6H26zM27,5H28V6H27zM29,5H30V6H29zM1,6H2V7H1zM7,6H8V7H7zM10,6H11V7H10zM11,6H12V7H11zM12,6H13V7H12zM15,6H16V7H15zM16,6H17V7H16zM17,6H18V7H17zM18,6H19V7H18zM20,6H21V7H20zM21,6H22V7H21zM23,6H24V7H23zM29,6H30V7H29zM1,7H2V8H1zM2,7H3V8H2zM3,7H4V8H3zM4,7H5V8H4zM5,7H6V8H5zM6,7H7V8H6zM7,7H8V8H7zM9,7H10V8H9zM11,7H12V8H11zM13,7H14V8H13zM15,7H16V8H15zM17,7H18V8H17zM19,7H20V8H19zM21,7H22V8H21zM23,7H24V8H23zM24,7H25V8H24zM25,7H26V8H25zM26,7H27V8H26zM27,7H28V8H27zM28,7H29V8H28zM29,7H30V8H29zM14,8H15V9H14zM17,8H18V9H17zM18,8H19V9H18zM19,8H20V9H19zM20,8H21V9H20zM1,9H2V10H1zM3,9H4V10H3zM5,9H6V10H5zM7,9H8V10H7zM12,9H13V10H12zM13,9H14V10H13zM14,9H15V10H14zM16,9H17V10H16zM17,9H18V10H17zM18,9H19V10H18zM19,9H20V10H19zM21,9H22V10H21zM25,9H26V10H25zM28,9H29V10H28zM1,10H2V11H1zM2,10H3V11H2zM5,10H6V11H5zM6,10H7V11H6zM9,10H10V11H9zM17,10H18V11H17zM21,10H22V11H21zM23,10H24V11H23zM26,10H27V11H26zM29,10H30V11H29zM3,11H4V12H3zM5,11H6V12H5zM6,11H7V12H6zM7,11H8V12H7zM8,11H9V12H8zM11,11H12V12H11zM12,11H13V12H12zM15,11H16V12H15zM17,11H18V12H17zM18,11H19V12H18zM21,11H22V12H21zM22,11H23V12H22zM23,11H24V12H23zM27,11H28V12H27zM28,11H29V12H28zM29,11H30V12H29zM2,12H3V13H2zM3,12H4V13H3zM8,12H9V13H8zM9,12H10V13H9zM13,12H14V13H13zM14,12H15V13H14zM16,12H17V13H16zM17,12H18V13H17zM18,12H19V13H18zM20,12H21V13H20zM21,12H22V13H21zM22,12H23V13H22zM25,12H26V13H25zM28,12H29V13H28zM1,13H2V14H1zM3,13H4V14H3zM4,13H5V14H4zM5,13H6V14H5zM7,13H8V14H7zM9,13H10V14H9zM11,13H12V14H11zM12,13H13V14H12zM14,13H15V14H14zM16,13H17V14H16zM17,13H18V14H17zM18,13H19V14H18zM21,13H22V14H21zM22,13H23V14H22zM23,13H24V14H23zM26,13H27V14H26zM28,13H29V14H28zM29,13H30V14H29zM2,14H3V15H2zM4,14H5V15H4zM5,14H6V15H5zM6,14H7V15H6zM9,14H10V15H9zM12,14H13V15H12zM14,14H15V15H14zM15,14H16V15H15zM17,14H18V15H17zM18,14H19V15H18zM21,14H22V15H21zM22,14H23V15H22zM23,14H24V15H23zM24,14H25V15H24zM26,14H27V15H26zM29,14H30V15H29zM1,15H2V16H1zM2,15H3V16H2zM4,15H5V16H4zM5,15H6V16H5zM7,15H8V16H7zM9,15H10V16H9zM10,15H11V16H10zM17,15H18V16H17zM18,15H19V16H18zM19,15H20V16H19zM21,15H22V16H21zM23,15H24V16H23zM24,15H25V16H24zM26,15H27V16H26zM28,15H29V16H28zM29,15H30V16H29zM2,16H3V17H2zM5,16H6V17H5zM8,16H9V17H8zM10,16H11V17H10zM11,16H12V17H11zM12,16H13V17H12zM13,16H14V17H13zM14,16H15V17H14zM17,16H18V17H17zM18,16H19V17H18zM19,16H20V17H19zM26,16H27V17H26zM28,16H29V17H28zM1,17H2V18H1zM2,17H3V18H2zM6,17H7V18H6zM7,17H8V18H7zM8,17H9V18H8zM9,17H10V18H9zM11,17H12V18H11zM12,17H13V18H12zM14,17H15V18H14zM16,17H17V18H16zM17,17H18V18H17zM18,17H19V18H18zM22,17H23V18H22zM23,17H24V18H23zM24,17H25V18H24zM26,17H27V18H26zM28,17H29V18H28zM29,17H30V18H29zM4,18H5V19H4zM6,18H7V19H6zM9,18H10V19H9zM12,18H13V19H12zM17,18H18V19H17zM21,18H22V19H21zM22,18H23V19H22zM23,18H24V19H23zM26,18H27V19H26zM27,18H28V19H27zM29,18H30V19H29zM1,19H2V20H1zM3,19H4V20H3zM4,19H5V20H4zM5,19H6V20H5zM7,19H8V20H7zM8,19H9V20H8zM9,19H10V20H9zM11,19H12V20H11zM12,19H13V20H12zM13,19H14V20H13zM18,19H19V20H18zM22,19H23V20H22zM23,19H24V20H23zM24,19H25V20H24zM28,19H29V20H28zM29,19H30V20H29zM2,20H3V21H2zM3,20H4V21H3zM4,20H5V21H4zM6,20H7V21H6zM8,20H9V21H8zM9,20H10V21H9zM11,20H12V21H11zM12,20H13V21H12zM13,20H14V21H13zM14,20H15V21H14zM15,20H16V21H15zM17,20H18V21H17zM18,20H19V21H18zM19,20H20V21H19zM20,20H21V21H20zM21,20H22V21H21zM22,20H23V21H22zM26,20H27V21H26zM28,20H29V21H28zM1,21H2V22H1zM3,21H4V22H3zM4,21H5V22H4zM6,21H7V22H6zM7,21H8V22H7zM8,21H9V22H8zM10,21H11V22H10zM12,21H13V22H12zM13,21H14V22H13zM14,21H15V22H14zM18,21H19V22H18zM21,21H22V22H21zM22,21H23V22H22zM23,21H24V22H23zM24,21H25V22H24zM25,21H26V22H25zM9,22H10V23H9zM13,22H14V23H13zM17,22H18V23H17zM20,22H21V23H20zM21,22H22V23H21zM25,22H26V23H25zM27,22H28V23H27zM28,22H29V23H28zM29,22H30V23H29zM1,23H2V24H1zM2,23H3V24H2zM3,23H4V24H3zM4,23H5V24H4zM5,23H6V24H5zM6,23H7V24H6zM7,23H8V24H7zM20,23H21V24H20zM21,23H22V24H21zM23,23H24V24H23zM25,23H26V24H25zM26,23H27V24H26zM28,23H29V24H28zM29,23H30V24H29zM1,24H2V25H1zM7,24H8V25H7zM10,24H11V25H10zM11,24H12V25H11zM12,24H13V25H12zM13,24H14V25H13zM14,24H15V25H14zM17,24H18V25H17zM18,24H19V25H18zM19,24H20V25H19zM21,24H22V25H21zM25,24H26V25H25zM26,24H27V25H26zM28,24H29V25H28zM29,24H30V25H29zM1,25H2V26H1zM3,25H4V26H3zM4,25H5V26H4zM5,25H6V26H5zM7,25H8V26H7zM9,25H10V26H9zM11,25H12V26H11zM12,25H13V26H12zM13,25H14V26H13zM15,25H16V26H15zM16,25H17V26H16zM17,25H18V26H17zM18,25H19V26H18zM19,25H20V26H19zM21,25H22V26H21zM22,25H23V26H22zM23,25H24V26H23zM24,25H25V26H24zM25,25H26V26H25zM1,26H2V27H1zM3,26H4V27H3zM4,26H5V27H4zM5,26H6V27H5zM7,26H8V27H7zM11,26H12V27H11zM12,26H13V27H12zM13,26H14V27H13zM14,26H15V27H14zM17,26H18V27H17zM25,26H26V27H25zM27,26H28V27H27zM28,26H29V27H28zM29,26H30V27H29zM1,27H2V28H1zM3,27H4V28H3zM4,27H5V28H4zM5,27H6V28H5zM7,27H8V28H7zM9,27H10V28H9zM10,27H11V28H10zM13,27H14V28H13zM17,27H18V28H17zM18,27H19V28H18zM20,27H21V28H20zM21,27H22V28H21zM24,27H25V28H24zM25,27H26V28H25zM26,27H27V28H26zM29,27H30V28H29zM1,28H2V29H1zM7,28H8V29H7zM10,28H11V29H10zM11,28H12V29H11zM12,28H13V29H12zM15,28H16V29H15zM16,28H17V29H16zM17,28H18V29H17zM18,28H19V29H18zM19,28H20V29H19zM20,28H21V29H20zM21,28H22V29H21zM22,28H23V29H22zM25,28H26V29H25zM28,28H29V29H28zM1,29H2V30H1zM2,29H3V30H2zM3,29H4V30H3zM4,29H5V30H4zM5,29H6V30H5zM6,29H7V30H6zM7,29H8V30H7zM9,29H10V30H9zM15,29H16V30H15zM17,29H18V30H17zM18,29H19V30H18zM20,29H21V30H20zM21,29H22V30H21zM24,29H25V30H24zM25,29H26V30H25zM26,29H27V30H26zM28,29H29V30H28zM29,29H30V30H29z" id="qr-path" fill="#000000" fill-opacity="1" fill-rule="nonzero" stroke="none"/></svg>
+        <p style="text-align:center;font-size:15px;color:var(--muted)">ফোনের ক্যামেরায় স্ক্যান করুন</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section id="faq" style="padding-top:40px">
+  <div class="wrap">
+    <div class="center rv"><span class="eyebrow">প্রশ্ন ও উত্তর</span><h2 style="margin-top:14px">মনে প্রশ্ন জাগছে?</h2></div>
+    <div class="faq rv">
+      <details open><summary>ব্যবহার করতে কি টাকা লাগে?</summary><p>না, সম্পূর্ণ ফ্রি। কোনো বিজ্ঞাপন বা সাবস্ক্রিপশন নেই।</p></details>
+      <details><summary>ইন্টারনেট ছাড়া চলবে?</summary><p>হ্যাঁ। নামাজের সময় হিসাব, রিমাইন্ডার, অ্যালার্ম — সব ফোনেই চলে। ইন্টারনেট লাগে শুধু ব্যাকআপ রাখতে চাইলে।</p></details>
+      <details><summary>আমার আমল কি অন্য কেউ দেখতে পারে?</summary><p>না। আপনার আমল ও পয়েন্ট শুধু আপনি দেখতে পারেন, অ্যাপের পরিচালকরাও না।</p></details>
+      <details><summary>রিমাইন্ডার দেরিতে আসে কেন?</summary><p>অ্যাপ খুললে “রিমাইন্ডার সেটআপ” পাতায় তিনটি অনুমতি দিন — নোটিফিকেশন, ঠিক সময়ে অ্যালার্ম আর ব্যাটারি। তাহলে অ্যাপ বন্ধ থাকলেও ঠিক সময়ে বাজবে।</p></details>
+      <details><summary>ফোন “অজানা অ্যাপ” বলে সতর্ক করছে কেন?</summary><p>Play Store-এর বাইরে থেকে নামানো সব অ্যাপেই Android এটা দেখায়। অনুমতি দিলেই ইনস্টল হবে। Play Store-এ শীঘ্রই আসছে।</p></details>
+      <details><summary>iPhone-এ কবে পাওয়া যাবে?</summary><p>iPhone ভার্সনের কাজ চলছে, শীঘ্রই App Store-এ আসবে ইন শা আল্লাহ।</p></details>
+    </div>
+  </div>
+</section>
 </main>
 
-<footer><div class="wrap">© <span id="y"></span> Tadbeer Daily · <a href="/privacy.html">গোপনীয়তা নীতি</a></div></footer>
-<script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+<footer>
+  <div class="wordmark" aria-hidden="true">تدبير</div>
+  <div class="wrap">
+    <div class="foot">
+      <span>© <span id="y"></span> Tadbeer Daily · প্রতিটি আমল, ঠিক সময়মতো</span>
+      <nav><a href="#features">ফিচার</a><a href="#download">ডাউনলোড</a><a href="/privacy.html">গোপনীয়তা নীতি</a><a href="mailto:privacy@tadbeerdaily.com">যোগাযোগ</a></nav>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
+  document.querySelectorAll('.rv').forEach(function(el,i){el.style.transitionDelay=(el.parentElement.classList.contains('track')||el.parentElement.classList.contains('bento')?(i%5)*70:0)+'ms';io.observe(el);});
+  // tour: auto-advance, click to jump
+  var steps=[].slice.call(document.querySelectorAll('.step')),img=document.getElementById('tour-img'),cur=0,timer;
+  function show(i){
+    steps.forEach(function(s,j){s.classList.toggle('on',j===i);var b=s.querySelector('.bar i');if(b){b.style.animation='none';b.offsetHeight;b.style.animation='';}});
+    img.style.opacity=0;setTimeout(function(){img.src='assets/screen-'+steps[i].dataset.img+'.webp';img.style.opacity=1;},180);
+    cur=i;clearTimeout(timer);timer=setTimeout(function(){show((cur+1)%steps.length);},4500);
+  }
+  steps.forEach(function(s,i){s.addEventListener('click',function(){show(i);});s.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();show(i);}});});
+  timer=setTimeout(function(){show(1);},4500);
+  document.getElementById('y').textContent=new Date().getFullYear();
+})();
+</script>
 </body>
 </html>

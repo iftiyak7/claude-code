@@ -7,6 +7,7 @@ import { currentPrayer, nextPrayer } from '@/domain/prayer';
 import { amalDueOn, dayStats, medicineDueOn } from '@/domain/progress';
 import type { Amal, PrayerName } from '@/domain/types';
 import { AmalCard } from '@/features/AmalCard';
+import { BannerSlider } from '@/features/BannerSlider';
 import { formatClock, formatCountdown, gregorianDate, hijriDate, useNow, usePrayerTimes, useToday } from '@/features/hooks';
 import { PrayerStrip } from '@/features/PrayerStrip';
 import { useNum, useT } from '@/i18n';
@@ -139,6 +140,11 @@ export default function Today() {
               </Card>
             </Animated.View>
           )}
+
+          {/* ── Banners ────────────────────────────────────────── */}
+          <Animated.View entering={FadeInDown.delay(90).duration(450)} style={{ marginTop: space(5) }}>
+            <BannerSlider />
+          </Animated.View>
 
           {/* ── Progress ───────────────────────────────────────── */}
           <Section title={tr.todayProgress} delay={100}>
