@@ -127,6 +127,8 @@ const bn = {
   locked: 'তাদবীর ডেইলি লক করা আছে',
   completeToday: 'মাশাআল্লাহ! আজকের লক্ষ্য পূরণ হয়েছে',
   tapToCount: 'গুনতে ট্যাপ করুন',
+  // possessive: ইশা → ইশার, মাগরিব → মাগরিবের
+  salahNotYet: (p: string, at: string) => `${p.endsWith('া') ? `${p}র` : `${p}ের`} সময় এখনো হয়নি (${at})`,
   tasbihDone: 'তসবিহ দিয়ে আগেই পড়েছেন? এক ট্যাপে যোগ করুন',
   markComplete: 'সম্পন্ন',
   round: 'রাউন্ড',
@@ -302,6 +304,7 @@ const en: Dict = {
   locked: 'Tadbeer Daily is locked',
   completeToday: "MashaAllah! Today's target is complete",
   tapToCount: 'Tap to count',
+  salahNotYet: (p, at) => `It's not time for ${p} yet (${at})`,
   tasbihDone: 'Counted on a tasbih already? Add it in one tap',
   markComplete: 'Complete',
   round: 'Round',

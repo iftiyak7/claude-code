@@ -41,7 +41,7 @@ export default function Today() {
   const insets = useSafeAreaInsets();
   const settings = useSettings();
   const lang = settings.language;
-  const now = useNow(30_000);
+  const now = useNow(15_000);
   const date = useToday();
   const { today: times, tomorrow } = usePrayerTimes(date);
   const amals = useLive('amals');

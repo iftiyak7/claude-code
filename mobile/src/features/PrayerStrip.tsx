@@ -1,15 +1,16 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
-import { PRAYERS, type DayPrayerTimes } from '@/domain/prayer';
+import { PRAYERS, salahTimeStarted, type DayPrayerTimes } from '@/domain/prayer';
 import type { Amal, PrayerName } from '@/domain/types';
 import { useNum, useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { Ionicons, PressableScale } from '@/ui/components';
 import { haptic } from '@/ui/haptics';
 import { Text } from '@/ui/Text';
+import { toast } from '@/ui/toast';
 import { font, useTheme } from '@/ui/theme';
-import { formatClock } from './hooks';
+import { formatClock, useNow } from './hooks';
 
 /** Five fard prayers as tappable capsules. */
 export function PrayerStrip({
@@ -27,12 +28,15 @@ export function PrayerStrip({
   const tr = useT();
   const n = useNum();
   const logs = useData((s) => s.logs);
+  const now = useNow(15_000);
+  const lang = useData((s) => s.settings.language);
   return (
     <View style={styles.row}>
       {PRAYERS.map((p) => {
         const a = salah[p];
         const done = a ? (logs[`${date}|amal|${a.id}`]?.count ?? 0) >= 1 : false;
         const isNow = current === p && !done;
+        const started = salahTimeStarted(times[p], date, now);
         return (
           <PressableScale
             key={p}
@@ -40,11 +44,16 @@ export function PrayerStrip({
             disabled={!a}
             onPress={() => {
               if (!a) return;
+              if (!done && !started) {
+                haptic.warn();
+                toast(tr.salahNotYet(tr.prayer[p], n(formatClock(times[p], lang))), 'time-outline');
+                return;
+              }
               useData.getState().setCount('amal', a.id, done ? 0 : 1, date);
               if (done) haptic.tap();
               else haptic.success();
             }}
-            style={styles.item}
+            style={[styles.item, !started && !done && { opacity: 0.45 }]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: done }}
             accessibilityLabel={tr.prayer[p]}

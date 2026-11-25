@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { addDays, diffDays, isValidHM, isValidISODate } from '../dates';
 import { DEFAULT_SETTINGS, noReminder, seedAmals } from '../defaults';
 import { buildPlan, MAX_PENDING, type PlanText } from '../notifyPlan';
-import { prayerTimesFor } from '../prayer';
+import { prayerTimesFor, salahTimeStarted } from '../prayer';
 import { amalPoints, dayStats, levelFor, logId, streak } from '../progress';
 import { occursOn } from '../recurrence';
 import type { Amal, Log } from '../types';
@@ -126,4 +126,16 @@ test('salah reminder follows prayer time and skips past prayers', () => {
   const plan = buildPlan({ now, amals: seedAmals(1), tasks: [], reminders: [], medicines: [], routines: [], logs: {}, settings: { ...DEFAULT_SETTINGS, waterReminder: noReminder() }, text });
   const todaySalah = plan.filter((n) => n.key.startsWith('amal:seed-salah') && n.key.endsWith('2026-11-24'));
   assert.deepEqual(todaySalah.map((n) => n.title).sort(), ['salah asr', 'salah isha', 'salah maghrib']);
+});
+
+test('salah can only be marked once its time has started', () => {
+  const now = new Date(2026, 10, 25, 15, 34);
+  const maghrib = new Date(2026, 10, 25, 17, 11);
+  const asr = new Date(2026, 10, 25, 15, 35);
+  const dhuhr = new Date(2026, 10, 25, 11, 46);
+  assert.equal(salahTimeStarted(maghrib, '2026-11-25', now), false);
+  assert.equal(salahTimeStarted(asr, '2026-11-25', now), false, 'one minute early is still early');
+  assert.equal(salahTimeStarted(dhuhr, '2026-11-25', now), true);
+  assert.equal(salahTimeStarted(maghrib, '2026-11-24', now), true, 'past days can be caught up');
+  assert.equal(salahTimeStarted(dhuhr, '2026-11-26', now), false, 'future days are locked');
 });

@@ -38,11 +38,13 @@ export function useLogCount(ref: 'amal' | 'medicine' | 'water' | 'routine', refI
 }
 
 export function formatCountdown(ms: number, lang: 'bn' | 'en'): string {
-  const total = Math.max(0, Math.floor(ms / 60_000));
+  if (ms <= 0) return lang === 'bn' ? 'এখনই' : 'now';
+  // round up: 59 s left reads "1 minute", never "0 minutes"
+  const total = Math.ceil(ms / 60_000);
   const h = Math.floor(total / 60);
   const m = total % 60;
-  if (lang === 'bn') return h > 0 ? `${h} ঘণ্টা ${m} মিনিট` : `${m} মিনিট`;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  if (lang === 'bn') return h > 0 ? (m ? `${h} ঘণ্টা ${m} মিনিট` : `${h} ঘণ্টা`) : `${m} মিনিট`;
+  return h > 0 ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 }
 
 /** 12-hour clock; Bangla uses day-part words (ভোর/সকাল/দুপুর/বিকাল/সন্ধ্যা/রাত). */
@@ -52,7 +54,7 @@ export function formatClock(d: Date, lang: 'bn' | 'en' = 'en', withPeriod = true
   const hm = `${h % 12 === 0 ? 12 : h % 12}:${m < 10 ? '0' : ''}${m}`;
   if (!withPeriod) return hm;
   if (lang === 'bn') {
-    const part = h < 4 ? 'রাত' : h < 6 ? 'ভোর' : h < 12 ? 'সকাল' : h < 15 ? 'দুপুর' : h < 18 ? 'বিকাল' : h < 20 ? 'সন্ধ্যা' : 'রাত';
+    const part = h < 4 ? 'রাত' : h < 6 ? 'ভোর' : h < 12 ? 'সকাল' : h < 15 ? 'দুপুর' : h < 17 ? 'বিকাল' : h < 20 ? 'সন্ধ্যা' : 'রাত';
     return `${part} ${hm}`;
   }
   return `${hm} ${h < 12 ? 'AM' : 'PM'}`;

@@ -14,6 +14,7 @@ import { LockGate } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { startAutoSync, syncNow } from '@/sync/engine';
 import { FONT_ASSETS } from '@/ui/fonts';
+import { ToastHost } from '@/ui/toast';
 import { useTheme } from '@/ui/theme';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -97,6 +98,7 @@ export default function RootLayout() {
             <Stack.Screen name="setup" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
         </LockGate>
+        <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

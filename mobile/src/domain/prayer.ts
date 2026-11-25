@@ -70,6 +70,17 @@ export function currentPrayer(t: DayPrayerTimes, now = new Date()): PrayerName |
   return 'isha';
 }
 
+/**
+ * A fard salah can only be marked as prayed once its time has begun.
+ * Past days are always allowed (catch-up logging); future days never.
+ */
+export function salahTimeStarted(prayerStart: Date, date: ISODate, now = new Date()): boolean {
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (date < todayIso) return true;
+  if (date > todayIso) return false;
+  return now.getTime() >= prayerStart.getTime();
+}
+
 export function qiblaDirection(s: Pick<Settings, 'location'>): number {
   const loc = s.location ?? DEFAULT_LOCATION;
   return Qibla(new Coordinates(loc.lat, loc.lng));
