@@ -1,0 +1,70 @@
+# Builds an installable Android APK of the Tadbeer Daily app on GitHub's
+# runners (they ship the Android SDK) and publishes it as a release asset.
+name: Android APK
+
+on:
+  push:
+    branches: [main, claude/optimistic-galileo-y5dzn7]
+    paths: ['mobile/**', '.github/workflows/android-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build release APK
+        working-directory: mobile/android
+        # Release build signed with the debug key: installable for testing.
+        # Play Store uploads need a real upload key (EAS / keystore secret).
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk ../tadbeer-daily.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tadbeer-daily-apk
+          path: tadbeer-daily.apk
+
+      - name: Publish to the "apk-latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: Tadbeer Daily — latest test APK
+          prerelease: true
+          files: tadbeer-daily.apk
+          body: |
+            Latest test build of Tadbeer Daily for Android (built from ${{ github.sha }}).
+            Download `tadbeer-daily.apk` on your phone and install it.
