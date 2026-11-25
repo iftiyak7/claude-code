@@ -9,6 +9,7 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { reschedule, startScheduler } from '@/notifications/scheduler';
+import { markAutoPrompted, shouldAutoPrompt } from '@/permissions/reminderSetup';
 import { LockGate } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { startAutoSync, syncNow } from '@/sync/engine';
@@ -60,6 +61,18 @@ export default function RootLayout() {
     if (ready && fontsReady) void SplashScreen.hideAsync().catch(() => undefined);
   }, [ready, fontsReady]);
 
+  // On open, if reminders can't work reliably yet, show the setup screen (max once a day).
+  useEffect(() => {
+    if (!ready || !fontsReady) return;
+    const id = setTimeout(async () => {
+      if (await shouldAutoPrompt()) {
+        markAutoPrompted();
+        router.push('/setup');
+      }
+    }, 900);
+    return () => clearTimeout(id);
+  }, [ready, fontsReady]);
+
   if (!fontsReady) return null;
 
   return (
@@ -81,6 +94,7 @@ export default function RootLayout() {
             <Stack.Screen name="reminder/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="medicine/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="routine/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="setup" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
         </LockGate>
       </SafeAreaProvider>

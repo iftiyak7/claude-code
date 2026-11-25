@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentPrayer, nextPrayer } from '@/domain/prayer';
@@ -10,7 +10,7 @@ import { AmalCard } from '@/features/AmalCard';
 import { formatClock, formatCountdown, gregorianDate, hijriDate, useNow, usePrayerTimes, useToday } from '@/features/hooks';
 import { PrayerStrip } from '@/features/PrayerStrip';
 import { useNum, useT } from '@/i18n';
-import { notificationsGranted, requestNotificationPermission, reschedule } from '@/notifications/scheduler';
+import { allGranted, getSetupStatus } from '@/permissions/reminderSetup';
 import { useData } from '@/store/data';
 import { useLive, useSettings } from '@/store/hooks';
 import {
@@ -49,9 +49,13 @@ export default function Today() {
   const tasks = useLive('tasks');
   const logs = useData((s) => s.logs);
 
-  const [notifOk, setNotifOk] = useState(true);
+  const [setupOk, setSetupOk] = useState(true);
   useEffect(() => {
-    if (Platform.OS !== 'web') void notificationsGranted().then(setNotifOk);
+    if (Platform.OS === 'web') return;
+    const check = () => void getSetupStatus().then((s) => setSetupOk(allGranted(s)));
+    check();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && check());
+    return () => sub.remove();
   }, []);
 
   const salah = useMemo(() => {
@@ -126,21 +130,12 @@ export default function Today() {
             </Card>
           </Animated.View>
 
-          {!notifOk && (
+          {!setupOk && (
             <Animated.View entering={FadeInDown}>
-              <Card style={[styles.notif, { backgroundColor: t.ink }]}>
-                <Ionicons name="notifications-outline" size={22} color={t.onInk} />
-                <Text style={[font.small, { color: t.onInk, flex: 1 }]}>{tr.notifOff}</Text>
-                <Button
-                  small
-                  kind="accent"
-                  label={tr.enable}
-                  onPress={async () => {
-                    const ok = await requestNotificationPermission();
-                    setNotifOk(ok);
-                    if (ok) void reschedule();
-                  }}
-                />
+              <Card style={[styles.notif, { backgroundColor: t.ink }]} onPress={() => router.push('/setup')}>
+                <Ionicons name="alarm-outline" size={22} color={t.onInk} />
+                <Text style={[font.small, { color: t.onInk, flex: 1 }]}>{tr.setup.banner}</Text>
+                <Button small kind="accent" label={tr.setup.allow} onPress={() => router.push('/setup')} />
               </Card>
             </Animated.View>
           )}

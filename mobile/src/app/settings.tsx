@@ -7,7 +7,7 @@ import { DEFAULT_LOCATION } from '@/domain/prayer';
 import type { Settings } from '@/domain/types';
 import { FormCard } from '@/features/forms';
 import { useNum, useT } from '@/i18n';
-import { requestNotificationPermission, reschedule } from '@/notifications/scheduler';
+import { router } from 'expo-router';
 import { authenticate, canUseBiometrics } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { useSettings } from '@/store/hooks';
@@ -91,14 +91,7 @@ export default function SettingsScreen() {
 
       <FormCard label={tr.notifications}>
         {Platform.OS !== 'web' && (
-          <Button
-            kind="soft"
-            icon="notifications-outline"
-            label={`${tr.notifications} · ${tr.enable}`}
-            onPress={async () => {
-              if (await requestNotificationPermission()) void reschedule();
-            }}
-          />
+          <Button kind="soft" icon="alarm-outline" label={tr.setup.title} onPress={() => router.push('/setup')} />
         )}
         <ToggleRow icon="phone-portrait-outline" label={tr.haptics} value={s.haptics} onChange={(haptics) => update({ haptics })} />
       </FormCard>
