@@ -53,6 +53,15 @@ fi
 say "Daily database backup at 03:15"
 echo "15 3 * * * $USER_NAME $APP_DIR/deploy/scripts/backup.sh >> /home/$USER_NAME/backup.log 2>&1" > /etc/cron.d/tadbeer-backup
 
+say "Updating the website (CloudPanel static site, if it exists)"
+for D in /home/*/htdocs/www.tadbeerdaily.com /home/*/htdocs/tadbeerdaily.com; do
+  if [[ -d "$D" ]]; then
+    cp "$SRC"/web/*.html "$D"/
+    chown -R "$(stat -c %U:%G "$D")" "$D"
+    echo "website updated: $D"
+  fi
+done
+
 say "Building and starting the API (first time takes a few minutes)"
 su - "$USER_NAME" -c "cd $APP_DIR/deploy && ./scripts/deploy.sh"
 
