@@ -36,6 +36,9 @@ export async function syncRoutes(app: FastifyInstance) {
       // Serialise syncs per user so `seq` is assigned in commit order and a
       // concurrent device can never skip over a change.
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 7))', [req.userId]);
+      // records activity for the admin dashboard; also refuses suspended accounts
+      const active = await c.query('UPDATE users SET last_sync_at = now() WHERE id = $1 AND disabled_at IS NULL RETURNING id', [req.userId]);
+      if (active.rowCount === 0) return reply.code(403).send({ error: 'account_disabled' });
 
       if (body.changes.length > 0) {
         await c.query(

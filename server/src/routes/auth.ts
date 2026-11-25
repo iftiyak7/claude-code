@@ -39,14 +39,15 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/v1/auth/login', strict, async (req, reply) => {
     const body = LoginBody.parse(req.body);
-    const { rows } = await pool.query<UserRow & { password_hash: string }>(
-      'SELECT id, email, name, password_hash FROM users WHERE lower(email) = $1',
+    const { rows } = await pool.query<UserRow & { password_hash: string; disabled: boolean }>(
+      'SELECT id, email, name, password_hash, disabled_at IS NOT NULL AS disabled FROM users WHERE lower(email) = $1',
       [body.email],
     );
     const user = rows[0];
     if (!(await verifyPassword(user?.password_hash ?? null, body.password)) || !user) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
+    if (user.disabled) return reply.code(403).send({ error: 'account_disabled' });
     await pool.query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
     return session(user);
   });

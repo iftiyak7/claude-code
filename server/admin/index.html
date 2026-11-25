@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Tadbeer Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/style.css">
+</head>
+<body>
+  <div class="blob" aria-hidden="true"></div>
+
+  <!-- ── Login ─────────────────────────────────────────── -->
+  <main id="login" class="login" hidden>
+    <div class="login-card">
+      <div class="brand"><span class="logo">ت</span><b>Tadbeer Admin</b></div>
+      <h1>অ্যাডমিন লগইন</h1>
+      <p class="muted">শুধুমাত্র অনুমোদিত অ্যাডমিন ইমেইল দিয়ে প্রবেশ করা যাবে।</p>
+      <form id="login-form" autocomplete="on">
+        <label>ইমেইল<input name="email" type="email" required autocomplete="username"></label>
+        <label>পাসওয়ার্ড<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+        <label id="name-row" hidden>নাম<input name="name" type="text" maxlength="80"></label>
+        <p id="login-error" class="error" role="alert"></p>
+        <button class="btn ink" type="submit" id="login-btn">লগইন</button>
+        <button class="link" type="button" id="toggle-register">অ্যাকাউন্ট নেই? নতুন অ্যাকাউন্ট খুলুন</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ── Dashboard ─────────────────────────────────────── -->
+  <div id="app" hidden>
+    <header class="top">
+      <div class="brand"><span class="logo">ت</span><b>Tadbeer Admin</b></div>
+      <div class="top-actions">
+        <span id="who" class="muted"></span>
+        <button class="btn ghost small" id="refresh">↻ রিফ্রেশ</button>
+        <button class="btn ink small" id="logout">লগআউট</button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section>
+        <p class="muted">ড্যাশবোর্ড</p>
+        <h1 class="display">আসসালামু আলাইকুম 👋</h1>
+      </section>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>নতুন ব্যবহারকারী</h2><span class="pill">গত ৩০ দিন</span></div>
+          <div id="chart" class="chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>সার্ভার ও ডেটা</h2><span class="pill ok" id="health">● চালু</span></div>
+          <ul class="kv" id="server"></ul>
+          <h3>মোট রেকর্ড (শুধু সংখ্যা)</h3>
+          <ul class="kv" id="records"></ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>ব্যবহারকারী</h2>
+          <form id="search" class="search"><input type="search" name="q" placeholder="ইমেইল বা নাম দিয়ে খুঁজুন"><button class="btn ink small">খুঁজুন</button></form>
+        </div>
+        <p class="privacy">🔒 গোপনীয়তা: ব্যবহারকারীর আমল, পয়েন্ট বা ব্যক্তিগত তালিকা অ্যাডমিনও দেখতে পারে না, শুধু অ্যাকাউন্টের তথ্য দেখা যায়।</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ব্যবহারকারী</th><th>যোগদান</th><th>শেষ সক্রিয়</th><th>রেকর্ড</th><th>অবস্থা</th><th></th></tr></thead>
+            <tbody id="users"></tbody>
+          </table>
+        </div>
+        <div class="pager"><button class="btn ghost small" id="prev">← আগে</button><span id="page" class="muted"></span><button class="btn ghost small" id="next">পরে →</button></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/admin/app.js" defer></script>
+</body>
+</html>

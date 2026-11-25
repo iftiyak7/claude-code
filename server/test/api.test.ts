@@ -7,6 +7,7 @@ import { after, before, test } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 
 process.env.JWT_SECRET ??= 'test-secret-test-secret-test-secret-123';
+process.env.ADMIN_EMAILS ??= 'boss@example.com';
 process.env.DATABASE_URL ??= 'postgres://tadbeer:devpass@localhost:5432/tadbeer_test';
 
 const { buildApp } = await import('../src/app.js');
@@ -111,4 +112,39 @@ test('account deletion erases data', async () => {
   assert.equal(del.statusCode, 204);
   const { rows } = await pool.query('SELECT count(*)::int AS n FROM records WHERE user_id = $1', [s.user.id]);
   assert.equal(rows[0].n, 0);
+});
+
+test('admin: only listed emails, no record contents, suspension works', async () => {
+  const boss = await register('boss@example.com');
+  const user = await register('member@example.com');
+  const auth = (t: string) => ({ authorization: `Bearer ${t}` });
+
+  assert.equal((await app.inject({ url: '/v1/admin/stats', headers: auth(user.accessToken) })).statusCode, 403);
+  const stats = await app.inject({ url: '/v1/admin/stats', headers: auth(boss.accessToken) });
+  assert.equal(stats.statusCode, 200, stats.body);
+  assert.ok(stats.json().users.total >= 2);
+  assert.equal(stats.json().signups.length, 30);
+
+  await post('/v1/sync', { cursor: '0', changes: [{ collection: 'amals', id: 'secret', updatedAt: 1, deleted: false, data: { id: 'secret', title: 'PRIVATE-AMAL' } }] }, user.accessToken);
+  const list = await app.inject({ url: '/v1/admin/users?q=member', headers: auth(boss.accessToken) });
+  assert.equal(list.statusCode, 200);
+  assert.equal(list.json().users.length, 1);
+  assert.equal(list.json().users[0].records, 1);
+  assert.ok(!list.body.includes('PRIVATE-AMAL'), 'admin never sees record contents');
+
+  const dis = await app.inject({ method: 'POST', url: `/v1/admin/users/${user.user.id}/disable`, headers: auth(boss.accessToken) });
+  assert.equal(dis.statusCode, 204);
+  assert.equal((await post('/v1/auth/login', { email: 'member@example.com', password: 'correct horse battery' })).statusCode, 403);
+  assert.equal((await post('/v1/auth/refresh', { refreshToken: user.refreshToken })).statusCode, 401);
+  assert.equal((await post('/v1/sync', { cursor: '0', changes: [] }, user.accessToken)).statusCode, 403);
+
+  await app.inject({ method: 'POST', url: `/v1/admin/users/${user.user.id}/enable`, headers: auth(boss.accessToken) });
+  assert.equal((await post('/v1/auth/login', { email: 'member@example.com', password: 'correct horse battery' })).statusCode, 200);
+
+  const self = await app.inject({ method: 'DELETE', url: `/v1/admin/users/${boss.user.id}`, headers: auth(boss.accessToken) });
+  assert.equal(self.statusCode, 400, 'admin cannot delete themselves');
+
+  const page = await app.inject({ url: '/admin' });
+  assert.equal(page.statusCode, 200);
+  assert.match(String(page.headers['content-security-policy']), /frame-ancestors 'none'/);
 });

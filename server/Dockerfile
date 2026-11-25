@@ -15,6 +15,7 @@ RUN apk add --no-cache tini
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY migrations ./migrations
+COPY admin ./admin
 COPY package.json ./
 USER node
 EXPOSE 8080

@@ -19,4 +19,11 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   logLevel: process.env.LOG_LEVEL ?? 'info',
+  /** Emails allowed into the admin panel (comma separated). */
+  adminEmails: new Set(
+    (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  ),
 };

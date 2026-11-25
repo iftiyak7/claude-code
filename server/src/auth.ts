@@ -51,8 +51,10 @@ export type RotateResult = { userId: string; refreshToken: string } | null;
 /** Single-use rotation with reuse detection. */
 export async function rotateRefresh(c: pg.PoolClient, token: string): Promise<RotateResult> {
   const { rows } = await c.query<{ id: string; user_id: string; family: string; revoked: boolean; expired: boolean }>(
-    `SELECT id, user_id, family, revoked_at IS NOT NULL AS revoked, expires_at < now() AS expired
-       FROM refresh_tokens WHERE token_hash = $1 FOR UPDATE`,
+    `SELECT t.id, t.user_id, t.family, t.revoked_at IS NOT NULL AS revoked,
+            t.expires_at < now() OR u.disabled_at IS NOT NULL AS expired
+       FROM refresh_tokens t JOIN users u ON u.id = t.user_id
+      WHERE t.token_hash = $1 FOR UPDATE OF t`,
     [sha256(token)],
   );
   const row = rows[0];

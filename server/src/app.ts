@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import { config } from './config.js';
 import { pool } from './db.js';
+import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { syncRoutes } from './routes/sync.js';
 
@@ -43,5 +44,6 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   await app.register(authRoutes);
   await app.register(syncRoutes);
+  await app.register(adminRoutes);
   return app;
 }
