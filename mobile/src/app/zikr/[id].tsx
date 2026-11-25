@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { today } from '@/domain/dates';
@@ -12,7 +12,6 @@ import { haptic } from '@/ui/haptics';
 import { Text } from '@/ui/Text';
 import { font, radius, useTheme } from '@/ui/theme';
 
-const RING = 288;
 
 export default function ZikrCounter() {
   const { id, date: dateParam } = useLocalSearchParams<{ id: string; date?: string }>();
@@ -22,6 +21,10 @@ export default function ZikrCounter() {
   const tr = useT();
   const n = useNum();
   const insets = useSafeAreaInsets();
+  // ring scales with the screen so small phones keep room for the quick-add row
+  const { height: winH, width: winW } = useWindowDimensions();
+  const RING = Math.round(Math.max(200, Math.min(288, winW - 80, winH * 0.34)));
+  const DISC = RING - 52;
   const count = useLogCount('amal', id, date);
   const [celebrate, setCelebrate] = useState(false);
 
@@ -33,19 +36,37 @@ export default function ZikrCounter() {
   const target = amal?.target ?? 33;
   const round = target > 100 ? 100 : target > 33 ? 33 : target;
 
+  const celebrateNow = useCallback(() => {
+    haptic.success();
+    setCelebrate(true);
+    setTimeout(() => setCelebrate(false), 2600);
+  }, []);
+
   const tap = useCallback(() => {
     if (!amal) return;
     const c = useData.getState().bump('amal', amal.id, 1, date);
     pulse.set(withSequence(withTiming(0.95, { duration: 60 }), withSpring(1, { damping: 10, stiffness: 300 })));
     ripple.set(0);
     ripple.set(withTiming(1, { duration: 560 }));
-    if (c === amal.target) {
-      haptic.success();
-      setCelebrate(true);
-      setTimeout(() => setCelebrate(false), 2600);
-    } else if (c % round === 0) haptic.medium();
+    if (c === amal.target) celebrateNow();
+    else if (c % round === 0) haptic.medium();
     else haptic.tap();
-  }, [amal, date, pulse, ripple, round]);
+  }, [amal, date, pulse, ripple, round, celebrateNow]);
+
+  /** Counted elsewhere (e.g. on a physical tasbih): add a batch or fill the target at once. */
+  const addBatch = useCallback(
+    (k: number | 'complete') => {
+      if (!amal) return;
+      const st = useData.getState();
+      const before = st.logs[`${date}|amal|${amal.id}`]?.count ?? 0;
+      const after = k === 'complete' ? Math.max(before, amal.target) : before + k;
+      st.setCount('amal', amal.id, after, date);
+      pulse.set(withSequence(withTiming(0.95, { duration: 80 }), withSpring(1, { damping: 10, stiffness: 300 })));
+      if (before < amal.target && after >= amal.target) celebrateNow();
+      else haptic.light();
+    },
+    [amal, date, pulse, celebrateNow],
+  );
 
   if (!amal) {
     return (
@@ -92,12 +113,12 @@ export default function ZikrCounter() {
 
       {/* the whole middle area is the tap target */}
       <Pressable onPress={tap} style={styles.tapArea} accessibilityRole="button" accessibilityLabel={tr.tapToCount}>
-        <Animated.View style={[styles.ripple, { borderColor: t.primary }, rippleStyle]} pointerEvents="none" />
+        <Animated.View style={[styles.ripple, { borderColor: t.primary, width: RING + 20, height: RING + 20, borderRadius: (RING + 20) / 2 }, rippleStyle]} pointerEvents="none" />
         <Animated.View style={pulseStyle}>
           <ProgressRing size={RING} stroke={16} progress={count / amal.target} color={done ? t.success : t.primary} track={t.dark ? t.surface2 : 'rgba(255,255,255,0.8)'}>
-            <View style={[styles.disc, cardShadow(t), { backgroundColor: t.surface }]}>
+            <View style={[styles.disc, cardShadow(t), { backgroundColor: t.surface, width: DISC, height: DISC, borderRadius: DISC / 2 }]}>
               <Text style={[font.small, { color: t.muted }]}>{tr.todayCount}</Text>
-              <Text style={[styles.count, { color: t.text }]}>{n(count)}</Text>
+              <Text style={[styles.count, { color: t.text, fontSize: RING * 0.26, lineHeight: RING * 0.31 }]}>{n(count)}</Text>
               <View style={[styles.targetPill, { backgroundColor: done ? t.successSoft : t.primarySoft }]}>
                 <Text style={[font.tiny, { color: done ? t.success : t.primaryDeep, fontSize: 12 }]}>
                   {tr.target}: {n(amal.target)} {amal.unit ?? ''}
@@ -106,10 +127,38 @@ export default function ZikrCounter() {
             </View>
           </ProgressRing>
         </Animated.View>
-        <Text style={[font.small, { color: t.muted, marginTop: 22 }]}>
+        <Text style={[font.small, { color: t.muted, marginTop: 18 }]}>
           {done ? tr.completeToday : `${tr.round} ${n(inRound)}/${n(round)} · ${tr.tapToCount}`}
         </Text>
       </Pressable>
+
+      {/* already counted on a tasbih? add in one tap */}
+      {!done && (
+        <Animated.View entering={FadeInDown.delay(150)} style={styles.quick}>
+          <View style={styles.quickRow} accessibilityLabel={tr.tasbihDone}>
+            {[10, 33, 100].filter((k) => k < amal.target).map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => addBatch(k)}
+                style={({ pressed }) => [styles.chip, { backgroundColor: t.surface, borderColor: t.border, opacity: pressed ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel={`+${k}`}
+              >
+                <Text style={[font.small, { color: t.text, fontWeight: '600' }]}>+{n(k)}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => addBatch('complete')}
+              style={({ pressed }) => [styles.chip, { backgroundColor: t.successSoft, borderColor: t.successSoft, opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={tr.markComplete}
+            >
+              <Ionicons name="checkmark-done" size={16} color={t.success} />
+              <Text style={[font.small, { color: t.success, fontWeight: '700' }]}>{tr.markComplete}</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      )}
 
       <View style={[styles.bottomWrap, { paddingBottom: Math.max(insets.bottom, 14) + 6 }]}>
         <View style={[styles.bottom, { backgroundColor: barBg }]}>
@@ -155,14 +204,17 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill },
-  texts: { paddingHorizontal: 28, marginTop: 20, alignItems: 'center', gap: 6 },
-  arabic: { textAlign: 'center', fontSize: 36, lineHeight: 62 },
+  texts: { paddingHorizontal: 28, marginTop: 8, alignItems: 'center', gap: 2 },
+  arabic: { textAlign: 'center', fontSize: 32, lineHeight: 54 },
   tapArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  ripple: { position: 'absolute', width: RING + 20, height: RING + 20, borderRadius: (RING + 20) / 2, borderWidth: 2 },
-  disc: { width: RING - 56, height: RING - 56, borderRadius: (RING - 56) / 2, alignItems: 'center', justifyContent: 'center' },
-  count: { fontSize: 76, lineHeight: 88, fontWeight: '700', letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  ripple: { position: 'absolute', borderWidth: 2 },
+  disc: { alignItems: 'center', justifyContent: 'center' },
+  count: { fontWeight: '700', letterSpacing: -2, fontVariant: ['tabular-nums'] },
   targetPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.pill },
   bottomWrap: { alignItems: 'center' },
+  quick: { paddingHorizontal: 20, marginBottom: 14 },
+  quickRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1 },
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 7, borderRadius: 40 },
   circle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   remain: { height: 52, paddingHorizontal: 26, borderRadius: 26, alignItems: 'center', justifyContent: 'center', minWidth: 130 },
