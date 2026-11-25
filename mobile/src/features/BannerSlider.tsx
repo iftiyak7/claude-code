@@ -12,7 +12,8 @@ import { haptic } from '@/ui/haptics';
 import { Text } from '@/ui/Text';
 import { font, radius, useTheme } from '@/ui/theme';
 import { useData } from '@/store/data';
-import { BANNER_THEMES, useRemoteBanners, type RemoteBanner } from './remoteBanners';
+import { Image } from 'expo-image';
+import { BANNER_THEMES, imageSrc, useRemoteBanners, type RemoteBanner } from './remoteBanners';
 
 interface Slide {
   key: string;
@@ -23,6 +24,8 @@ interface Slide {
   colors: [string, string];
   icon: IconName;
   cta?: { bn: string; en: string; route: string };
+  /** uploaded artwork: shown full-bleed instead of the text layout */
+  image?: string;
 }
 
 const SLIDES: Slide[] = [
@@ -87,6 +90,7 @@ function fromRemote(b: RemoteBanner): Slide {
     colors: BANNER_THEMES[b.theme] ?? BANNER_THEMES.coral,
     icon: 'megaphone',
     cta: b.ctaUrl ? { ...same(b.ctaLabel || '→'), route: b.ctaUrl } : undefined,
+    image: b.imageUrl ? imageSrc(b.imageUrl) : undefined,
   };
 }
 
@@ -109,6 +113,8 @@ export function BannerSlider() {
   const { width } = useWindowDimensions();
   const cardW = width - 40;
   const step = cardW + GAP;
+  // uploaded artwork is 2:1 — text banners use the same height so the row stays even
+  const cardH = Math.round(cardW / 2);
   const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [index, setIndex] = useState(0);
   const touching = useRef(false);
@@ -160,7 +166,12 @@ export function BannerSlider() {
             onPress={s.cta ? () => openCta(s.cta!.route) : undefined}
             accessibilityRole={s.cta ? 'button' : 'text'}
           >
-            <LinearGradient colors={s.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, { width: cardW }]}>
+            {s.image ? (
+              <View style={[styles.imageCard, { width: cardW, height: cardH }]}>
+                <Image source={{ uri: s.image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="disk" transition={250} accessibilityIgnoresInvertColors />
+              </View>
+            ) : (
+            <LinearGradient colors={s.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, { width: cardW, minHeight: cardH }]}>
               {/* decorative ornaments */}
               <View style={styles.ornament} pointerEvents="none">
                 <Khatam size={150} color="rgba(255,255,255,0.08)" />
@@ -193,6 +204,7 @@ export function BannerSlider() {
                 ) : null}
               </View>
             </LinearGradient>
+            )}
           </Pressable>
         ))}
       </ScrollView>
@@ -207,6 +219,7 @@ export function BannerSlider() {
 
 const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: radius.xl, padding: 20, minHeight: 176, overflow: 'hidden', justifyContent: 'space-between' },
+  imageCard: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: '#EEE' },
   ornament: { position: 'absolute', right: -40, top: -36 },
   ornamentSmall: { position: 'absolute', right: 70, bottom: 14 },
   tagRow: { flexDirection: 'row' },

@@ -10,9 +10,12 @@ import { requireAdmin } from './admin.js';
 export const THEMES = ['coral', 'violet', 'mint', 'night', 'ocean', 'gold'] as const;
 
 const text = (max: number) => z.string().trim().max(max).default('');
-const BannerBody = z.object({
+const BannerBody = z
+  .object({
   tag: text(40),
-  body: z.string().trim().min(1).max(280),
+  body: text(280),
+  // uploaded banner artwork; when set, the app shows the picture as the banner
+  imageUrl: z.string().trim().max(200).regex(/^$|^\/uploads\/[0-9a-f-]{36}\.(jpg|png|webp)$/).default(''),
   arabic: text(160),
   source: text(80),
   theme: z.enum(THEMES).default('coral'),
@@ -28,10 +31,11 @@ const BannerBody = z.object({
   sort: z.number().int().min(-1000).max(1000).default(0),
   startsAt: z.string().datetime().nullable().optional(),
   endsAt: z.string().datetime().nullable().optional(),
-});
+  })
+  .refine((b) => b.body.length > 0 || b.imageUrl.length > 0, { message: 'image or text required' });
 const IdParam = z.object({ id: z.string().uuid() });
 
-const COLS = `id, tag, body, arabic, source, theme, cta_label AS "ctaLabel", cta_url AS "ctaUrl",
+const COLS = `id, tag, body, image_url AS "imageUrl", arabic, source, theme, cta_label AS "ctaLabel", cta_url AS "ctaUrl",
   active, sort, starts_at AS "startsAt", ends_at AS "endsAt", updated_at AS "updatedAt"`;
 
 export async function bannerRoutes(app: FastifyInstance) {
@@ -54,9 +58,9 @@ export async function bannerRoutes(app: FastifyInstance) {
   app.post('/v1/admin/banners', guard, async (req, reply) => {
     const b = BannerBody.parse(req.body);
     const { rows } = await pool.query(
-      `INSERT INTO banners (tag, body, arabic, source, theme, cta_label, cta_url, active, sort, starts_at, ends_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING ${COLS}`,
-      [b.tag, b.body, b.arabic, b.source, b.theme, b.ctaLabel, b.ctaUrl, b.active, b.sort, b.startsAt ?? null, b.endsAt ?? null],
+      `INSERT INTO banners (tag, body, arabic, source, theme, cta_label, cta_url, active, sort, starts_at, ends_at, image_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${COLS}`,
+      [b.tag, b.body, b.arabic, b.source, b.theme, b.ctaLabel, b.ctaUrl, b.active, b.sort, b.startsAt ?? null, b.endsAt ?? null, b.imageUrl],
     );
     return reply.code(201).send(rows[0]);
   });
@@ -66,9 +70,9 @@ export async function bannerRoutes(app: FastifyInstance) {
     const b = BannerBody.parse(req.body);
     const { rows } = await pool.query(
       `UPDATE banners SET tag=$2, body=$3, arabic=$4, source=$5, theme=$6, cta_label=$7, cta_url=$8,
-              active=$9, sort=$10, starts_at=$11, ends_at=$12, updated_at=now()
+              active=$9, sort=$10, starts_at=$11, ends_at=$12, image_url=$13, updated_at=now()
         WHERE id=$1 RETURNING ${COLS}`,
-      [id, b.tag, b.body, b.arabic, b.source, b.theme, b.ctaLabel, b.ctaUrl, b.active, b.sort, b.startsAt ?? null, b.endsAt ?? null],
+      [id, b.tag, b.body, b.arabic, b.source, b.theme, b.ctaLabel, b.ctaUrl, b.active, b.sort, b.startsAt ?? null, b.endsAt ?? null, b.imageUrl],
     );
     if (!rows[0]) return reply.code(404).send({ error: 'not_found' });
     return rows[0];

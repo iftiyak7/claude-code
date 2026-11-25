@@ -7,7 +7,9 @@ import { config } from './config.js';
 import { pool } from './db.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
+import { announcementRoutes } from './routes/announcements.js';
 import { bannerRoutes } from './routes/banners.js';
+import { mediaRoutes } from './routes/media.js';
 import { syncRoutes } from './routes/sync.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
@@ -47,5 +49,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   await app.register(syncRoutes);
   await app.register(adminRoutes);
   await app.register(bannerRoutes);
+  await app.register(mediaRoutes);
+  await app.register(announcementRoutes);
   return app;
 }

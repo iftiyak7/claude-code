@@ -76,7 +76,9 @@
           "faceIDPermission": "আপনার আমল ও তথ্য সুরক্ষিত রাখতে Face ID ব্যবহার করা হবে।"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": false

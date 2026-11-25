@@ -6,12 +6,14 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { storage } from '@/db/storage';
+import { Image } from 'expo-image';
 import { API_URL } from '@/sync/api';
 
 export interface RemoteBanner {
   id: string;
   tag: string;
   body: string;
+  imageUrl?: string;
   arabic: string;
   source: string;
   theme: string;
@@ -39,7 +41,10 @@ async function fetchBanners(): Promise<RemoteBanner[] | null> {
     const res = await fetch(`${API_URL}/v1/banners`, { signal: ctrl.signal });
     if (!res.ok) return null;
     const body = (await res.json()) as { banners?: RemoteBanner[] };
-    const list = Array.isArray(body.banners) ? body.banners.filter((b) => b && typeof b.body === 'string' && b.body.trim()) : [];
+    const list = Array.isArray(body.banners) ? body.banners.filter((b) => b && (b.imageUrl || (typeof b.body === 'string' && b.body.trim()))) : [];
+    // download pictures to the disk cache so they show offline too
+    const urls = list.filter((b) => b.imageUrl).map((b) => imageSrc(b.imageUrl!));
+    if (urls.length) await Image.prefetch(urls, 'disk').catch(() => false);
     storage.kvSet(KEY, JSON.stringify(list));
     return list;
   } catch {
@@ -67,6 +72,8 @@ export function useRemoteBanners(): RemoteBanner[] {
   }, []);
   return list;
 }
+
+export const imageSrc = (path: string) => (/^https:\/\//.test(path) ? path : `${API_URL}${path}`);
 
 export const BANNER_THEMES: Record<string, [string, string]> = {
   coral: ['#F2703F', '#E0578A'],

@@ -10,6 +10,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { reschedule, startScheduler } from '@/notifications/scheduler';
 import { markAutoPrompted, shouldAutoPrompt } from '@/permissions/reminderSetup';
+import { checkAnnouncements, registerForPush } from '@/notifications/announcements';
+import { registerBackgroundTask } from '@/notifications/background';
 import { LockGate } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { startAutoSync, syncNow } from '@/sync/engine';
@@ -41,13 +43,29 @@ export default function RootLayout() {
       if (s === 'active') {
         void reschedule();
         void syncNow();
+        void checkAnnouncements();
       }
     });
+    // Ask for notification permission right away on open (system dialog),
+    // then pick up admin notifications and keep the background task alive.
+    void (async () => {
+      if (Platform.OS !== 'web') {
+        const p = await Notifications.getPermissionsAsync();
+        if (!p.granted && p.canAskAgain) {
+          const r = await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
+          if (r.granted) void reschedule();
+        }
+      }
+      await registerForPush();
+      await checkAnnouncements();
+      await registerBackgroundTask();
+    })();
     let notifSub: { remove(): void } | undefined;
     if (Platform.OS !== 'web') {
       notifSub = Notifications.addNotificationResponseReceivedListener((r) => {
         const route = r.notification.request.content.data?.route;
         if (typeof route === 'string' && route.startsWith('/')) router.push(route as never);
+        if (r.notification.request.content.data?.announcementId) void checkAnnouncements();
       });
     }
     return () => {
@@ -107,6 +125,7 @@ export default function RootLayout() {
             <Stack.Screen name="setup" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="welcome" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="add" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="inbox" />
           </Stack>
         </LockGate>
         <ToastHost />

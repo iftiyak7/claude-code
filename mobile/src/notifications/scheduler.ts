@@ -27,7 +27,7 @@ export async function setupChannels() {
   });
   if (Platform.OS !== 'android') return;
   const t = getT(useData.getState().settings.language);
-  const ch = (id: Channel, name: string, cfg: Partial<Notifications.NotificationChannelInput>) =>
+  const ch = (id: Channel | 'announcement', name: string, cfg: Partial<Notifications.NotificationChannelInput>) =>
     Notifications.setNotificationChannelAsync(id, {
       name,
       importance: Notifications.AndroidImportance.HIGH,
@@ -41,6 +41,7 @@ export async function setupChannels() {
     ch('reminder', t.reminders, { sound: 'default' }),
     ch('salah', t.salah, { sound: 'default' }),
     ch('medicine', t.medicine, { sound: 'default' }),
+    ch('announcement', t.inbox.title, { sound: 'default', vibrationPattern: [0, 300, 200, 300] }),
     ch('alarm', t.alarm, {
       importance: Notifications.AndroidImportance.MAX,
       sound: 'default',

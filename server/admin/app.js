@@ -219,9 +219,12 @@ function onError(err) {
 // ── banners ───────────────────────────────────────────────────────────────
 let banners = [];
 let editing = null; // banner id or 'new'
+let mode = 'image';
 const form = $('#banner-form');
 
 function bannerHtml(b) {
+  if (b.imageUrl) return `<div class="bimg ${b.active === false ? 'off' : ''}"><img src="${esc(b.imageUrl)}" alt=""></div>`;
+  if (mode === 'image' && !b.body) return '<div class="bimg" style="display:grid;place-items:center;color:var(--muted)">ছবি আপলোড করলে এখানে দেখাবে</div>';
   const cta = b.ctaLabel ? `<span class="bcta">${esc(b.ctaLabel)} →</span>` : '';
   return `<div class="bcard t-${esc(b.theme)} ${b.active === false ? 'off' : ''}">
     ${b.tag ? `<span class="btag">${esc(b.tag)}</span>` : ''}
@@ -248,7 +251,8 @@ function readForm() {
   const f = new FormData(form);
   const route = f.get('ctaRoute');
   return {
-    tag: f.get('tag') || '', arabic: f.get('arabic') || '', body: f.get('body') || '', source: f.get('source') || '',
+    imageUrl: mode === 'image' ? f.get('imageUrl') || '' : '',
+    tag: f.get('tag') || '', arabic: f.get('arabic') || '', body: mode === 'text' ? f.get('body') || '' : '', source: f.get('source') || '',
     theme: f.get('theme'), sort: Number(f.get('sort') || 0), ctaLabel: f.get('ctaLabel') || '',
     ctaUrl: route === 'custom' ? (f.get('ctaUrl') || '') : route || '',
     active: !!f.get('active'), startsAt: fromLocal(f.get('startsAt')), endsAt: fromLocal(f.get('endsAt')),
@@ -256,9 +260,51 @@ function readForm() {
 }
 function preview() { $('#banner-preview').innerHTML = bannerHtml(readForm()); $('#cta-url-row').hidden = form.ctaRoute.value !== 'custom'; }
 
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach((x) => x.classList.toggle('on', x.dataset.mode === m));
+  $('#image-fields').hidden = m !== 'image';
+  $('#text-fields').hidden = m !== 'text';
+  $('#theme-row').hidden = m !== 'text';
+  $('#cta-label-row').hidden = m !== 'text';
+  preview();
+}
+document.querySelectorAll('.mode-btn').forEach((x) => x.addEventListener('click', () => setMode(x.dataset.mode)));
+
+async function upload(file) {
+  const st = $('#upload-status');
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { st.textContent = 'শুধু JPG, PNG বা WebP ছবি দিন'; return; }
+  if (file.size > 3 * 1024 * 1024) { st.textContent = 'ছবিটি ৩ MB-এর বেশি — একটু ছোট করে দিন'; return; }
+  st.textContent = 'আপলোড হচ্ছে…';
+  const fd = new FormData();
+  fd.append('file', file);
+  const send = () => fetch('/v1/admin/uploads', { method: 'POST', body: fd, headers: access ? { authorization: `Bearer ${access}` } : {} });
+  let res = await send();
+  if (res.status === 401 && refresh) { await call('/v1/admin/me').catch(() => null); res = await send(); }
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { st.textContent = out.error === 'unsupported_image' ? 'এটি সঠিক ছবি ফাইল নয়' : 'আপলোড হয়নি, আবার চেষ্টা করুন'; return; }
+  form.imageUrl.value = out.url;
+  const img = new Image();
+  img.onload = () => {
+    const r = img.naturalWidth / img.naturalHeight;
+    st.textContent = Math.abs(r - 2) > 0.25
+      ? `✓ আপলোড হয়েছে (${img.naturalWidth}×${img.naturalHeight})। মাপ ২:১ না হওয়ায় কিনারা একটু কেটে যেতে পারে।`
+      : `✓ আপলোড হয়েছে (${img.naturalWidth}×${img.naturalHeight})`;
+  };
+  img.src = out.url;
+  preview();
+}
+const drop = $('#drop');
+$('#file').addEventListener('change', (e) => e.target.files[0] && upload(e.target.files[0]));
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); });
+
 function openForm(b) {
   editing = b ? b.id : 'new';
   form.reset();
+  form.imageUrl.value = b?.imageUrl || '';
+  $('#upload-status').textContent = '';
   if (b) {
     for (const k of ['tag', 'arabic', 'body', 'source', 'theme', 'sort', 'ctaLabel']) form[k].value = b[k] ?? '';
     const internal = [...form.ctaRoute.options].some((o) => o.value === b.ctaUrl);
@@ -270,7 +316,7 @@ function openForm(b) {
   }
   $('#banner-error').textContent = '';
   form.hidden = false;
-  preview();
+  setMode(b && !b.imageUrl ? 'text' : 'image');
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -287,7 +333,7 @@ form.addEventListener('submit', async (e) => {
     toast('ব্যানার সংরক্ষণ হয়েছে');
     await loadBanners();
   } catch (err) {
-    $('#banner-error').textContent = err.code === 'validation_error' ? 'তথ্য ঠিক নেই — মূল লেখা দিন, লিংক https:// দিয়ে শুরু হতে হবে' : 'সংরক্ষণ হয়নি';
+    $('#banner-error').textContent = err.code === 'validation_error' ? (mode === 'image' ? 'আগে একটি ছবি আপলোড করুন (লিংক দিলে https:// দিয়ে শুরু হতে হবে)' : 'মূল লেখা দিন (লিংক দিলে https:// দিয়ে শুরু হতে হবে)') : 'সংরক্ষণ হয়নি';
   }
 });
 $('#banner-list').addEventListener('click', async (e) => {
@@ -308,7 +354,49 @@ $('#banner-list').addEventListener('click', async (e) => {
   await loadBanners();
 });
 
-const refreshAll = () => Promise.all([loadStats(), loadUsers(), loadBanners()]).catch(onError);
+// ── notifications ─────────────────────────────────────────────────────────
+const nform = $('#notify-form');
+const npreview = () => {
+  $('#pn-title').textContent = nform.title.value || 'শিরোনাম';
+  $('#pn-body').textContent = nform.body.value || 'বার্তা';
+};
+nform.addEventListener('input', npreview);
+
+async function loadAnnouncements() {
+  const r = await call('/v1/admin/announcements');
+  $('#push-devices').textContent = `পুশ-চালু ডিভাইস: ${bn(r.pushDevices)}`;
+  $('#sent-list').innerHTML = r.announcements.length
+    ? r.announcements.map((a) => `<li><div><b>${esc(a.title)}</b><small>${esc(a.body)}</small><small>${ago(a.createdAt)}</small></div>
+        <button class="btn ghost small" data-aid="${a.id}">মুছুন</button></li>`).join('')
+    : '<li class="muted">এখনো কোনো নোটিফিকেশন পাঠানো হয়নি</li>';
+}
+
+nform.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(nform);
+  const body = { title: f.get('title'), body: f.get('body') || '', url: f.get('url') || '' };
+  if (!confirm(`"${body.title}" — সব ব্যবহারকারীকে পাঠাবেন?`)) return;
+  $('#notify-send').disabled = true;
+  $('#notify-error').textContent = '';
+  try {
+    await call('/v1/admin/announcements', { method: 'POST', body: JSON.stringify(body) });
+    nform.reset(); npreview();
+    toast('নোটিফিকেশন পাঠানো হয়েছে');
+    await loadAnnouncements();
+  } catch (err) {
+    $('#notify-error').textContent = 'পাঠানো যায়নি — শিরোনাম দিন';
+  } finally {
+    $('#notify-send').disabled = false;
+  }
+});
+$('#sent-list').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-aid]');
+  if (!b || !confirm('তালিকা থেকে মুছবেন? (যাদের ফোনে আগেই পৌঁছেছে, তাদের থেকে মুছবে না)')) return;
+  await call(`/v1/admin/announcements/${b.dataset.aid}`, { method: 'DELETE' });
+  await loadAnnouncements();
+});
+
+const refreshAll = () => Promise.all([loadStats(), loadUsers(), loadBanners(), loadAnnouncements()]).catch(onError);
 
 async function start() {
   if (!access && !refresh) return showLogin();

@@ -148,6 +148,7 @@ const bn = {
   todayMeds: 'আজকের ওষুধ',
   version: 'ভার্সন',
   dataExport: 'ডেটা এক্সপোর্ট',
+  inbox: { title: 'নোটিফিকেশন', empty: 'এখনো কোনো নোটিফিকেশন আসেনি। নতুন ঘোষণা এলে এখানে দেখাবে।' },
   welcome: {
     skip: 'এড়িয়ে যান',
     hello: 'স্বাগতম!',
@@ -384,6 +385,7 @@ const en: Dict = {
   todayMeds: "Today's medicine",
   version: 'Version',
   dataExport: 'Export data',
+  inbox: { title: 'Notifications', empty: 'No notifications yet. New announcements will appear here.' },
   welcome: {
     skip: 'Skip',
     hello: 'Welcome!',

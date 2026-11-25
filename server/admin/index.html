@@ -70,22 +70,39 @@
         <div id="banner-list" class="banner-list"></div>
 
         <form id="banner-form" class="banner-form" hidden>
+          <div class="mode" role="tablist">
+            <button type="button" class="mode-btn on" data-mode="image">🖼️ ছবির ব্যানার</button>
+            <button type="button" class="mode-btn" data-mode="text">✍️ লেখার ব্যানার</button>
+          </div>
           <div class="bf-grid">
             <div class="bf-fields">
+              <input type="hidden" name="imageUrl">
+              <div id="image-fields">
+                <label class="drop" id="drop">
+                  <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+                  <span class="drop-ic">⬆</span>
+                  <b>ব্যানারের ছবি আপলোড করুন</b>
+                  <span class="muted">এখানে চাপুন বা ছবি টেনে আনুন · JPG, PNG বা WebP · সর্বোচ্চ ৩ MB</span>
+                  <span class="size-hint">সবচেয়ে ভালো মাপ: <b>১২০০ × ৬০০ পিক্সেল</b> (চওড়া ২ : উঁচু ১)</span>
+                </label>
+                <p id="upload-status" class="muted" style="margin-top:8px"></p>
+              </div>
+              <div id="text-fields" hidden>
               <label>ছোট ট্যাগ (যেমন: ঘোষণা, আজকের হাদিস)<input name="tag" maxlength="40"></label>
               <label>আরবি (ঐচ্ছিক)<input name="arabic" maxlength="160" dir="rtl" class="arabic-input"></label>
-              <label>মূল লেখা *<textarea name="body" maxlength="280" rows="3" required></textarea></label>
+              <label>মূল লেখা *<textarea name="body" maxlength="280" rows="3"></textarea></label>
               <label>সূত্র (ঐচ্ছিক, যেমন: সহিহ বুখারি ৬৪০৫)<input name="source" maxlength="80"></label>
+              </div>
               <div class="row2">
-                <label>রঙ<select name="theme">
+                <label id="theme-row">রঙ<select name="theme">
                   <option value="coral">কমলা</option><option value="violet">বেগুনি</option><option value="mint">সবুজ</option>
                   <option value="ocean">নীল</option><option value="gold">সোনালি</option><option value="night">কালো</option>
                 </select></label>
                 <label>ক্রম (ছোট সংখ্যা আগে)<input name="sort" type="number" value="0" min="-1000" max="1000"></label>
               </div>
               <div class="row2">
-                <label>বোতামের লেখা (ঐচ্ছিক)<input name="ctaLabel" maxlength="30" placeholder="যেমন: দেখুন"></label>
-                <label>বোতাম চাপলে যাবে<select name="ctaRoute">
+                <label id="cta-label-row">বোতামের লেখা (ঐচ্ছিক)<input name="ctaLabel" maxlength="30" placeholder="যেমন: দেখুন"></label>
+                <label>ব্যানারে চাপলে যাবে<select name="ctaRoute">
                   <option value="">কোথাও না</option><option value="/amal">আমল পাতা</option><option value="/plan">প্ল্যান</option>
                   <option value="/health">স্বাস্থ্য</option><option value="/add">যোগ করুন</option><option value="/profile">প্রোফাইল</option>
                   <option value="custom">ওয়েবসাইট লিংক…</option>
@@ -106,6 +123,32 @@
             <div><p class="muted" style="margin-bottom:8px">প্রিভিউ</p><div id="banner-preview"></div></div>
           </div>
         </form>
+      </section>
+
+      <section class="card" id="notify-card">
+        <div class="card-head">
+          <h2>নোটিফিকেশন পাঠান</h2>
+          <span class="pill" id="push-devices"></span>
+        </div>
+        <p class="muted" style="margin-bottom:14px">এখান থেকে পাঠানো নোটিফিকেশন সব ব্যবহারকারীর ফোনে ভাইব্রেশনসহ যাবে, আর অ্যাপের “নোটিফিকেশন” পাতায় জমা থাকবে।</p>
+        <div class="bf-grid">
+          <form id="notify-form" class="bf-fields">
+            <label>শিরোনাম *<input name="title" maxlength="80" required placeholder="যেমন: জুমা মোবারক"></label>
+            <label>বার্তা<textarea name="body" maxlength="240" rows="3" placeholder="যেমন: আজ সূরা কাহফ পড়তে ভুলবেন না"></textarea></label>
+            <label>চাপলে খুলবে<select name="url">
+              <option value="">নোটিফিকেশন পাতা</option><option value="/">হোম</option><option value="/amal">আমল পাতা</option>
+              <option value="/add">যোগ করুন</option><option value="/plan">প্ল্যান</option><option value="/health">স্বাস্থ্য</option>
+            </select></label>
+            <p id="notify-error" class="error"></p>
+            <div class="bf-actions"><button class="btn accent" type="submit" id="notify-send">📣 সবাইকে পাঠান</button></div>
+          </form>
+          <div>
+            <p class="muted" style="margin-bottom:8px">ফোনে যেমন দেখাবে</p>
+            <div class="phone-notif"><div class="pn-ic">ت</div><div style="flex:1;min-width:0"><div class="pn-top"><b>Tadbeer Daily</b><span>এখন</span></div><div class="pn-title" id="pn-title">শিরোনাম</div><div class="pn-body" id="pn-body">বার্তা</div></div></div>
+          </div>
+        </div>
+        <h3>আগে পাঠানো</h3>
+        <ul class="sent" id="sent-list"></ul>
       </section>
 
       <section class="card">

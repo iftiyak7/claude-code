@@ -11,6 +11,7 @@ import { BannerSlider } from '@/features/BannerSlider';
 import { formatClock, formatCountdown, gregorianDate, hijriDate, useNow, usePrayerTimes, useToday } from '@/features/hooks';
 import { PrayerStrip } from '@/features/PrayerStrip';
 import { useNum, useT } from '@/i18n';
+import { unreadCount, useInbox } from '@/notifications/announcements';
 import { allGranted, getSetupStatus } from '@/permissions/reminderSetup';
 import { useData } from '@/store/data';
 import { useLive, useSettings } from '@/store/hooks';
@@ -50,6 +51,7 @@ export default function Today() {
   const meds = useLive('medicines');
   const tasks = useLive('tasks');
   const logs = useData((s) => s.logs);
+  const unread = useInbox(unreadCount);
 
   const [setupOk, setSetupOk] = useState(true);
   useEffect(() => {
@@ -100,6 +102,14 @@ export default function Today() {
                 <Text style={[font.h3, { color: t.text, fontSize: 19 }]} numberOfLines={1}>
                   {settings.name || tr.appName}
                 </Text>
+              </View>
+              <View>
+                <IconButton icon="notifications-outline" onPress={() => router.push('/inbox')} label={tr.inbox.title} />
+                {unread > 0 && (
+                  <View style={[styles.badge, { backgroundColor: t.primary, borderColor: t.bg }]} pointerEvents="none">
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{n(unread > 9 ? '9+' : unread)}</Text>
+                  </View>
+                )}
               </View>
               <IconButton icon="options-outline" onPress={() => router.push('/settings')} label={tr.settings} />
             </Row>
@@ -274,6 +284,7 @@ function HealthCard(p: {
 }
 
 const styles = StyleSheet.create({
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   hero: { marginTop: space(5), padding: space(5), borderRadius: radius.xl },
   countdown: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, marginTop: 10 },
   notif: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: space(4), paddingVertical: 12 },

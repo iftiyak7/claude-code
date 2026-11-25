@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 
 process.env.JWT_SECRET ??= 'test-secret-test-secret-test-secret-123';
 process.env.ADMIN_EMAILS ??= 'boss@example.com';
+process.env.UPLOAD_DIR ??= (await import('node:os')).tmpdir() + '/tadbeer-test-uploads';
 process.env.DATABASE_URL ??= 'postgres://tadbeer:devpass@localhost:5432/tadbeer_test';
 
 const { buildApp } = await import('../src/app.js');
@@ -173,4 +174,49 @@ test('banners: admin manages, everyone reads active ones', async () => {
 
   const del = await app.inject({ method: 'DELETE', url: `/v1/admin/banners/${id}`, headers: auth(boss.accessToken) });
   assert.equal(del.statusCode, 204);
+});
+
+test('banner image upload: only real images, served back with caching', async () => {
+  const boss = (await post('/v1/auth/login', { email: 'boss@example.com', password: 'correct horse battery' })).json();
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cfc0f01f0005000201a5b5d0e40000000049454e44ae426082', 'hex');
+  const form = (name: string, buf: Buffer, type: string) => {
+    const b = '----tadbeer' + Math.random().toString(16).slice(2);
+    const payload = Buffer.concat([
+      Buffer.from(`--${b}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: ${type}\r\n\r\n`),
+      buf,
+      Buffer.from(`\r\n--${b}--\r\n`),
+    ]);
+    return { payload, headers: { 'content-type': `multipart/form-data; boundary=${b}`, authorization: `Bearer ${boss.accessToken}` } };
+  };
+  const up = await app.inject({ method: 'POST', url: '/v1/admin/uploads', ...form('b.png', png, 'image/png') });
+  assert.equal(up.statusCode, 201, up.body);
+  const url = up.json().url as string;
+  assert.match(url, /^\/uploads\/[0-9a-f-]{36}\.png$/);
+  const got = await app.inject(url);
+  assert.equal(got.statusCode, 200);
+  assert.equal(got.headers['content-type'], 'image/png');
+
+  const fake = await app.inject({ method: 'POST', url: '/v1/admin/uploads', ...form('x.png', Buffer.from('<script>alert(1)</script>'), 'image/png') });
+  assert.equal(fake.statusCode, 415, 'non-images are rejected by content, not by name');
+  assert.equal((await app.inject('/uploads/../package.json')).statusCode, 404);
+
+  const banner = await app.inject({ method: 'POST', url: '/v1/admin/banners', payload: { imageUrl: url, ctaUrl: '/add' }, headers: { authorization: `Bearer ${boss.accessToken}` } });
+  assert.equal(banner.statusCode, 201, banner.body);
+  assert.equal((await app.inject('/v1/banners')).json().banners[0].imageUrl, url);
+});
+
+test('announcements: admin sends, apps poll, tokens register', async () => {
+  const boss = (await post('/v1/auth/login', { email: 'boss@example.com', password: 'correct horse battery' })).json();
+  const auth = { authorization: `Bearer ${boss.accessToken}` };
+  const before = new Date(Date.now() - 1000).toISOString();
+  const sent = await app.inject({ method: 'POST', url: '/v1/admin/announcements', payload: { title: 'জুমা মোবারক', body: 'সূরা কাহফ পড়তে ভুলবেন না' }, headers: auth });
+  assert.equal(sent.statusCode, 201, sent.body);
+  const polled = await app.inject(`/v1/announcements?after=${encodeURIComponent(before)}`);
+  assert.equal(polled.json().announcements[0].title, 'জুমা মোবারক');
+  const later = await app.inject(`/v1/announcements?after=${encodeURIComponent(new Date(Date.now() + 60_000).toISOString())}`);
+  assert.equal(later.json().announcements.length, 0);
+  assert.equal((await post('/v1/push/register', { token: 'not-a-token' })).statusCode, 400);
+  assert.equal((await post('/v1/push/register', { token: 'ExponentPushToken[abcdefghijklmnop]', platform: 'android' })).statusCode, 204);
+  const noAdmin = await app.inject({ method: 'POST', url: '/v1/admin/announcements', payload: { title: 'x' } });
+  assert.equal(noAdmin.statusCode, 401);
 });

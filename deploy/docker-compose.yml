@@ -41,6 +41,8 @@ services:
     networks: [internal, edge]
     read_only: true
     tmpfs: [/tmp]
+    volumes:
+      - uploads:/app/uploads   # banner images uploaded from the admin panel
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
     mem_limit: 512m
@@ -67,6 +69,7 @@ services:
 
 volumes:
   pgdata:
+  uploads:
   caddy_data:
   caddy_config:
 
