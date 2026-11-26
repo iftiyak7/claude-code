@@ -141,12 +141,21 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            // Without internet the app runs from its own copy (see the "offline copy" part below).
+            // The app's own files (page, styles, scripts) always come from the copy on the phone, so the app opens at once;
+            // that copy is refreshed in the background (see "offline copy" below). Without internet the data comes from it too.
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
-                if (!"GET".equals(req.getMethod()) || !isOwn(u) || !offline()) return null;
-                return localResponse(localPath(u.getPath()));
+                if (!"GET".equals(req.getMethod()) || !isOwn(u)) return null;
+                String p = localPath(u.getPath());
+                if (p == null || (p.startsWith("api/") && !offline())) return null;
+                return localResponse(p);
+            }
+
+            // Show the page as soon as its first frame is drawn, not after every image and font has loaded.
+            @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                if (!failed && !shown) { shown = true; web.setVisibility(View.VISIBLE); }
             }
 
             @Override
@@ -307,9 +316,10 @@ public class MainActivity extends Activity {
     /* ---------------- offline copy ----------------
      * The APK carries the app's files and a snapshot of the data (assets/www, added when the server builds the APK).
      * Whenever the app is online it fetches the list of files with their SHA-256 (/api/shell), downloads only the changed
-     * ones and the current data into files/www, and checks every download against its fingerprint. Without internet, the
-     * page, its scripts and /api/bootstrap are answered from files/www, else from the copy in the APK. Online, everything
-     * comes straight from the site, so new features show up at once.
+     * ones and the current data into files/www, and checks every download against its fingerprint. The page and its scripts
+     * are always answered from files/www (else from the copy in the APK), so the app opens without waiting for the network;
+     * a new version of them is used from the next start after it was downloaded. Online, the data comes from the site;
+     * without internet, /api/bootstrap is answered from the copy as well.
      */
     private boolean offline() {
         if (forceOffline) return true;
@@ -376,7 +386,7 @@ public class MainActivity extends Activity {
 
     private void syncCopy() {
         final long now = System.currentTimeMillis();
-        if (syncing || now - getSharedPreferences(PREFS, MODE_PRIVATE).getLong("synced", 0) < 10 * 60 * 1000) return;
+        if (syncing || now - getSharedPreferences(PREFS, MODE_PRIVATE).getLong("synced", 0) < 2 * 60 * 1000) return;
         syncing = true;
         final Uri base = Uri.parse(home);
         final String origin = base.getScheme() + "://" + base.getAuthority();

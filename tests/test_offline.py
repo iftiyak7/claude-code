@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -26,6 +27,15 @@ class OfflineTest(ServerTest):
         # every module the app imports is in the list (a missing one would break the app offline)
         js = {p for p in paths if p.startswith('js/')}
         self.assertEqual(js, {'js/' + f for f in os.listdir(os.path.join(ROOT, 'public', 'js'))})
+
+    def test_app_page_opens_fast(self):
+        html = open(os.path.join(ROOT, 'public', 'app.html'), encoding='utf-8').read()
+        # the web fonts never hold up the first paint
+        tags = re.findall(r'<link [^>]*fonts\.googleapis\.com/css2[^>]*>', html)
+        self.assertTrue(tags)
+        for tag in tags:
+            self.assertIn('media="print"', tag)
+        self.assertIn("fonts.media = 'all'", open(os.path.join(ROOT, 'public', 'js', 'main.js'), encoding='utf-8').read())
 
     @unittest.skipUnless(shutil.which('apksigner') and shutil.which('zipalign') and shutil.which('keytool'), 'Android signing tools missing')
     def test_apk_carries_the_app_and_todays_data(self):

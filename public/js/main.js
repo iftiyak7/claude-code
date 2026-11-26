@@ -14,6 +14,9 @@ import './search.js';
 import './sheets.js';
 import './gates.js';
 
+const fonts = document.getElementById('fonts');      // loaded as "print" so it did not hold up the first paint
+if (fonts) fonts.media = 'all';
+
 init_util();
 init_data();
 init_pages();
