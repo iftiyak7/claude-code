@@ -141,6 +141,18 @@ export interface Settings {
   haptics: boolean;
   onboarded: boolean;
   zikrSound: boolean;
+  quran: QuranPrefs;
+}
+
+export type MushafId = 'hafs' | 'indopak' | 'tajweed' | 'warsh' | 'qaloon';
+export type TranslationId = 'zakaria' | 'muhiuddin' | 'none';
+
+export interface QuranPrefs {
+  mushaf: MushafId;
+  translation: TranslationId;
+  fontSize: number;
+  lastRead?: { surah: number; ayah: number; page?: number; at: number };
+  bookmarks: string[]; // "surah:ayah"
 }
 
 export type CollectionName = 'amals' | 'tasks' | 'reminders' | 'medicines' | 'routines' | 'logs';

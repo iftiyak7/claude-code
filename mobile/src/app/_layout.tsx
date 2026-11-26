@@ -126,6 +126,10 @@ export default function RootLayout() {
             <Stack.Screen name="welcome" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="add" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="inbox" />
+            <Stack.Screen name="quran/index" />
+            <Stack.Screen name="quran/[surah]" />
+            <Stack.Screen name="quran/page" options={{ animation: 'fade' }} />
+            <Stack.Screen name="quran/styles" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           </Stack>
         </LockGate>
         <ToastHost />

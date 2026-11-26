@@ -57,7 +57,8 @@ export const useData = create<DataState>()((set, get) => ({
     const raw = storage.kvGet(SETTINGS_KEY);
     if (raw) {
       try {
-        settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        const saved = JSON.parse(raw);
+        settings = { ...DEFAULT_SETTINGS, ...saved, quran: { ...DEFAULT_SETTINGS.quran, ...(saved.quran ?? {}) } };
       } catch {
         /* corrupt settings → defaults */
       }

@@ -11,6 +11,7 @@ import { BannerSlider } from '@/features/BannerSlider';
 import { formatClock, formatCountdown, gregorianDate, hijriDate, useNow, usePrayerTimes, useToday } from '@/features/hooks';
 import { PrayerStrip } from '@/features/PrayerStrip';
 import { useNum, useT } from '@/i18n';
+import { SURAHS } from '@/quran/data';
 import { unreadCount, useInbox } from '@/notifications/announcements';
 import { allGranted, getSetupStatus } from '@/permissions/reminderSetup';
 import { useData } from '@/store/data';
@@ -52,6 +53,7 @@ export default function Today() {
   const tasks = useLive('tasks');
   const logs = useData((s) => s.logs);
   const unread = useInbox(unreadCount);
+  const quranLast = settings.quran.lastRead;
 
   const [setupOk, setSetupOk] = useState(true);
   useEffect(() => {
@@ -169,6 +171,24 @@ export default function Today() {
                 <Stat label={tr.points} value={n(stats.points)} icon="star" color={t.gold} bg={t.goldSoft} />
               </View>
             </Card>
+          </Section>
+
+          {/* ── Quran ────────────────────────────────────────────── */}
+          <Section delay={130}>
+            <PressableScale onPress={() => router.push('/quran')} style={[styles.quran, cardShadow(t), { backgroundColor: t.surface }]}>
+              <View style={[styles.quranIcon, { backgroundColor: t.lavenderSoft }]}>
+                <Ionicons name="book" size={24} color={t.lavenderInk} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[font.h3, { color: t.text }]}>{tr.quran.home}</Text>
+                <Text style={[font.small, { color: t.muted }]} numberOfLines={1}>
+                  {quranLast ? `${lang === 'bn' ? SURAHS[quranLast.surah - 1].bn : SURAHS[quranLast.surah - 1].en} · ${tr.quran.ayah} ${n(quranLast.ayah)}` : tr.quran.homeSub}
+                </Text>
+              </View>
+              <View style={[styles.healthAct, { backgroundColor: t.ink }]}>
+                <Ionicons name="arrow-forward" size={16} color={t.onInk} />
+              </View>
+            </PressableScale>
           </Section>
 
           {/* ── Health ─────────────────────────────────────────── */}
@@ -290,6 +310,8 @@ const styles = StyleSheet.create({
   notif: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: space(4), paddingVertical: 12 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: 22 },
   statIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  quran: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: radius.lg, padding: 16 },
+  quranIcon: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
   health: { flex: 1, borderRadius: radius.lg, padding: 16 },
   healthIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   healthAct: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
