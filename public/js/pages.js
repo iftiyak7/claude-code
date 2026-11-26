@@ -6,7 +6,7 @@ import { KINDS, PRICE_UNIT, STATUS, autoLocate, fullAddress, showClassifieds, ca
 import { render } from './router.js';
 import { search } from './search.js';
 import { ctxbar } from './sheets.js';
-import { APP_UA, LANG, LOGO, T, api, areaName, esc, fmtDate, loc, ls, money, num, track } from './util.js';
+import { LANG, LOGO, T, api, areaName, esc, fmtDate, loc, ls, money, num, track } from './util.js';
 
 /* ---------------- pages ---------------- */
 export const pages = {};
@@ -72,13 +72,11 @@ export function init() {
     const headline = esc(loc(site, 'headline') || T('যশোরের সবকিছু খুঁজুন এক জায়গায়')).replace(/(যশোর\S*|Jashore)/, '<span>$1</span>');
     const banners = adsFor('home');
     const counts = S.D.classifiedCounts || {};
-    const update = APP_UA && S.D.app?.versionCode > +APP_UA[1];
     return `
     <header class="homebar"><a class="brandmark" href="#/" aria-label="Jashore360">${LOGO}</a>
       <button class="loc" data-areasheet><small>${T('আপনার এলাকা')}</small><b>${esc(area ? areaName(area) : T('পুরো যশোর'))}${icon('chevD', 16)}</b></button>
       <button class="roundbtn lang" data-lang aria-label="Language">${LANG() === 'bn' ? 'EN' : 'বাং'}</button>
       <button class="roundbtn" data-notices aria-label="${T('ঘোষণা ও আপডেট')}">${icon('bell', 20)}${unseen ? '<i class="dot"></i>' : ''}</button></header>
-    ${update ? `<a class="note" href="/download/jashore360.apk" style="margin-top:12px">${icon('download', 18)}<span><b>${T('নতুন ভার্সন এসেছে')}</b> — ${T('আপডেট করতে চাপুন')} (v${esc(S.D.app.versionName)})</span></a>` : ''}
     <h1 class="headline">${headline}</h1>
     <div class="searchrow"><a class="search" href="#/search">${icon('search', 20)}<span>${T('খুঁজুন: হাসপাতাল, কাচ্চি, বাসা ভাড়া…')}</span></a>
       <button class="filterbtn" data-filter aria-label="${T('ফিল্টার')}">${icon('sliders', 20)}</button></div>
