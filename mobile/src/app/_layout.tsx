@@ -130,6 +130,15 @@ export default function RootLayout() {
             <Stack.Screen name="quran/[surah]" />
             <Stack.Screen name="quran/page" options={{ animation: 'fade' }} />
             <Stack.Screen name="quran/styles" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="quran/tafsir" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="hadith/index" />
+            <Stack.Screen name="hadith/[book]" />
+            <Stack.Screen name="hadith/read" />
+            <Stack.Screen name="names" />
+            <Stack.Screen name="adhkar/index" />
+            <Stack.Screen name="adhkar/[cat]" />
+            <Stack.Screen name="qibla" />
+            <Stack.Screen name="stats" />
           </Stack>
         </LockGate>
         <ToastHost />

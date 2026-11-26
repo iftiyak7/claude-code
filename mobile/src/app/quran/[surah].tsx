@@ -13,7 +13,7 @@ import { arabicStyle, ayahSpans } from '@/quran/ArabicAyah';
 import { BISMILLAH, ensureFont, loadSurah, loadTranslation, MUSHAFS, mushafInfo, SURAHS, TAJWEED_COLORS, TAJWEED_LEGEND, type Ayah } from '@/quran/data';
 import { useData } from '@/store/data';
 import { useSettings } from '@/store/hooks';
-import { Button, Chip, IconButton, Ionicons, Khatam, Segmented } from '@/ui/components';
+import { Button, Chip, IconButton, Ionicons, Khatam, PressableScale, Segmented } from '@/ui/components';
 import { haptic } from '@/ui/haptics';
 import { Text } from '@/ui/Text';
 import { toast } from '@/ui/toast';
@@ -90,6 +90,12 @@ export default function SurahReader() {
   const color = t.text;
   const size = q.fontSize;
   const bookmarked = (a: Ayah) => q.bookmarks.includes(`${a.surah}:${a.ayah}`);
+  // tafsir follows Hafs (Kufan) numbering, so it is offered for the Hafs-based mushafs
+  const hasTafsir = info.riwayah === 'hafs';
+  const openTafsir = (ayah: number) => {
+    haptic.tap();
+    router.push({ pathname: '/quran/tafsir', params: { surah: String(surah), ayah: String(ayah) } });
+  };
   const showBismillah = surah !== 9 && surah !== 1 && hafsBased;
 
   const header = useMemo(
@@ -170,6 +176,19 @@ export default function SurahReader() {
                   </Text>
                 </View>
                 {bookmarked(item) && <Ionicons name="bookmark" size={16} color={t.primary} />}
+                <View style={{ flex: 1 }} />
+                {hasTafsir && (
+                  <PressableScale
+                    onPress={() => openTafsir(item.ayah)}
+                    scaleTo={0.9}
+                    hitSlop={8}
+                    style={[styles.tafsirBtn, { backgroundColor: t.lavenderSoft }]}
+                    accessibilityLabel={tr.quran.tafsir}
+                  >
+                    <Ionicons name="reader-outline" size={14} color={t.lavenderInk} />
+                    <Text style={[font.tiny, { color: t.lavenderInk, fontWeight: '700' }]}>{tr.quran.tafsir}</Text>
+                  </PressableScale>
+                )}
               </View>
               <RNText style={arabicStyle(q.mushaf, size, color)}>{ayahSpans(item, q.mushaf, color, size, t.primary)}</RNText>
               {trans[index] ? <Text style={[styles.trans, { color: t.muted, fontSize: 16 }]}>{trans[index]}</Text> : null}
@@ -197,6 +216,17 @@ export default function SurahReader() {
                 setSelected(null);
               }}
             />
+            {hasTafsir && (
+              <ActionRow
+                icon="reader-outline"
+                label={tr.quran.tafsirTitle}
+                onPress={() => {
+                  const a = selected.ayah;
+                  setSelected(null);
+                  openTafsir(a);
+                }}
+              />
+            )}
             <ActionRow
               icon="flag-outline"
               label={tr.quran.markLast}
@@ -323,5 +353,6 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  tafsirBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   actionIc: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });

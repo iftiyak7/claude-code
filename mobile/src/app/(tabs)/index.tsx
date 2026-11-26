@@ -141,6 +141,20 @@ export default function Today() {
                 {hijri ? `  ·  ${hijri}` : ''}
               </Text>
               <PrayerStrip date={date} times={times} salah={salah} current={cur} />
+              <PressableScale onPress={() => router.push('/qibla')} scaleTo={0.97} style={[styles.sunRow, { backgroundColor: t.surface2 }]}>
+                <Row gap={6}>
+                  <Ionicons name="sunny" size={15} color={t.gold} />
+                  <Text style={[font.tiny, { color: t.muted, fontWeight: '500' }]}>{tr.qibla.sunrise}</Text>
+                  <Text style={[font.small, { color: t.text, fontWeight: '700' }]}>{n(formatClock(times.sunrise, lang))}</Text>
+                </Row>
+                <View style={[styles.sunDivider, { backgroundColor: t.border }]} />
+                <Row gap={6}>
+                  <Ionicons name="moon" size={14} color={t.primary} />
+                  <Text style={[font.tiny, { color: t.muted, fontWeight: '500' }]}>{tr.qibla.sunset}</Text>
+                  <Text style={[font.small, { color: t.text, fontWeight: '700' }]}>{n(formatClock(times.sunset, lang))}</Text>
+                </Row>
+                <Ionicons name="compass-outline" size={18} color={t.primary} />
+              </PressableScale>
             </Card>
           </Animated.View>
 
@@ -173,8 +187,8 @@ export default function Today() {
             </Card>
           </Section>
 
-          {/* ── Quran ────────────────────────────────────────────── */}
-          <Section delay={130}>
+          {/* ── Deen library: Quran, hadith, names, adhkar, qibla ─── */}
+          <Section title={tr.deen.title} delay={130}>
             <PressableScale onPress={() => router.push('/quran')} style={[styles.quran, cardShadow(t), { backgroundColor: t.surface }]}>
               <View style={[styles.quranIcon, { backgroundColor: t.lavenderSoft }]}>
                 <Ionicons name="book" size={24} color={t.lavenderInk} />
@@ -189,6 +203,12 @@ export default function Today() {
                 <Ionicons name="arrow-forward" size={16} color={t.onInk} />
               </View>
             </PressableScale>
+            <View style={styles.deenGrid}>
+              <DeenTile icon="library" color={t.success} bg={t.successSoft} title={tr.deen.hadith} sub={tr.deen.hadithSub} onPress={() => router.push('/hadith')} delay={160} />
+              <DeenTile icon="sparkles" color={t.gold} bg={t.goldSoft} title={tr.deen.names} sub={tr.deen.namesSub} onPress={() => router.push('/names')} delay={200} />
+              <DeenTile icon="leaf" color={t.primary} bg={t.primarySoft} title={tr.deen.adhkar} sub={tr.deen.adhkarSub} onPress={() => router.push('/adhkar')} delay={240} />
+              <DeenTile icon="compass" color={t.water} bg={t.waterSoft} title={tr.deen.qibla} sub={tr.deen.qiblaSub} onPress={() => router.push('/qibla')} delay={280} />
+            </View>
           </Section>
 
           {/* ── Health ─────────────────────────────────────────── */}
@@ -255,6 +275,25 @@ export default function Today() {
   );
 }
 
+function DeenTile({ icon, color, bg, title, sub, onPress, delay }: { icon: IconName; color: string; bg: string; title: string; sub: string; onPress: () => void; delay: number }) {
+  const t = useTheme();
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).duration(400).springify().damping(18)} style={styles.deenTileWrap}>
+      <PressableScale onPress={onPress} style={[styles.deenTile, cardShadow(t), { backgroundColor: t.surface }]}>
+        <View style={[styles.deenIcon, { backgroundColor: bg }]}>
+          <Ionicons name={icon} size={22} color={color} />
+        </View>
+        <Text style={[font.body, { color: t.text, fontWeight: '700', marginTop: 12 }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[font.tiny, { color: t.muted, fontWeight: '500' }]} numberOfLines={1}>
+          {sub}
+        </Text>
+      </PressableScale>
+    </Animated.View>
+  );
+}
+
 function Stat({ icon, color, bg, value, label }: { icon: IconName; color: string; bg: string; value: string; label: string }) {
   const t = useTheme();
   return (
@@ -304,6 +343,12 @@ function HealthCard(p: {
 }
 
 const styles = StyleSheet.create({
+  deenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
+  deenTileWrap: { width: '47.5%', flexGrow: 1 },
+  deenTile: { borderRadius: radius.lg, padding: 16 },
+  deenIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  sunRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill },
+  sunDivider: { width: 1, height: 16 },
   badge: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   hero: { marginTop: space(5), padding: space(5), borderRadius: radius.xl },
   countdown: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, marginTop: 10 },

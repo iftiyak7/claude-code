@@ -13,6 +13,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { storage } from '@/db/storage';
+import { useData } from '@/store/data';
 import { API_URL } from '@/sync/api';
 
 export interface Announcement {
@@ -75,7 +76,8 @@ export function checkAnnouncements(): Promise<number> {
       if (fresh.length === 0) return 0;
 
       const pushActive = storage.kvGet(PUSH_OK) === '1';
-      if (Platform.OS !== 'web' && !pushActive) {
+      const muted = useData.getState().settings.muteAll;
+      if (Platform.OS !== 'web' && !pushActive && !muted) {
         const perm = await Notifications.getPermissionsAsync();
         if (perm.granted) {
           for (const a of fresh.slice(0, 3).reverse()) {

@@ -18,12 +18,10 @@ const VIBRATE_ALARM = [0, 800, 400, 800, 400, 800, 400, 1200];
 
 export async function setupChannels() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async () => {
+      const muted = useData.getState().settings.muteAll;
+      return { shouldShowBanner: !muted, shouldShowList: !muted, shouldPlaySound: !muted, shouldSetBadge: false };
+    },
   });
   if (Platform.OS !== 'android') return;
   const t = getT(useData.getState().settings.language);
@@ -115,6 +113,11 @@ export function reschedule(): Promise<void> {
 async function rescheduleOnce() {
   if (!(await notificationsGranted())) return;
   const s = useData.getState();
+  // Master mute: nothing may ring, show or vibrate until it is switched back on.
+  if (s.settings.muteAll) {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    return;
+  }
   const t = getT(s.settings.language);
   const plan = buildPlan({
     now: new Date(),

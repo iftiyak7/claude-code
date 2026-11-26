@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   onboarded: false,
   zikrSound: false,
+  muteAll: false,
   quran: { mushaf: 'hafs', translation: 'zakaria', fontSize: 28, bookmarks: [] },
 };
 

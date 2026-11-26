@@ -15,6 +15,9 @@ export interface DayPrayerTimes {
   maghrib: Date;
   isha: Date;
   lastThird: Date;
+  /** Astronomical sunset (no method offsets) and solar noon (zawal). */
+  sunset: Date;
+  noon: Date;
 }
 
 const cache = new Map<string, DayPrayerTimes>();
@@ -33,6 +36,9 @@ export function prayerTimesFor(date: ISODate, s: Pick<Settings, 'location' | 'ca
   d.setHours(12); // noon avoids DST edge cases in the library
   const pt = new PrayerTimes(coords, d, params);
   const sunnah = new SunnahTimes(pt);
+  // Karachi has no maghrib offset, so its maghrib is the true sunset and its
+  // dhuhr is solar noon + 1 min — independent of the user's chosen method.
+  const sun = new PrayerTimes(coords, d, CalculationMethod.Karachi());
   const out: DayPrayerTimes = {
     fajr: pt.fajr,
     sunrise: pt.sunrise,
@@ -41,6 +47,8 @@ export function prayerTimesFor(date: ISODate, s: Pick<Settings, 'location' | 'ca
     maghrib: pt.maghrib,
     isha: pt.isha,
     lastThird: sunnah.lastThirdOfTheNight,
+    sunset: sun.maghrib,
+    noon: new Date(sun.dhuhr.getTime() - 60_000),
   };
   if (cache.size > 64) cache.clear();
   cache.set(key, out);
@@ -84,4 +92,16 @@ export function salahTimeStarted(prayerStart: Date, date: ISODate, now = new Dat
 export function qiblaDirection(s: Pick<Settings, 'location'>): number {
   const loc = s.location ?? DEFAULT_LOCATION;
   return Qibla(new Coordinates(loc.lat, loc.lng));
+}
+
+const KAABA = { lat: 21.4225, lng: 39.8262 };
+
+/** Great-circle distance from the user's location to the Ka'bah, in km. */
+export function distanceToKaabaKm(s: Pick<Settings, 'location'>): number {
+  const loc = s.location ?? DEFAULT_LOCATION;
+  const rad = (x: number) => (x * Math.PI) / 180;
+  const dLat = rad(KAABA.lat - loc.lat);
+  const dLng = rad(KAABA.lng - loc.lng);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(loc.lat)) * Math.cos(rad(KAABA.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

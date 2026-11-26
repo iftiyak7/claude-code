@@ -9,3 +9,4 @@ web-build/
 mobile/ios/
 mobile/android/
 deploy/backups/
+__pycache__/

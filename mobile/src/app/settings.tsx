@@ -1,18 +1,21 @@
 import Constants from 'expo-constants';
-import * as Location from 'expo-location';
 import React, { useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Switch, View } from 'react-native';
+import Animated, { FadeIn, LinearTransition, ZoomIn } from 'react-native-reanimated';
 import { Text } from '@/ui/Text';
 import { DEFAULT_LOCATION } from '@/domain/prayer';
 import type { Settings } from '@/domain/types';
 import { FormCard } from '@/features/forms';
+import { locateMe } from '@/features/location';
 import { useNum, useT } from '@/i18n';
 import { router } from 'expo-router';
 import { authenticate, canUseBiometrics } from '@/security/LockGate';
 import { useData } from '@/store/data';
 import { useSettings } from '@/store/hooks';
-import { Button, Chip, Field, IconBadge, Row, Screen, Segmented, ToggleRow } from '@/ui/components';
-import { font, useTheme } from '@/ui/theme';
+import { Button, Chip, Field, IconBadge, Ionicons, PressableScale, Row, Screen, Segmented, ToggleRow } from '@/ui/components';
+import { haptic } from '@/ui/haptics';
+import { toast } from '@/ui/toast';
+import { font, radius, useTheme } from '@/ui/theme';
 
 const METHODS: Settings['calcMethod'][] = ['Karachi', 'MuslimWorldLeague', 'UmmAlQura', 'Egyptian', 'Dubai', 'Qatar', 'Singapore', 'Turkey', 'NorthAmerica'];
 
@@ -27,21 +30,8 @@ export default function SettingsScreen() {
 
   const useMyLocation = async () => {
     setLocBusy(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      let label: string | undefined;
-      try {
-        const [place] = await Location.reverseGeocodeAsync(pos.coords);
-        label = place?.city ?? place?.subregion ?? place?.region ?? undefined;
-      } catch {
-        /* offline — keep coordinates only */
-      }
-      update({ location: { lat: pos.coords.latitude, lng: pos.coords.longitude, label } });
-    } finally {
-      setLocBusy(false);
-    }
+    await locateMe();
+    setLocBusy(false);
   };
 
   const toggleLock = async (on: boolean) => {
@@ -59,6 +49,8 @@ export default function SettingsScreen() {
 
   return (
     <Screen title={tr.settings} back>
+      {Platform.OS !== 'web' && <MuteAllCard />}
+
       <Field label={tr.yourName} value={name} onChangeText={setName} onBlur={() => update({ name: name.trim() })} onSubmitEditing={() => update({ name: name.trim() })} />
 
       <FormCard label={tr.language} bare>
@@ -108,3 +100,48 @@ export default function SettingsScreen() {
     </Screen>
   );
 }
+
+/** One tap silences every notification, alarm and vibration in the app. */
+function MuteAllCard() {
+  const t = useTheme();
+  const tr = useT();
+  const muted = useSettings().muteAll;
+  const toggle = () => {
+    const next = !muted;
+    if (!next) haptic.success(); // feedback only when turning things back on
+    useData.getState().updateSettings({ muteAll: next });
+    toast(next ? tr.mute.turnedOff : tr.mute.turnedOn, next ? 'notifications-off' : 'notifications');
+  };
+  return (
+    <Animated.View layout={LinearTransition.springify().damping(18)}>
+      <PressableScale
+        onPress={toggle}
+        scaleTo={0.97}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: muted }}
+        accessibilityLabel={tr.mute.title}
+        style={[styles.mute, { backgroundColor: muted ? t.hero : t.surface, borderColor: muted ? t.hero : t.border }]}
+      >
+        <Animated.View key={String(muted)} entering={ZoomIn.springify().damping(12)} style={[styles.muteIcon, { backgroundColor: muted ? t.primary : t.primarySoft }]}>
+          <Ionicons name={muted ? 'notifications-off' : 'notifications'} size={24} color={muted ? '#fff' : t.primary} />
+        </Animated.View>
+        <Animated.View key={`txt${muted}`} entering={FadeIn.duration(250)} style={{ flex: 1 }}>
+          <Text style={[font.h3, { color: muted ? '#fff' : t.text }]}>{muted ? tr.mute.onTitle : tr.mute.title}</Text>
+          <Text style={[font.small, { color: muted ? 'rgba(255,255,255,0.72)' : t.muted, marginTop: 3, lineHeight: 20 }]}>{muted ? tr.mute.onHint : tr.mute.offHint}</Text>
+        </Animated.View>
+        <Switch
+          value={muted}
+          onValueChange={toggle}
+          trackColor={{ true: t.primary, false: t.surface2 }}
+          thumbColor="#fff"
+          ios_backgroundColor={t.surface2}
+        />
+      </PressableScale>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  mute: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.lg, borderWidth: 1, marginBottom: 16 },
+  muteIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+});

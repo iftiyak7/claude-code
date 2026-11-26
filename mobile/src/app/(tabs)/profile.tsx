@@ -4,12 +4,13 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { lastNDays, weekday } from '@/domain/dates';
 import { dayStats, levelFor, streak, totalPoints } from '@/domain/progress';
+import { computeStats } from '@/domain/stats';
 import { useToday } from '@/features/hooks';
 import { useNum, useT } from '@/i18n';
 import { useData } from '@/store/data';
 import { useLive, useSettings } from '@/store/hooks';
 import { useSync } from '@/sync/engine';
-import { Avatar, Card, Ionicons, ListRow, ProgressBar, Row, Screen, Section, type IconName } from '@/ui/components';
+import { Avatar, Card, Ionicons, ListRow, PressableScale, ProgressBar, Row, Screen, Section, type IconName } from '@/ui/components';
 import { Text } from '@/ui/Text';
 import { font, radius, useTheme } from '@/ui/theme';
 
@@ -46,6 +47,7 @@ export default function Profile() {
     return { total, week, rates, avg, anyStreak, salahStreak, completed, lv: levelFor(total) };
   }, [amals, meds, tasks, logs, s.waterGoalMl, date]);
 
+  const trend = useMemo(() => computeStats({ amals, meds, tasks, logs, waterGoalMl: s.waterGoalMl }, date, 14), [amals, meds, tasks, logs, s.waterGoalMl, date]);
   const name = s.name || user?.name || '';
   const levelName = s.language === 'bn' ? data.lv.level.bn : data.lv.level.en;
 
@@ -123,6 +125,32 @@ export default function Profile() {
         </Card>
       </Section>
 
+      {/* ── Trend → full statistics ─────────────────────────── */}
+      <Section delay={160}>
+        <PressableScale onPress={() => router.push('/stats')} style={[styles.trend, { backgroundColor: t.hero }]}>
+          <View style={[styles.trendIcon, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+            <Ionicons
+              name={trend.trend === 'up' ? 'trending-up' : trend.trend === 'down' ? 'trending-down' : 'stats-chart'}
+              size={22}
+              color={trend.trend === 'up' ? '#6EE7B7' : trend.trend === 'down' ? '#FCA5A5' : '#FFB48A'}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[font.body, { color: '#fff', fontWeight: '700' }]}>
+              {trend.pointsChange === null || trend.trend === 'same'
+                ? trend.activeDays
+                  ? tr.stats.same
+                  : tr.stats.noData
+                : trend.trend === 'up'
+                  ? tr.stats.up(n(Math.abs(trend.pointsChange)))
+                  : tr.stats.down(n(Math.abs(trend.pointsChange)))}
+            </Text>
+            <Text style={[font.small, { color: 'rgba(255,255,255,0.7)' }]}>{tr.stats.open}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#fff" />
+        </PressableScale>
+      </Section>
+
       <Section delay={180}>
         <Card style={[styles.private, { backgroundColor: t.lavenderSoft, borderColor: 'transparent' }]}>
           <Ionicons name="shield-checkmark" size={24} color={t.lavenderInk} />
@@ -164,4 +192,6 @@ const styles = StyleSheet.create({
   bar: { width: '100%', borderRadius: 24, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 5 },
   barDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   private: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  trend: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: radius.lg },
+  trendIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
 });

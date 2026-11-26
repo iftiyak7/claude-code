@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import { addDays, diffDays, isValidHM, isValidISODate } from '../dates';
 import { DEFAULT_SETTINGS, noReminder, seedAmals } from '../defaults';
 import { buildPlan, MAX_PENDING, type PlanText } from '../notifyPlan';
-import { prayerTimesFor, salahTimeStarted } from '../prayer';
+import { distanceToKaabaKm, prayerTimesFor, qiblaDirection, salahTimeStarted } from '../prayer';
 import { amalPoints, dayStats, levelFor, logId, streak } from '../progress';
+import { computeStats } from '../stats';
 import { occursOn } from '../recurrence';
 import type { Amal, Log } from '../types';
 
@@ -89,6 +90,19 @@ test('prayer times are computed offline and ordered', () => {
   assert.ok(p.fajr < p.sunrise && p.sunrise < p.dhuhr && p.dhuhr < p.asr && p.asr < p.maghrib && p.maghrib < p.isha);
 });
 
+test('sunrise / sunset and qibla for Dhaka match published values', () => {
+  const p = prayerTimesFor('2026-11-24', DEFAULT_SETTINGS);
+  // Dhaka, late November: sunrise ≈ 06:15, sunset ≈ 17:12 (UTC+6)
+  const utcMin = (d: Date) => d.getUTCHours() * 60 + d.getUTCMinutes();
+  assert.ok(Math.abs(utcMin(p.sunrise) - (0 * 60 + 15)) <= 4, `sunrise ${p.sunrise.toISOString()}`);
+  assert.ok(Math.abs(utcMin(p.sunset) - (11 * 60 + 12)) <= 4, `sunset ${p.sunset.toISOString()}`);
+  assert.ok(p.sunrise < p.noon && p.noon < p.sunset);
+  const q = qiblaDirection(DEFAULT_SETTINGS);
+  assert.ok(q > 276 && q < 279, `qibla ${q}`);
+  const km = distanceToKaabaKm(DEFAULT_SETTINGS);
+  assert.ok(km > 5000 && km < 5300, `distance ${km}`);
+});
+
 test('hourly zikr reminders stop once the daily target is met', () => {
   const now = new Date(2026, 10, 24, 7, 0);
   const base = { now, tasks: [], reminders: [], medicines: [], routines: [], settings: { ...DEFAULT_SETTINGS, waterReminder: noReminder() }, text };
@@ -138,4 +152,30 @@ test('salah can only be marked once its time has started', () => {
   assert.equal(salahTimeStarted(dhuhr, '2026-11-25', now), true);
   assert.equal(salahTimeStarted(maghrib, '2026-11-24', now), true, 'past days can be caught up');
   assert.equal(salahTimeStarted(dhuhr, '2026-11-26', now), false, 'future days are locked');
+});
+
+test('statistics: week-over-week trend, per-prayer regularity and streaks', () => {
+  const amals = seedAmals(0);
+  const fajr = amals.find((a) => a.prayer === 'fajr')!;
+  const isha = amals.find((a) => a.prayer === 'isha')!;
+  const logs: Record<string, Log> = {};
+  const end = '2026-11-26';
+  // last week: only fajr on 2 days; this week: fajr + isha every day
+  for (let i = 0; i < 14; i++) {
+    const d = addDays(end, -i);
+    if (i < 7 || i === 9 || i === 12) logs[logId(d, 'amal', fajr.id)] = log(d, fajr.id, 1);
+    if (i < 7) logs[logId(d, 'amal', isha.id)] = log(d, isha.id, 1);
+  }
+  const s = computeStats({ amals, meds: [], tasks: [], logs, waterGoalMl: 2500 }, end, 30);
+  assert.equal(s.trend, 'up');
+  assert.equal(s.thisWeek.points, 7 * 20);
+  assert.equal(s.lastWeek.points, 2 * 10);
+  assert.equal(s.pointsChange, 600);
+  const byPrayer = Object.fromEntries(s.salah.map((x) => [x.prayer, x.done]));
+  assert.equal(byPrayer.fajr, 9);
+  assert.equal(byPrayer.isha, 7);
+  assert.equal(byPrayer.asr, 0);
+  assert.equal(s.currentStreak, 7);
+  assert.equal(s.perAmal.find((x) => x.amal.id === isha.id)!.trend, 'up');
+  assert.equal(s.best!.points, 20);
 });

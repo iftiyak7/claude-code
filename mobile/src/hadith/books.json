@@ -1,0 +1,3250 @@
+[
+ {
+  "id": "bukhari",
+  "bn": "সহীহ বুখারী",
+  "en": "Sahih al-Bukhari",
+  "ar": "صحيح البخاري",
+  "author": "ইমাম বুখারী (রহ.)",
+  "count": 7583,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "ওহীর সূচনা",
+    "en": "Revelation",
+    "count": 7,
+    "first": "1",
+    "last": "7"
+   },
+   {
+    "n": 2,
+    "bn": "ঈমান",
+    "en": "Belief",
+    "count": 51,
+    "first": "8",
+    "last": "58"
+   },
+   {
+    "n": 3,
+    "bn": "ইলম (জ্ঞান)",
+    "en": "Knowledge",
+    "count": 76,
+    "first": "59",
+    "last": "134"
+   },
+   {
+    "n": 4,
+    "bn": "ওযু",
+    "en": "Ablutions (Wudu')",
+    "count": 113,
+    "first": "135",
+    "last": "247"
+   },
+   {
+    "n": 5,
+    "bn": "গোসল",
+    "en": "Bathing (Ghusl)",
+    "count": 46,
+    "first": "248",
+    "last": "293"
+   },
+   {
+    "n": 6,
+    "bn": "হায়েয (ঋতুস্রাব)",
+    "en": "Menstrual Periods",
+    "count": 40,
+    "first": "294",
+    "last": "333"
+   },
+   {
+    "n": 7,
+    "bn": "তায়াম্মুম",
+    "en": "Rubbing hands and feet with dust (Tayammum)",
+    "count": 15,
+    "first": "334",
+    "last": "348"
+   },
+   {
+    "n": 8,
+    "bn": "সালাত",
+    "en": "Prayers (Salat)",
+    "count": 174,
+    "first": "349",
+    "last": "521"
+   },
+   {
+    "n": 9,
+    "bn": "সালাতের সময়",
+    "en": "Times of the Prayers",
+    "count": 81,
+    "first": "522",
+    "last": "602"
+   },
+   {
+    "n": 10,
+    "bn": "আযান",
+    "en": "Call to Prayers (Adhaan)",
+    "count": 275,
+    "first": "603",
+    "last": "875"
+   },
+   {
+    "n": 11,
+    "bn": "জুমু‘আর সালাত",
+    "en": "Friday Prayer",
+    "count": 66,
+    "first": "876",
+    "last": "941"
+   },
+   {
+    "n": 12,
+    "bn": "ভয়কালীন সালাত",
+    "en": "Fear Prayer",
+    "count": 6,
+    "first": "942",
+    "last": "947"
+   },
+   {
+    "n": 13,
+    "bn": "দুই ঈদ",
+    "en": "The Two Festivals (Eids)",
+    "count": 42,
+    "first": "948",
+    "last": "989"
+   },
+   {
+    "n": 14,
+    "bn": "বিতর সালাত",
+    "en": "Witr Prayer",
+    "count": 15,
+    "first": "990",
+    "last": "1004"
+   },
+   {
+    "n": 15,
+    "bn": "বৃষ্টির জন্য দু‘আ (ইস্তিসকা)",
+    "en": "Invoking Allah for Rain (Istisqaa)",
+    "count": 35,
+    "first": "1005",
+    "last": "1039"
+   },
+   {
+    "n": 16,
+    "bn": "সূর্যগ্রহণ",
+    "en": "Eclipses",
+    "count": 27,
+    "first": "1040",
+    "last": "1066"
+   },
+   {
+    "n": 17,
+    "bn": "তিলাওয়াতের সিজদা",
+    "en": "Prostration During Recital of Qur'an",
+    "count": 13,
+    "first": "1067",
+    "last": "1079"
+   },
+   {
+    "n": 18,
+    "bn": "কসর সালাত",
+    "en": "Shortening the Prayers (At-Taqseer)",
+    "count": 40,
+    "first": "1080",
+    "last": "1119"
+   },
+   {
+    "n": 19,
+    "bn": "তাহাজ্জুদ",
+    "en": "Prayer at Night (Tahajjud)",
+    "count": 69,
+    "first": "1120",
+    "last": "1187"
+   },
+   {
+    "n": 20,
+    "bn": "মক্কা ও মদীনার মসজিদে সালাতের ফযীলত",
+    "en": "Virtues of Prayer at Masjid Makkah and Madinah",
+    "count": 10,
+    "first": "1188",
+    "last": "1197"
+   },
+   {
+    "n": 21,
+    "bn": "সালাতের মধ্যে কাজকর্ম",
+    "en": "Actions while Praying",
+    "count": 27,
+    "first": "1198",
+    "last": "1223"
+   },
+   {
+    "n": 22,
+    "bn": "সালাতে ভুল (সাহু)",
+    "en": "Forgetfulness in Prayer",
+    "count": 14,
+    "first": "1224",
+    "last": "1236"
+   },
+   {
+    "n": 23,
+    "bn": "জানাযা",
+    "en": "Funerals (Al-Janaa'iz)",
+    "count": 160,
+    "first": "1237",
+    "last": "1394"
+   },
+   {
+    "n": 24,
+    "bn": "যাকাত",
+    "en": "Obligatory Charity Tax (Zakat)",
+    "count": 118,
+    "first": "1395",
+    "last": "1512"
+   },
+   {
+    "n": 25,
+    "bn": "হজ্জ",
+    "en": "Hajj (Pilgrimage)",
+    "count": 260,
+    "first": "1513",
+    "last": "1772"
+   },
+   {
+    "n": 26,
+    "bn": "উমরা",
+    "en": "`Umrah (Minor pilgrimage)",
+    "count": 33,
+    "first": "1773",
+    "last": "1805"
+   },
+   {
+    "n": 27,
+    "bn": "হজ্জে বাধাপ্রাপ্ত ব্যক্তি",
+    "en": "Pilgrims Prevented from Completing the Pilgrimage",
+    "count": 15,
+    "first": "1806",
+    "last": "1820"
+   },
+   {
+    "n": 28,
+    "bn": "ইহরাম অবস্থায় শিকারের দণ্ড",
+    "en": "Penalty of Hunting while on Pilgrimage",
+    "count": 46,
+    "first": "1821",
+    "last": "1866"
+   },
+   {
+    "n": 29,
+    "bn": "মদীনার ফযীলত",
+    "en": "Virtues of Madinah",
+    "count": 24,
+    "first": "1867",
+    "last": "1890"
+   },
+   {
+    "n": 30,
+    "bn": "সাওম (রোযা)",
+    "en": "Fasting",
+    "count": 117,
+    "first": "1891",
+    "last": "2007"
+   },
+   {
+    "n": 31,
+    "bn": "তারাবীহ",
+    "en": "Praying at Night in Ramadaan (Taraweeh)",
+    "count": 6,
+    "first": "2008",
+    "last": "2013"
+   },
+   {
+    "n": 32,
+    "bn": "লাইলাতুল কদরের ফযীলত",
+    "en": "Virtues of the Night of Qadr",
+    "count": 11,
+    "first": "2014",
+    "last": "2024"
+   },
+   {
+    "n": 33,
+    "bn": "ই‘তিকাফ",
+    "en": "Retiring to a Mosque for Remembrance of Allah (I'tikaf)",
+    "count": 22,
+    "first": "2025",
+    "last": "2046"
+   },
+   {
+    "n": 34,
+    "bn": "ক্রয়-বিক্রয়",
+    "en": "Sales and Trade",
+    "count": 193,
+    "first": "2047",
+    "last": "2238"
+   },
+   {
+    "n": 35,
+    "bn": "সালাম (অগ্রিম মূল্যে ক্রয়)",
+    "en": "Sales in which a Price is paid for Goods to be Delivered Later (As-Salam)",
+    "count": 20,
+    "first": "2239",
+    "last": "2256"
+   },
+   {
+    "n": 36,
+    "bn": "শুফ‘আ (অগ্রক্রয়)",
+    "en": "Shuf'a",
+    "count": 3,
+    "first": "2257",
+    "last": "2259"
+   },
+   {
+    "n": 37,
+    "bn": "ভাড়া ও মজুরি",
+    "en": "Hiring",
+    "count": 27,
+    "first": "2260",
+    "last": "2286"
+   },
+   {
+    "n": 38,
+    "bn": "হাওয়ালা (ঋণ হস্তান্তর)",
+    "en": "Transferance of a Debt from One Person to Another (Al-Hawaala)",
+    "count": 3,
+    "first": "2287",
+    "last": "2289"
+   },
+   {
+    "n": 39,
+    "bn": "জামিন হওয়া (কাফালাহ)",
+    "en": "Kafalah",
+    "count": 9,
+    "first": "2290",
+    "last": "2298"
+   },
+   {
+    "n": 40,
+    "bn": "প্রতিনিধিত্ব (ওয়াকালাহ)",
+    "en": "Representation, Authorization, Business by Proxy",
+    "count": 21,
+    "first": "2299",
+    "last": "2319"
+   },
+   {
+    "n": 41,
+    "bn": "কৃষি",
+    "en": "Agriculture",
+    "count": 31,
+    "first": "2320",
+    "last": "2350"
+   },
+   {
+    "n": 42,
+    "bn": "পানি বণ্টন",
+    "en": "Distribution of Water",
+    "count": 34,
+    "first": "2351",
+    "last": "2384"
+   },
+   {
+    "n": 43,
+    "bn": "ঋণ, ঋণ পরিশোধ ও দেউলিয়াত্ব",
+    "en": "Loans, Payment of Loans, Freezing of Property, Bankruptcy",
+    "count": 25,
+    "first": "2385",
+    "last": "2409"
+   },
+   {
+    "n": 44,
+    "bn": "বিবাদ-মীমাংসা",
+    "en": "Khusoomaat",
+    "count": 16,
+    "first": "2410",
+    "last": "2425"
+   },
+   {
+    "n": 45,
+    "bn": "কুড়িয়ে পাওয়া বস্তু (লুকতা)",
+    "en": "Lost Things Picked up by Someone (Luqatah)",
+    "count": 15,
+    "first": "2426",
+    "last": "2439"
+   },
+   {
+    "n": 46,
+    "bn": "যুলুম",
+    "en": "Oppressions",
+    "count": 43,
+    "first": "2440",
+    "last": "2482"
+   },
+   {
+    "n": 47,
+    "bn": "অংশীদারি",
+    "en": "Partnership",
+    "count": 25,
+    "first": "2483",
+    "last": "2507"
+   },
+   {
+    "n": 48,
+    "bn": "বন্ধক",
+    "en": "Mortgaging",
+    "count": 9,
+    "first": "2508",
+    "last": "2516"
+   },
+   {
+    "n": 49,
+    "bn": "দাসমুক্তি",
+    "en": "Manumission of Slaves",
+    "count": 43,
+    "first": "2517",
+    "last": "2559"
+   },
+   {
+    "n": 50,
+    "bn": "মুকাতাব দাস",
+    "en": "Makaatib",
+    "count": 6,
+    "first": "2560",
+    "last": "2565"
+   },
+   {
+    "n": 51,
+    "bn": "হেবা (উপহার)",
+    "en": "Gifts",
+    "count": 71,
+    "first": "2566",
+    "last": "2636"
+   },
+   {
+    "n": 52,
+    "bn": "সাক্ষ্য",
+    "en": "Witnesses",
+    "count": 53,
+    "first": "2637",
+    "last": "2689"
+   },
+   {
+    "n": 53,
+    "bn": "আপস-মীমাংসা",
+    "en": "Peacemaking",
+    "count": 22,
+    "first": "2690",
+    "last": "2711"
+   },
+   {
+    "n": 54,
+    "bn": "শর্তাবলি",
+    "en": "Conditions",
+    "count": 26,
+    "first": "2712",
+    "last": "2737"
+   },
+   {
+    "n": 55,
+    "bn": "ওসিয়ত",
+    "en": "Wills and Testaments (Wasaayaa)",
+    "count": 44,
+    "first": "2738",
+    "last": "2781"
+   },
+   {
+    "n": 56,
+    "bn": "জিহাদ",
+    "en": "Fighting for the Cause of Allah (Jihaad)",
+    "count": 309,
+    "first": "2782",
+    "last": "3090"
+   },
+   {
+    "n": 57,
+    "bn": "খুমুস (গনীমতের এক-পঞ্চমাংশ)",
+    "en": "One-fifth of Booty to the Cause of Allah (Khumus)",
+    "count": 66,
+    "first": "3091",
+    "last": "3156"
+   },
+   {
+    "n": 58,
+    "bn": "জিযিয়া ও সন্ধিচুক্তি",
+    "en": "Jizyah and Mawaada'ah",
+    "count": 33,
+    "first": "3157",
+    "last": "3189"
+   },
+   {
+    "n": 59,
+    "bn": "সৃষ্টির সূচনা",
+    "en": "Beginning of Creation",
+    "count": 136,
+    "first": "3190",
+    "last": "3325"
+   },
+   {
+    "n": 60,
+    "bn": "নবীগণ",
+    "en": "Prophets",
+    "count": 163,
+    "first": "3326",
+    "last": "3488"
+   },
+   {
+    "n": 61,
+    "bn": "নবী (সা.) ও সাহাবীদের মর্যাদা",
+    "en": "Virtues and Merits of the Prophet (pbuh) and his Companions",
+    "count": 162,
+    "first": "3489",
+    "last": "3648"
+   },
+   {
+    "n": 62,
+    "bn": "সাহাবীদের মর্যাদা",
+    "en": "Companions of the Prophet",
+    "count": 128,
+    "first": "3649",
+    "last": "3775"
+   },
+   {
+    "n": 63,
+    "bn": "আনসারদের মর্যাদা",
+    "en": "Merits of the Helpers in Madinah (Ansaar)",
+    "count": 173,
+    "first": "3776",
+    "last": "3948"
+   },
+   {
+    "n": 64,
+    "bn": "মাগাযী — নবী (সা.)-এর যুদ্ধাভিযান",
+    "en": "Military Expeditions led by the Prophet (pbuh) (Al-Maghaazi)",
+    "count": 526,
+    "first": "3949",
+    "last": "4473"
+   },
+   {
+    "n": 65,
+    "bn": "তাফসীরুল কুরআন",
+    "en": "Prophetic Commentary on the Qur'an (Tafseer of the Prophet (pbuh))",
+    "count": 507,
+    "first": "4474",
+    "last": "4978"
+   },
+   {
+    "n": 66,
+    "bn": "কুরআনের ফযীলত",
+    "en": "Virtues of the Qur'an",
+    "count": 87,
+    "first": "4979",
+    "last": "5062"
+   },
+   {
+    "n": 67,
+    "bn": "বিবাহ",
+    "en": "Wedlock, Marriage (Nikaah)",
+    "count": 188,
+    "first": "5063",
+    "last": "5250"
+   },
+   {
+    "n": 68,
+    "bn": "তালাক",
+    "en": "Divorce",
+    "count": 100,
+    "first": "5251",
+    "last": "5350"
+   },
+   {
+    "n": 69,
+    "bn": "পরিবারের ভরণপোষণ",
+    "en": "Supporting the Family",
+    "count": 22,
+    "first": "5351",
+    "last": "5372"
+   },
+   {
+    "n": 70,
+    "bn": "খাবার",
+    "en": "Food, Meals",
+    "count": 95,
+    "first": "5373",
+    "last": "5466"
+   },
+   {
+    "n": 71,
+    "bn": "আকীকা",
+    "en": "Sacrifice on Occasion of Birth (`Aqiqa)",
+    "count": 9,
+    "first": "5467",
+    "last": "5474"
+   },
+   {
+    "n": 72,
+    "bn": "শিকার ও যবেহ",
+    "en": "Hunting, Slaughtering",
+    "count": 70,
+    "first": "5475",
+    "last": "5544"
+   },
+   {
+    "n": 73,
+    "bn": "কুরবানী",
+    "en": "Al-Adha Festival Sacrifice (Adaahi)",
+    "count": 30,
+    "first": "5545",
+    "last": "5574"
+   },
+   {
+    "n": 74,
+    "bn": "পানীয়",
+    "en": "Drinks",
+    "count": 65,
+    "first": "5575",
+    "last": "5639"
+   },
+   {
+    "n": 75,
+    "bn": "রোগী",
+    "en": "Patients",
+    "count": 38,
+    "first": "5640",
+    "last": "5677"
+   },
+   {
+    "n": 76,
+    "bn": "চিকিৎসা",
+    "en": "Medicine",
+    "count": 101,
+    "first": "5678",
+    "last": "5782"
+   },
+   {
+    "n": 77,
+    "bn": "পোশাক",
+    "en": "Dress",
+    "count": 188,
+    "first": "5783",
+    "last": "5969"
+   },
+   {
+    "n": 78,
+    "bn": "আদব-আখলাক",
+    "en": "Good Manners and Form (Al-Adab)",
+    "count": 255,
+    "first": "5970",
+    "last": "6226"
+   },
+   {
+    "n": 79,
+    "bn": "অনুমতি চাওয়া",
+    "en": "Asking Permission",
+    "count": 77,
+    "first": "6227",
+    "last": "6303"
+   },
+   {
+    "n": 80,
+    "bn": "দু‘আ",
+    "en": "Invocations",
+    "count": 108,
+    "first": "6304",
+    "last": "6411"
+   },
+   {
+    "n": 81,
+    "bn": "অন্তর নরমকারী বিষয় (রিকাক)",
+    "en": "To make the Heart Tender (Ar-Riqaq)",
+    "count": 182,
+    "first": "6412",
+    "last": "6593"
+   },
+   {
+    "n": 82,
+    "bn": "তাকদীর",
+    "en": "Divine Will (Al-Qadar)",
+    "count": 27,
+    "first": "6594",
+    "last": "6620"
+   },
+   {
+    "n": 83,
+    "bn": "কসম ও মানত",
+    "en": "Oaths and Vows",
+    "count": 87,
+    "first": "6621",
+    "last": "6707"
+   },
+   {
+    "n": 84,
+    "bn": "কসম ভঙ্গের কাফফারা",
+    "en": "Expiation for Unfulfilled Oaths",
+    "count": 15,
+    "first": "6708",
+    "last": "6722"
+   },
+   {
+    "n": 85,
+    "bn": "ফারায়েয (উত্তরাধিকার)",
+    "en": "Laws of Inheritance (Al-Faraa'id)",
+    "count": 49,
+    "first": "6723",
+    "last": "6771"
+   },
+   {
+    "n": 86,
+    "bn": "হুদূদ (দণ্ডবিধি)",
+    "en": "Limits and Punishments set by Allah (Hudood)",
+    "count": 89,
+    "first": "6772",
+    "last": "6860"
+   },
+   {
+    "n": 87,
+    "bn": "দিয়াত (রক্তপণ)",
+    "en": "Blood Money (Ad-Diyat)",
+    "count": 59,
+    "first": "6861",
+    "last": "6917"
+   },
+   {
+    "n": 88,
+    "bn": "মুরতাদ",
+    "en": "Apostates",
+    "count": 22,
+    "first": "6918",
+    "last": "6939"
+   },
+   {
+    "n": 89,
+    "bn": "জবরদস্তি (বাধ্য হয়ে বলা কথা)",
+    "en": "(Statements made under) Coercion",
+    "count": 13,
+    "first": "6940",
+    "last": "6952"
+   },
+   {
+    "n": 90,
+    "bn": "কৌশল অবলম্বন",
+    "en": "Tricks",
+    "count": 29,
+    "first": "6953",
+    "last": "6981"
+   },
+   {
+    "n": 91,
+    "bn": "স্বপ্নের ব্যাখ্যা",
+    "en": "Interpretation of Dreams",
+    "count": 66,
+    "first": "6982",
+    "last": "7047"
+   },
+   {
+    "n": 92,
+    "bn": "ফিতনা ও কিয়ামতের আলামত",
+    "en": "Afflictions and the End of the World",
+    "count": 89,
+    "first": "7048",
+    "last": "7136"
+   },
+   {
+    "n": 93,
+    "bn": "বিচার-ফায়সালা (আহকাম)",
+    "en": "Judgments (Ahkaam)",
+    "count": 89,
+    "first": "7137",
+    "last": "7225"
+   },
+   {
+    "n": 94,
+    "bn": "আকাঙ্ক্ষা",
+    "en": "Wishes",
+    "count": 20,
+    "first": "7226",
+    "last": "7245"
+   },
+   {
+    "n": 95,
+    "bn": "সত্যবাদী একজনের দেওয়া সংবাদ গ্রহণ",
+    "en": "Accepting Information Given by a Truthful Person",
+    "count": 22,
+    "first": "7246",
+    "last": "7267"
+   },
+   {
+    "n": 96,
+    "bn": "কুরআন ও সুন্নাহকে আঁকড়ে ধরা",
+    "en": "Holding Fast to the Qur'an and Sunnah",
+    "count": 103,
+    "first": "7268",
+    "last": "7370"
+   },
+   {
+    "n": 97,
+    "bn": "তাওহীদ",
+    "en": "Oneness, Uniqueness of Allah (Tawheed)",
+    "count": 193,
+    "first": "7371",
+    "last": "7563"
+   }
+  ]
+ },
+ {
+  "id": "muslim",
+  "bn": "সহীহ মুসলিম",
+  "en": "Sahih Muslim",
+  "ar": "صحيح مسلم",
+  "author": "ইমাম মুসলিম (রহ.)",
+  "count": 7212,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "ঈমান",
+    "en": "The Book of Faith",
+    "count": 436,
+    "first": "8.01",
+    "last": "222.02"
+   },
+   {
+    "n": 2,
+    "bn": "পবিত্রতা",
+    "en": "The Book of Purification",
+    "count": 143,
+    "first": "223",
+    "last": "292.02"
+   },
+   {
+    "n": 3,
+    "bn": "হায়েয (ঋতুস্রাব)",
+    "en": "The Book of Menstruation",
+    "count": 157,
+    "first": "293.01",
+    "last": "376.04"
+   },
+   {
+    "n": 4,
+    "bn": "সালাত",
+    "en": "The Book of Prayers",
+    "count": 321,
+    "first": "274.12",
+    "last": "519.02"
+   },
+   {
+    "n": 5,
+    "bn": "মসজিদ ও সালাতের স্থান",
+    "en": "The Book of Mosques and Places of Prayer",
+    "count": 396,
+    "first": "33.03",
+    "last": "684.04"
+   },
+   {
+    "n": 6,
+    "bn": "সালাত — মুসাফির",
+    "en": "The Book of Prayer - Travellers",
+    "count": 377,
+    "first": "336.04",
+    "last": "843.02"
+   },
+   {
+    "n": 7,
+    "bn": "সালাত — জুমু‘আ",
+    "en": "The Book of Prayer - Friday",
+    "count": 93,
+    "first": "844.01",
+    "last": "883.02"
+   },
+   {
+    "n": 8,
+    "bn": "সালাত — দুই ঈদ",
+    "en": "The Book of Prayer - Two Eids",
+    "count": 22,
+    "first": "884.01",
+    "last": "893"
+   },
+   {
+    "n": 9,
+    "bn": "সালাত — ইস্তিসকা",
+    "en": "The Book of Prayer - Rain",
+    "count": 19,
+    "first": "894.01",
+    "last": "900.02"
+   },
+   {
+    "n": 10,
+    "bn": "সালাত — সূর্যগ্রহণ",
+    "en": "The Book of Prayer - Eclipses",
+    "count": 29,
+    "first": "901.01",
+    "last": "915"
+   },
+   {
+    "n": 11,
+    "bn": "সালাত — জানাযা",
+    "en": "The Book of Prayer - Funerals",
+    "count": 135,
+    "first": "916.01",
+    "last": "978"
+   },
+   {
+    "n": 12,
+    "bn": "যাকাত",
+    "en": "The Book of Zakat",
+    "count": 229,
+    "first": "94.03",
+    "last": "1078.02"
+   },
+   {
+    "n": 13,
+    "bn": "সাওম (রোযা)",
+    "en": "The Book of Fasting",
+    "count": 285,
+    "first": "762.04",
+    "last": "1170"
+   },
+   {
+    "n": 14,
+    "bn": "ই‘তিকাফ",
+    "en": "The Book of I'tikaf",
+    "count": 11,
+    "first": "1171.01",
+    "last": "1176.02"
+   },
+   {
+    "n": 15,
+    "bn": "হজ্জ",
+    "en": "The Book of Pilgrimage",
+    "count": 583,
+    "first": "703.05",
+    "last": "1399.09"
+   },
+   {
+    "n": 16,
+    "bn": "বিবাহ",
+    "en": "The Book of Marriage",
+    "count": 167,
+    "first": "1365.03",
+    "last": "1443"
+   },
+   {
+    "n": 17,
+    "bn": "দুধপান",
+    "en": "The Book of Suckling",
+    "count": 84,
+    "first": "715.04",
+    "last": "1470.02"
+   },
+   {
+    "n": 18,
+    "bn": "তালাক",
+    "en": "The Book of Divorce",
+    "count": 86,
+    "first": "938.03",
+    "last": "1491"
+   },
+   {
+    "n": 19,
+    "bn": "লি‘আন",
+    "en": "The Book of Invoking Curses",
+    "count": 27,
+    "first": "1492.01",
+    "last": "1500.04"
+   },
+   {
+    "n": 20,
+    "bn": "দাসমুক্তি",
+    "en": "The Book of Emancipating Slaves",
+    "count": 30,
+    "first": "1370.04",
+    "last": "1510.02"
+   },
+   {
+    "n": 21,
+    "bn": "লেনদেন",
+    "en": "The Book of Transactions",
+    "count": 157,
+    "first": "1412.05",
+    "last": "1550.05"
+   },
+   {
+    "n": 22,
+    "bn": "বর্গাচাষ (মুসাকাত)",
+    "en": "The Book of Musaqah",
+    "count": 178,
+    "first": "715.13",
+    "last": "1613"
+   },
+   {
+    "n": 23,
+    "bn": "উত্তরাধিকারের বিধান",
+    "en": "The Book of the Rules of Inheritance",
+    "count": 23,
+    "first": "1614",
+    "last": "1619.06"
+   },
+   {
+    "n": 24,
+    "bn": "হেবা (উপহার)",
+    "en": "The Book of Gifts",
+    "count": 41,
+    "first": "1620.01",
+    "last": "1626.02"
+   },
+   {
+    "n": 25,
+    "bn": "ওসিয়ত",
+    "en": "The Book of Wills",
+    "count": 31,
+    "first": "1004.03",
+    "last": "1637.03"
+   },
+   {
+    "n": 26,
+    "bn": "মানত",
+    "en": "The Book of Vows",
+    "count": 17,
+    "first": "1638.01",
+    "last": "1645"
+   },
+   {
+    "n": 27,
+    "bn": "কসম",
+    "en": "The Book of Oaths",
+    "count": 88,
+    "first": "997.03",
+    "last": "1668.03"
+   },
+   {
+    "n": 28,
+    "bn": "কাসামা, বিদ্রোহী, কিসাস ও দিয়াত",
+    "en": "The Book of Oaths, Muharibin, Qasas (Retaliation), and Diyat (Blood Money)",
+    "count": 56,
+    "first": "1669.01",
+    "last": "1683"
+   },
+   {
+    "n": 29,
+    "bn": "দণ্ডবিধি",
+    "en": "The Book of Legal Punishments",
+    "count": 70,
+    "first": "1684.01",
+    "last": "1710.05"
+   },
+   {
+    "n": 30,
+    "bn": "বিচার-ফায়সালা",
+    "en": "The Book of Judicial Decisions",
+    "count": 28,
+    "first": "593.06",
+    "last": "1721"
+   },
+   {
+    "n": 31,
+    "bn": "হারানো বস্তু",
+    "en": "The Book of Lost Property",
+    "count": 19,
+    "first": "48.02",
+    "last": "1729"
+   },
+   {
+    "n": 32,
+    "bn": "জিহাদ ও অভিযান",
+    "en": "The Book of Jihad and Expeditions",
+    "count": 178,
+    "first": "1254.02",
+    "last": "1817"
+   },
+   {
+    "n": 33,
+    "bn": "নেতৃত্ব ও শাসন",
+    "en": "The Book on Government",
+    "count": 257,
+    "first": "142.05",
+    "last": "1928.02"
+   },
+   {
+    "n": 34,
+    "bn": "শিকার, যবেহ ও যা খাওয়া বৈধ",
+    "en": "The Book of Hunting, Slaughter, and what may be Eaten",
+    "count": 92,
+    "first": "561.03",
+    "last": "1959"
+   },
+   {
+    "n": 35,
+    "bn": "কুরবানী",
+    "en": "The Book of Sacrifices",
+    "count": 59,
+    "first": "1960.01",
+    "last": "1978.03"
+   },
+   {
+    "n": 36,
+    "bn": "পানীয়",
+    "en": "The Book of Drinks",
+    "count": 253,
+    "first": "17.04",
+    "last": "2064.04"
+   },
+   {
+    "n": 37,
+    "bn": "পোশাক ও সাজসজ্জা",
+    "en": "The Book of Clothes and Adornment",
+    "count": 184,
+    "first": "2065.01",
+    "last": "2130.02"
+   },
+   {
+    "n": 38,
+    "bn": "আদব-শিষ্টাচার",
+    "en": "The Book of Manners and Etiquette",
+    "count": 59,
+    "first": "2131",
+    "last": "2159.02"
+   },
+   {
+    "n": 39,
+    "bn": "সালাম",
+    "en": "The Book of Greetings",
+    "count": 210,
+    "first": "287.05",
+    "last": "2245.02"
+   },
+   {
+    "n": 40,
+    "bn": "শব্দের সঠিক ব্যবহার",
+    "en": "The Book Concerning the Use of Correct Words",
+    "count": 23,
+    "first": "2246.01",
+    "last": "2254"
+   },
+   {
+    "n": 41,
+    "bn": "কবিতা",
+    "en": "The Book of Poetry",
+    "count": 10,
+    "first": "2255.03",
+    "last": "2260"
+   },
+   {
+    "n": 42,
+    "bn": "স্বপ্ন",
+    "en": "The Book of Dreams",
+    "count": 40,
+    "first": "2261.01",
+    "last": "2275"
+   },
+   {
+    "n": 43,
+    "bn": "ফযীলত",
+    "en": "The Book of Virtues",
+    "count": 216,
+    "first": "151.04",
+    "last": "2380.06"
+   },
+   {
+    "n": 44,
+    "bn": "সাহাবীদের মর্যাদা",
+    "en": "The Book of the Merits of the Companions",
+    "count": 324,
+    "first": "799.04",
+    "last": "2547"
+   },
+   {
+    "n": 45,
+    "bn": "সদাচরণ, শিষ্টাচার ও আত্মীয়তা",
+    "en": "The Book of Virtue, Enjoining Good Manners, and Joining of the Ties of Kinship",
+    "count": 210,
+    "first": "1914.02",
+    "last": "2642.02"
+   },
+   {
+    "n": 46,
+    "bn": "তাকদীর",
+    "en": "The Book of Destiny",
+    "count": 52,
+    "first": "112.02",
+    "last": "2664"
+   },
+   {
+    "n": 47,
+    "bn": "ইলম (জ্ঞান)",
+    "en": "The Book of Knowledge",
+    "count": 29,
+    "first": "157.05",
+    "last": "2674"
+   },
+   {
+    "n": 48,
+    "bn": "যিকির, দু‘আ, তাওবা ও ইস্তিগফার",
+    "en": "The Book Pertaining to the Remembrance of Allah, Supplication, Repentance and Seeking Forgiveness",
+    "count": 124,
+    "first": "589.02",
+    "last": "2735.03"
+   },
+   {
+    "n": 49,
+    "bn": "অন্তর নরমকারী হাদীস",
+    "en": "The Book of Heart-Melting Traditions",
+    "count": 15,
+    "first": "2736",
+    "last": "2743.03"
+   },
+   {
+    "n": 50,
+    "bn": "তাওবা",
+    "en": "The Book of Repentance",
+    "count": 63,
+    "first": "2619.02",
+    "last": "2771"
+   },
+   {
+    "n": 51,
+    "bn": "মুনাফিকদের বৈশিষ্ট্য ও তাদের বিধান",
+    "en": "Characteristics of The Hypocrites And Rulings Concerning Them",
+    "count": 21,
+    "first": "2772",
+    "last": "2784.02"
+   },
+   {
+    "n": 52,
+    "bn": "কিয়ামত, জান্নাত ও জাহান্নামের বিবরণ",
+    "en": "Characteristics of the Day of Judgment, Paradise, and Hell",
+    "count": 79,
+    "first": "2785",
+    "last": "2821.03"
+   },
+   {
+    "n": 53,
+    "bn": "জান্নাত, এর বিবরণ, নিয়ামত ও অধিবাসী",
+    "en": "The Book of Paradise, its Description, its Bounties and its Inhabitants",
+    "count": 102,
+    "first": "2128.02",
+    "last": "2879"
+   },
+   {
+    "n": 54,
+    "bn": "ফিতনা ও কিয়ামতের আলামত",
+    "en": "The Book of Tribulations and Portents of the Last Hour",
+    "count": 157,
+    "first": "144.04",
+    "last": "2955.03"
+   },
+   {
+    "n": 55,
+    "bn": "যুহদ ও অন্তর নরমকারী বিষয়",
+    "en": "The Book of Zuhd and Softening of Hearts",
+    "count": 78,
+    "first": "533.03",
+    "last": "3005"
+   },
+   {
+    "n": 56,
+    "bn": "কুরআনের তাফসীর",
+    "en": "The Book of Commentary on the Qur'an",
+    "count": 39,
+    "first": "3015",
+    "last": "3033.02"
+   }
+  ]
+ },
+ {
+  "id": "abudawud",
+  "bn": "সুনান আবু দাউদ",
+  "en": "Sunan Abi Dawud",
+  "ar": "سنن أبي داود",
+  "author": "ইমাম আবু দাউদ (রহ.)",
+  "count": 5274,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "পবিত্রতা",
+    "en": "Purification (Kitab Al-Taharah)",
+    "count": 390,
+    "first": "1",
+    "last": "390"
+   },
+   {
+    "n": 2,
+    "bn": "সালাত",
+    "en": "Prayer (Kitab Al-Salat)",
+    "count": 770,
+    "first": "391",
+    "last": "1160"
+   },
+   {
+    "n": 3,
+    "bn": "ইস্তিসকার সালাত",
+    "en": "The Book Of The Prayer For Rain (Kitab al-Istisqa')",
+    "count": 37,
+    "first": "1161",
+    "last": "1197"
+   },
+   {
+    "n": 4,
+    "bn": "সালাত — সফরের সালাত",
+    "en": "Prayer (Kitab Al-Salat): Detailed Rules of Law about the Prayer during Journey",
+    "count": 52,
+    "first": "1198",
+    "last": "1249"
+   },
+   {
+    "n": 5,
+    "bn": "সালাত — নফল সালাত",
+    "en": "Prayer (Kitab Al-Salat): Voluntary Prayers",
+    "count": 121,
+    "first": "1250",
+    "last": "1370"
+   },
+   {
+    "n": 6,
+    "bn": "সালাত — রমযানের বিধান",
+    "en": "Prayer (Kitab Al-Salat): Detailed Injunctions about Ramadan",
+    "count": 30,
+    "first": "1371",
+    "last": "1400"
+   },
+   {
+    "n": 7,
+    "bn": "সালাত — তিলাওয়াতের সিজদা",
+    "en": "Prayer (Kitab Al-Salat): Prostration while reciting the Qur'an",
+    "count": 15,
+    "first": "1401",
+    "last": "1415"
+   },
+   {
+    "n": 8,
+    "bn": "সালাত — বিতরের বিধান",
+    "en": "Prayer (Kitab Al-Salat): Detailed Injunctions about Witr",
+    "count": 140,
+    "first": "1416",
+    "last": "1555"
+   },
+   {
+    "n": 9,
+    "bn": "যাকাত",
+    "en": "Zakat (Kitab Al-Zakat)",
+    "count": 145,
+    "first": "1556",
+    "last": "1700"
+   },
+   {
+    "n": 10,
+    "bn": "হারানো ও কুড়িয়ে পাওয়া বস্তু",
+    "en": "The Book of Lost and Found Items",
+    "count": 20,
+    "first": "1701",
+    "last": "1720"
+   },
+   {
+    "n": 11,
+    "bn": "হজ্জের বিধান",
+    "en": "The Rites of Hajj (Kitab Al-Manasik Wa'l-Hajj)",
+    "count": 325,
+    "first": "1721",
+    "last": "2045"
+   },
+   {
+    "n": 12,
+    "bn": "বিবাহ",
+    "en": "Marriage (Kitab Al-Nikah)",
+    "count": 129,
+    "first": "2046",
+    "last": "2174"
+   },
+   {
+    "n": 13,
+    "bn": "তালাক",
+    "en": "Divorce (Kitab Al-Talaq)",
+    "count": 138,
+    "first": "2175",
+    "last": "2312"
+   },
+   {
+    "n": 14,
+    "bn": "সাওম (রোযা)",
+    "en": "Fasting (Kitab Al-Siyam)",
+    "count": 164,
+    "first": "2313",
+    "last": "2476"
+   },
+   {
+    "n": 15,
+    "bn": "জিহাদ",
+    "en": "Jihad (Kitab Al-Jihad)",
+    "count": 311,
+    "first": "2477",
+    "last": "2787"
+   },
+   {
+    "n": 16,
+    "bn": "কুরবানী",
+    "en": "Sacrifice (Kitab Al-Dahaya)",
+    "count": 56,
+    "first": "2788",
+    "last": "2843"
+   },
+   {
+    "n": 17,
+    "bn": "শিকার",
+    "en": "Game (Kitab Al-Said)",
+    "count": 18,
+    "first": "2844",
+    "last": "2861"
+   },
+   {
+    "n": 18,
+    "bn": "ওসিয়ত",
+    "en": "Wills (Kitab Al-Wasaya)",
+    "count": 23,
+    "first": "2862",
+    "last": "2884"
+   },
+   {
+    "n": 19,
+    "bn": "উত্তরাধিকারের অংশ",
+    "en": "Shares of Inheritance (Kitab Al-Fara'id)",
+    "count": 43,
+    "first": "2885",
+    "last": "2927"
+   },
+   {
+    "n": 20,
+    "bn": "কর, গনীমত ও শাসনক্ষমতা",
+    "en": "Tribute, Spoils, and Rulership (Kitab Al-Kharaj, Wal-Fai' Wal-Imarah)",
+    "count": 161,
+    "first": "2928",
+    "last": "3088"
+   },
+   {
+    "n": 21,
+    "bn": "জানাযা",
+    "en": "Funerals (Kitab Al-Jana'iz)",
+    "count": 153,
+    "first": "3089",
+    "last": "3241"
+   },
+   {
+    "n": 22,
+    "bn": "কসম ও মানত",
+    "en": "Oaths and Vows (Kitab Al-Aiman Wa Al-Nudhur)",
+    "count": 84,
+    "first": "3242",
+    "last": "3325"
+   },
+   {
+    "n": 23,
+    "bn": "ক্রয়-বিক্রয়",
+    "en": "Commercial Transactions (Kitab Al-Buyu)",
+    "count": 90,
+    "first": "3326",
+    "last": "3415"
+   },
+   {
+    "n": 24,
+    "bn": "মজুরি",
+    "en": "Wages (Kitab Al-Ijarah)",
+    "count": 155,
+    "first": "3416",
+    "last": "3570"
+   },
+   {
+    "n": 25,
+    "bn": "বিচারকের দায়িত্ব",
+    "en": "The Office of the Judge (Kitab Al-Aqdiyah)",
+    "count": 70,
+    "first": "3571",
+    "last": "3640"
+   },
+   {
+    "n": 26,
+    "bn": "ইলম (জ্ঞান)",
+    "en": "Knowledge (Kitab Al-Ilm)",
+    "count": 28,
+    "first": "3641",
+    "last": "3668"
+   },
+   {
+    "n": 27,
+    "bn": "পানীয়",
+    "en": "Drinks (Kitab Al-Ashribah)",
+    "count": 67,
+    "first": "3669",
+    "last": "3735"
+   },
+   {
+    "n": 28,
+    "bn": "খাদ্যদ্রব্য",
+    "en": "Foods (Kitab Al-At'imah)",
+    "count": 119,
+    "first": "3736",
+    "last": "3854"
+   },
+   {
+    "n": 29,
+    "bn": "চিকিৎসা",
+    "en": "Medicine (Kitab Al-Tibb)",
+    "count": 49,
+    "first": "3855",
+    "last": "3903"
+   },
+   {
+    "n": 30,
+    "bn": "গণনা ও কুলক্ষণ",
+    "en": "Divination and Omens (Kitab Al-Kahanah Wa Al-Tatayyur)",
+    "count": 22,
+    "first": "3904",
+    "last": "3925"
+   },
+   {
+    "n": 31,
+    "bn": "দাসমুক্তি",
+    "en": "The Book of Manumission of Slaves",
+    "count": 43,
+    "first": "3926",
+    "last": "3968"
+   },
+   {
+    "n": 32,
+    "bn": "কুরআনের কিরাআত",
+    "en": "Dialects and Readings of the Qur'an (Kitab Al-Huruf Wa Al-Qira'at)",
+    "count": 40,
+    "first": "3969",
+    "last": "4008"
+   },
+   {
+    "n": 33,
+    "bn": "গোসলখানা",
+    "en": "Hot Baths (Kitab Al-Hammam)",
+    "count": 11,
+    "first": "4009",
+    "last": "4019"
+   },
+   {
+    "n": 34,
+    "bn": "পোশাক",
+    "en": "Clothing (Kitab Al-Libas)",
+    "count": 139,
+    "first": "4020",
+    "last": "4158"
+   },
+   {
+    "n": 35,
+    "bn": "চুল আঁচড়ানো",
+    "en": "Combing the Hair (Kitab Al-Tarajjul)",
+    "count": 55,
+    "first": "4159",
+    "last": "4213"
+   },
+   {
+    "n": 36,
+    "bn": "আংটি",
+    "en": "Signet-Rings (Kitab Al-Khatam)",
+    "count": 26,
+    "first": "4214",
+    "last": "4239"
+   },
+   {
+    "n": 37,
+    "bn": "ফিতনা ও যুদ্ধবিগ্রহ",
+    "en": "Trials and Fierce Battles (Kitab Al-Fitan Wa Al-Malahim)",
+    "count": 39,
+    "first": "4240",
+    "last": "4278"
+   },
+   {
+    "n": 38,
+    "bn": "মাহদী",
+    "en": "The Promised Deliverer (Kitab Al-Mahdi)",
+    "count": 12,
+    "first": "4279",
+    "last": "4290"
+   },
+   {
+    "n": 39,
+    "bn": "যুদ্ধবিগ্রহ (মালাহিম)",
+    "en": "Battles (Kitab Al-Malahim)",
+    "count": 60,
+    "first": "4291",
+    "last": "4350"
+   },
+   {
+    "n": 40,
+    "bn": "হুদূদ (দণ্ডবিধি)",
+    "en": "Prescribed Punishments (Kitab Al-Hudud)",
+    "count": 143,
+    "first": "4351",
+    "last": "4493"
+   },
+   {
+    "n": 41,
+    "bn": "দিয়াতের প্রকার",
+    "en": "Types of Blood-Wit (Kitab Al-Diyat)",
+    "count": 102,
+    "first": "4494",
+    "last": "4595"
+   },
+   {
+    "n": 42,
+    "bn": "সুন্নাহ",
+    "en": "Model Behavior of the Prophet (Kitab Al-Sunnah)",
+    "count": 177,
+    "first": "4596",
+    "last": "4772"
+   },
+   {
+    "n": 43,
+    "bn": "সাধারণ আচার-আচরণ",
+    "en": "General Behavior (Kitab Al-Adab)",
+    "count": 502,
+    "first": "4773",
+    "last": "5274"
+   }
+  ]
+ },
+ {
+  "id": "tirmidhi",
+  "bn": "জামে তিরমিযী",
+  "en": "Jami' at-Tirmidhi",
+  "ar": "جامع الترمذي",
+  "author": "ইমাম তিরমিযী (রহ.)",
+  "count": 3950,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "পবিত্রতা",
+    "en": "The Book on Purification",
+    "count": 148,
+    "first": "1",
+    "last": "148"
+   },
+   {
+    "n": 2,
+    "bn": "সালাত",
+    "en": "The Book on Salat (Prayer)",
+    "count": 302,
+    "first": "149",
+    "last": "451"
+   },
+   {
+    "n": 3,
+    "bn": "বিতর",
+    "en": "The Book on Al-Witr",
+    "count": 33,
+    "first": "452",
+    "last": "487"
+   },
+   {
+    "n": 4,
+    "bn": "জুমু‘আর দিন",
+    "en": "The Book on the Day of Friday",
+    "count": 42,
+    "first": "488",
+    "last": "529"
+   },
+   {
+    "n": 5,
+    "bn": "দুই ঈদ",
+    "en": "The Book on the Two Eids",
+    "count": 14,
+    "first": "530",
+    "last": "543"
+   },
+   {
+    "n": 6,
+    "bn": "সফর",
+    "en": "The Book on Traveling",
+    "count": 73,
+    "first": "544",
+    "last": "616"
+   },
+   {
+    "n": 7,
+    "bn": "যাকাত",
+    "en": "The Book on Zakat",
+    "count": 65,
+    "first": "617",
+    "last": "681"
+   },
+   {
+    "n": 8,
+    "bn": "সাওম (রোযা)",
+    "en": "The Book on Fasting",
+    "count": 127,
+    "first": "682",
+    "last": "808"
+   },
+   {
+    "n": 9,
+    "bn": "হজ্জ",
+    "en": "The Book on Hajj",
+    "count": 156,
+    "first": "809",
+    "last": "964"
+   },
+   {
+    "n": 10,
+    "bn": "জানাযা",
+    "en": "The Book on Jana''iz (Funerals)",
+    "count": 115,
+    "first": "965",
+    "last": "1079"
+   },
+   {
+    "n": 11,
+    "bn": "বিবাহ",
+    "en": "The Book on Marriage",
+    "count": 67,
+    "first": "1080",
+    "last": "1145"
+   },
+   {
+    "n": 12,
+    "bn": "দুধপান",
+    "en": "The Book on Suckling",
+    "count": 29,
+    "first": "1146",
+    "last": "1174"
+   },
+   {
+    "n": 13,
+    "bn": "তালাক ও লি‘আন",
+    "en": "The Book on Divorce and Li'an",
+    "count": 31,
+    "first": "1175",
+    "last": "1204"
+   },
+   {
+    "n": 14,
+    "bn": "ব্যবসা-বাণিজ্য",
+    "en": "The Book on Business",
+    "count": 112,
+    "first": "1205",
+    "last": "1321"
+   },
+   {
+    "n": 15,
+    "bn": "রাসূলুল্লাহ (সা.)-এর বিচার-ফায়সালা",
+    "en": "The Chapters On Judgements From The Messenger of Allah",
+    "count": 63,
+    "first": "1323",
+    "last": "1385"
+   },
+   {
+    "n": 16,
+    "bn": "দিয়াত (রক্তপণ)",
+    "en": "The Book on Blood Money",
+    "count": 36,
+    "first": "1386",
+    "last": "1422"
+   },
+   {
+    "n": 17,
+    "bn": "হুদূদ (দণ্ডবিধি)",
+    "en": "The Book on Legal Punishments (Al-Hudud)",
+    "count": 45,
+    "first": "1423",
+    "last": "1463"
+   },
+   {
+    "n": 18,
+    "bn": "শিকার",
+    "en": "The Book on Hunting",
+    "count": 22,
+    "first": "1464",
+    "last": "1490"
+   },
+   {
+    "n": 19,
+    "bn": "কুরবানী",
+    "en": "The Book on Sacrifices",
+    "count": 27,
+    "first": "1493",
+    "last": "1523"
+   },
+   {
+    "n": 20,
+    "bn": "মানত ও কসম",
+    "en": "The Book on Vows and Oaths",
+    "count": 23,
+    "first": "1524",
+    "last": "1547"
+   },
+   {
+    "n": 21,
+    "bn": "যুদ্ধাভিযান",
+    "en": "The Book on Military Expeditions",
+    "count": 69,
+    "first": "1548",
+    "last": "1618"
+   },
+   {
+    "n": 22,
+    "bn": "জিহাদের ফযীলত",
+    "en": "The Book on Virtues of Jihad",
+    "count": 50,
+    "first": "1619",
+    "last": "1669"
+   },
+   {
+    "n": 23,
+    "bn": "জিহাদ",
+    "en": "The Book on Jihad",
+    "count": 48,
+    "first": "1670",
+    "last": "1719"
+   },
+   {
+    "n": 24,
+    "bn": "পোশাক",
+    "en": "The Book on Clothing",
+    "count": 67,
+    "first": "1720",
+    "last": "1787"
+   },
+   {
+    "n": 25,
+    "bn": "খাদ্য",
+    "en": "The Book on Food",
+    "count": 71,
+    "first": "1788",
+    "last": "1860"
+   },
+   {
+    "n": 26,
+    "bn": "পানীয়",
+    "en": "The Book on Drinks",
+    "count": 35,
+    "first": "1861",
+    "last": "1896"
+   },
+   {
+    "n": 27,
+    "bn": "সদাচরণ ও আত্মীয়তার সম্পর্ক রক্ষা",
+    "en": "Chapters on Righteousness And Maintaining Good Relations With Relatives",
+    "count": 141,
+    "first": "1897",
+    "last": "2035"
+   },
+   {
+    "n": 28,
+    "bn": "চিকিৎসা",
+    "en": "Chapters on Medicine",
+    "count": 53,
+    "first": "2036",
+    "last": "2088"
+   },
+   {
+    "n": 29,
+    "bn": "উত্তরাধিকার",
+    "en": "Chapters On Inheritance",
+    "count": 26,
+    "first": "2090",
+    "last": "2115"
+   },
+   {
+    "n": 30,
+    "bn": "ওসিয়ত",
+    "en": "Chapters On Wasaya (Wills and Testament)",
+    "count": 9,
+    "first": "2116",
+    "last": "2124"
+   },
+   {
+    "n": 31,
+    "bn": "ওয়ালা ও হেবা",
+    "en": "Chapters On Wala' And Gifts",
+    "count": 7,
+    "first": "2125",
+    "last": "2132"
+   },
+   {
+    "n": 32,
+    "bn": "তাকদীর",
+    "en": "Chapters On Al-Qadar",
+    "count": 26,
+    "first": "2133",
+    "last": "2298"
+   },
+   {
+    "n": 33,
+    "bn": "ফিতনা",
+    "en": "Chapters On Al-Fitan",
+    "count": 112,
+    "first": "2158",
+    "last": "2269"
+   },
+   {
+    "n": 34,
+    "bn": "স্বপ্ন",
+    "en": "Chapters On Dreams",
+    "count": 25,
+    "first": "2270",
+    "last": "2294"
+   },
+   {
+    "n": 35,
+    "bn": "সাক্ষ্য",
+    "en": "Chapters On Witnesses",
+    "count": 9,
+    "first": "2295",
+    "last": "2303"
+   },
+   {
+    "n": 36,
+    "bn": "দুনিয়াবিমুখতা (যুহদ)",
+    "en": "Chapters On Zuhd",
+    "count": 110,
+    "first": "2304",
+    "last": "2414"
+   },
+   {
+    "n": 37,
+    "bn": "কিয়ামত, রিকাক ও তাকওয়া",
+    "en": "Chapters on the description of the Day of Judgement, Ar-Riqaq, and Al-Wara'",
+    "count": 108,
+    "first": "2415",
+    "last": "2522"
+   },
+   {
+    "n": 38,
+    "bn": "জান্নাতের বিবরণ",
+    "en": "Chapters on the description of Paradise",
+    "count": 51,
+    "first": "2523",
+    "last": "2735"
+   },
+   {
+    "n": 39,
+    "bn": "জাহান্নামের বিবরণ",
+    "en": "The Book on the Description of Hellfire",
+    "count": 34,
+    "first": "2573",
+    "last": "2795"
+   },
+   {
+    "n": 40,
+    "bn": "ঈমান",
+    "en": "The Book on Faith",
+    "count": 39,
+    "first": "2606",
+    "last": "2644"
+   },
+   {
+    "n": 41,
+    "bn": "ইলম (জ্ঞান)",
+    "en": "Chapters on Knowledge",
+    "count": 43,
+    "first": "2645",
+    "last": "2687"
+   },
+   {
+    "n": 42,
+    "bn": "অনুমতি চাওয়া",
+    "en": "Chapters on Seeking Permission",
+    "count": 47,
+    "first": "2688",
+    "last": "2734"
+   },
+   {
+    "n": 43,
+    "bn": "আদব-শিষ্টাচার",
+    "en": "Chapters on Manners",
+    "count": 136,
+    "first": "2736",
+    "last": "2858"
+   },
+   {
+    "n": 44,
+    "bn": "উপমা",
+    "en": "Chapters on Parables",
+    "count": 17,
+    "first": "2859",
+    "last": "2874"
+   },
+   {
+    "n": 45,
+    "bn": "কুরআনের ফযীলত",
+    "en": "Chapters on The Virtues of the Qur'an",
+    "count": 52,
+    "first": "2875",
+    "last": "2926"
+   },
+   {
+    "n": 46,
+    "bn": "কিরাআত",
+    "en": "Chapters on Recitation",
+    "count": 23,
+    "first": "2927",
+    "last": "2949"
+   },
+   {
+    "n": 47,
+    "bn": "তাফসীর",
+    "en": "Chapters on Tafsir",
+    "count": 420,
+    "first": "2950",
+    "last": "3723"
+   },
+   {
+    "n": 48,
+    "bn": "দু‘আ",
+    "en": "Chapters on Supplication",
+    "count": 244,
+    "first": "3370",
+    "last": "3604.1"
+   },
+   {
+    "n": 49,
+    "bn": "ফযীলত",
+    "en": "Chapters on Virtues",
+    "count": 348,
+    "first": "3605",
+    "last": "3956"
+   }
+  ]
+ },
+ {
+  "id": "nasai",
+  "bn": "সুনান নাসাঈ",
+  "en": "Sunan an-Nasa'i",
+  "ar": "سنن النسائي",
+  "author": "ইমাম নাসাঈ (রহ.)",
+  "count": 5682,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "পবিত্রতা",
+    "en": "The Book of Purification",
+    "count": 324,
+    "first": "1",
+    "last": "324"
+   },
+   {
+    "n": 2,
+    "bn": "পানি",
+    "en": "The Book of Water",
+    "count": 23,
+    "first": "325",
+    "last": "347"
+   },
+   {
+    "n": 3,
+    "bn": "হায়েয ও ইস্তিহাযা",
+    "en": "The Book of Menstruation and Istihadah",
+    "count": 49,
+    "first": "348",
+    "last": "395"
+   },
+   {
+    "n": 4,
+    "bn": "গোসল ও তায়াম্মুম",
+    "en": "The Book of Ghusl and Tayammum",
+    "count": 53,
+    "first": "396",
+    "last": "447"
+   },
+   {
+    "n": 5,
+    "bn": "সালাত",
+    "en": "The Book of Salah",
+    "count": 46,
+    "first": "448",
+    "last": "493"
+   },
+   {
+    "n": 6,
+    "bn": "সালাতের সময়",
+    "en": "The Book of the Times (of Prayer)",
+    "count": 132,
+    "first": "494",
+    "last": "625"
+   },
+   {
+    "n": 7,
+    "bn": "আযান",
+    "en": "The Book of the Adhan (The Call to Prayer)",
+    "count": 62,
+    "first": "626",
+    "last": "687"
+   },
+   {
+    "n": 8,
+    "bn": "মসজিদ",
+    "en": "The Book of the Masjids",
+    "count": 54,
+    "first": "688",
+    "last": "741"
+   },
+   {
+    "n": 9,
+    "bn": "কিবলা",
+    "en": "The Book of the Qiblah",
+    "count": 35,
+    "first": "742",
+    "last": "776"
+   },
+   {
+    "n": 10,
+    "bn": "ইমামতি",
+    "en": "The Book of Leading the Prayer (Al-Imamah)",
+    "count": 99,
+    "first": "777",
+    "last": "875"
+   },
+   {
+    "n": 11,
+    "bn": "সালাত শুরু করা",
+    "en": "The Book of the Commencement of the Prayer",
+    "count": 153,
+    "first": "876",
+    "last": "1028"
+   },
+   {
+    "n": 12,
+    "bn": "তাতবীক (রুকুতে দুই হাত মেলানো)",
+    "en": "The Book of The At-Tatbiq (Clasping One's Hands Together)",
+    "count": 150,
+    "first": "1029",
+    "last": "1178"
+   },
+   {
+    "n": 13,
+    "bn": "সালাতে ভুল (সাহু)",
+    "en": "The Book of Forgetfulness (In Prayer)",
+    "count": 188,
+    "first": "1179",
+    "last": "1366"
+   },
+   {
+    "n": 14,
+    "bn": "জুমু‘আর সালাত",
+    "en": "The Book of Jumu'ah (Friday Prayer)",
+    "count": 65,
+    "first": "1367",
+    "last": "1432"
+   },
+   {
+    "n": 15,
+    "bn": "সফরে কসর সালাত",
+    "en": "The Book of Shortening the Prayer When Traveling",
+    "count": 26,
+    "first": "1433",
+    "last": "1458"
+   },
+   {
+    "n": 16,
+    "bn": "সূর্যগ্রহণ",
+    "en": "The Book of Eclipses",
+    "count": 45,
+    "first": "1459",
+    "last": "1503"
+   },
+   {
+    "n": 17,
+    "bn": "ইস্তিসকা (বৃষ্টির জন্য সালাত)",
+    "en": "The Book of Praying for Rain (Al-Istisqa')",
+    "count": 25,
+    "first": "1504",
+    "last": "1528"
+   },
+   {
+    "n": 18,
+    "bn": "ভয়কালীন সালাত",
+    "en": "The Book of the Fear Prayer",
+    "count": 27,
+    "first": "1529",
+    "last": "1555"
+   },
+   {
+    "n": 19,
+    "bn": "দুই ঈদের সালাত",
+    "en": "The Book of the Prayer for the Two 'Eids",
+    "count": 42,
+    "first": "1556",
+    "last": "1597"
+   },
+   {
+    "n": 20,
+    "bn": "কিয়ামুল লাইল ও দিনের নফল সালাত",
+    "en": "The Book of Qiyam Al-Lail (The Night Prayer) and Voluntary Prayers During the Day",
+    "count": 220,
+    "first": "1598",
+    "last": "1817"
+   },
+   {
+    "n": 21,
+    "bn": "জানাযা",
+    "en": "The Book of Funerals",
+    "count": 272,
+    "first": "1818",
+    "last": "2089"
+   },
+   {
+    "n": 22,
+    "bn": "সাওম (রোযা)",
+    "en": "The Book of Fasting",
+    "count": 345,
+    "first": "2090",
+    "last": "2434"
+   },
+   {
+    "n": 23,
+    "bn": "যাকাত",
+    "en": "The Book of Zakah",
+    "count": 184,
+    "first": "2435",
+    "last": "2618"
+   },
+   {
+    "n": 24,
+    "bn": "হজ্জ",
+    "en": "The Book of Hajj",
+    "count": 467,
+    "first": "2619",
+    "last": "3084"
+   },
+   {
+    "n": 25,
+    "bn": "জিহাদ",
+    "en": "The Book of Jihad",
+    "count": 111,
+    "first": "3085",
+    "last": "3195"
+   },
+   {
+    "n": 26,
+    "bn": "বিবাহ",
+    "en": "The Book of Marriage",
+    "count": 193,
+    "first": "3196",
+    "last": "3388"
+   },
+   {
+    "n": 27,
+    "bn": "তালাক",
+    "en": "The Book of Divorce",
+    "count": 174,
+    "first": "3389",
+    "last": "3560"
+   },
+   {
+    "n": 28,
+    "bn": "ঘোড়া, দৌড় প্রতিযোগিতা ও তীর নিক্ষেপ",
+    "en": "The Book of Horses, Races and Shooting",
+    "count": 33,
+    "first": "3561",
+    "last": "3593"
+   },
+   {
+    "n": 29,
+    "bn": "ওয়াকফ",
+    "en": "The Book of Endowments",
+    "count": 17,
+    "first": "3594",
+    "last": "3610"
+   },
+   {
+    "n": 30,
+    "bn": "ওসিয়ত",
+    "en": "The Book of Wills",
+    "count": 61,
+    "first": "3611",
+    "last": "3671"
+   },
+   {
+    "n": 31,
+    "bn": "উপহার",
+    "en": "The Book of Presents",
+    "count": 16,
+    "first": "3672",
+    "last": "3687"
+   },
+   {
+    "n": 32,
+    "bn": "হেবা (উপহার)",
+    "en": "The Book of Gifts",
+    "count": 18,
+    "first": "3688",
+    "last": "3705"
+   },
+   {
+    "n": 33,
+    "bn": "রুকবা",
+    "en": "The Book of ar-Ruqba",
+    "count": 14,
+    "first": "3706",
+    "last": "3719"
+   },
+   {
+    "n": 34,
+    "bn": "উমরা",
+    "en": "The Book of 'Umra",
+    "count": 42,
+    "first": "3720",
+    "last": "3760"
+   },
+   {
+    "n": 35,
+    "bn": "কৃষি",
+    "en": "The Book of Agriculture",
+    "count": 96,
+    "first": "3761",
+    "last": "3856"
+   },
+   {
+    "n": 36,
+    "bn": "স্ত্রীদের সাথে সদাচরণ",
+    "en": "The Book of the Kind Treatment of Women",
+    "count": 27,
+    "first": "3939",
+    "last": "3965"
+   },
+   {
+    "n": 37,
+    "bn": "রক্তপাত হারাম হওয়া",
+    "en": "The Book of Fighting [The Prohibition of Bloodshed]",
+    "count": 167,
+    "first": "3966",
+    "last": "4132"
+   },
+   {
+    "n": 38,
+    "bn": "ফাই (যুদ্ধলব্ধ সম্পদ) বণ্টন",
+    "en": "The Book of Distribution of Al-Fay'",
+    "count": 16,
+    "first": "4133",
+    "last": "4148"
+   },
+   {
+    "n": 39,
+    "bn": "বাই‘আত",
+    "en": "The Book of al-Bay'ah",
+    "count": 63,
+    "first": "4149",
+    "last": "4211"
+   },
+   {
+    "n": 40,
+    "bn": "আকীকা",
+    "en": "The Book of al-'Aqiqah",
+    "count": 10,
+    "first": "4212",
+    "last": "4221"
+   },
+   {
+    "n": 41,
+    "bn": "ফারা‘ ও আতীরা",
+    "en": "The Book of al-Fara' and al-'Atirah",
+    "count": 41,
+    "first": "4222",
+    "last": "4262"
+   },
+   {
+    "n": 42,
+    "bn": "শিকার ও যবেহ",
+    "en": "The Book of Hunting and Slaughtering",
+    "count": 98,
+    "first": "4263",
+    "last": "4360"
+   },
+   {
+    "n": 43,
+    "bn": "কুরবানী",
+    "en": "The Book of ad-Dahaya (Sacrifices)",
+    "count": 88,
+    "first": "4361",
+    "last": "4448"
+   },
+   {
+    "n": 44,
+    "bn": "লেনদেন",
+    "en": "The Book of Financial Transactions",
+    "count": 257,
+    "first": "4449",
+    "last": "4705"
+   },
+   {
+    "n": 45,
+    "bn": "কাসামা, কিসাস ও দিয়াত",
+    "en": "The Book of Oaths (qasamah), Retaliation and Blood Money",
+    "count": 164,
+    "first": "4706",
+    "last": "4869"
+   },
+   {
+    "n": 46,
+    "bn": "চোরের হাত কাটা",
+    "en": "The Book of Cutting off the Hand of the Thief",
+    "count": 115,
+    "first": "4870",
+    "last": "4984"
+   },
+   {
+    "n": 47,
+    "bn": "ঈমান ও এর নিদর্শন",
+    "en": "The Book Of Faith and its Signs",
+    "count": 55,
+    "first": "4985",
+    "last": "5039"
+   },
+   {
+    "n": 48,
+    "bn": "সাজসজ্জা",
+    "en": "The Book of Adornment",
+    "count": 339,
+    "first": "5040",
+    "last": "5378"
+   },
+   {
+    "n": 49,
+    "bn": "বিচারকের আদব",
+    "en": "The Book of the Etiquette of Judges",
+    "count": 49,
+    "first": "5379",
+    "last": "5427"
+   },
+   {
+    "n": 50,
+    "bn": "আল্লাহর আশ্রয় প্রার্থনা",
+    "en": "The Book of Seeking Refuge with Allah",
+    "count": 112,
+    "first": "5428",
+    "last": "5539"
+   },
+   {
+    "n": 51,
+    "bn": "পানীয়",
+    "en": "The Book of Drinks",
+    "count": 220,
+    "first": "5540",
+    "last": "5758"
+   }
+  ]
+ },
+ {
+  "id": "ibnmajah",
+  "bn": "সুনান ইবনু মাজাহ",
+  "en": "Sunan Ibn Majah",
+  "ar": "سنن ابن ماجه",
+  "author": "ইমাম ইবনু মাজাহ (রহ.)",
+  "count": 4341,
+  "chapters": [
+   {
+    "n": 0,
+    "bn": "সুন্নাহ",
+    "en": "The Book of the Sunnah",
+    "count": 266,
+    "first": "1",
+    "last": "266"
+   },
+   {
+    "n": 1,
+    "bn": "পবিত্রতা ও এর সুন্নাত",
+    "en": "The Book of Purification and its Sunnah",
+    "count": 400,
+    "first": "267",
+    "last": "666"
+   },
+   {
+    "n": 2,
+    "bn": "সালাত",
+    "en": "The Book of the Prayer",
+    "count": 39,
+    "first": "667",
+    "last": "705"
+   },
+   {
+    "n": 3,
+    "bn": "আযান ও এর সুন্নাত",
+    "en": "The Book of the Adhan and the Sunnah Regarding It",
+    "count": 29,
+    "first": "706",
+    "last": "734"
+   },
+   {
+    "n": 4,
+    "bn": "মসজিদ ও জামা‘আত",
+    "en": "The Book On The Mosques And The Congregations",
+    "count": 68,
+    "first": "735",
+    "last": "802"
+   },
+   {
+    "n": 5,
+    "bn": "সালাত কায়েম ও এর সুন্নাত",
+    "en": "Establishing the Prayer and the Sunnah Regarding Them",
+    "count": 630,
+    "first": "803",
+    "last": "1432"
+   },
+   {
+    "n": 6,
+    "bn": "জানাযা",
+    "en": "Chapters Regarding Funerals",
+    "count": 205,
+    "first": "1433",
+    "last": "1637"
+   },
+   {
+    "n": 7,
+    "bn": "সাওম (রোযা)",
+    "en": "Fasting",
+    "count": 145,
+    "first": "1638",
+    "last": "1782"
+   },
+   {
+    "n": 8,
+    "bn": "যাকাত",
+    "en": "The Chapters Regarding Zakat",
+    "count": 62,
+    "first": "1783",
+    "last": "1844"
+   },
+   {
+    "n": 9,
+    "bn": "বিবাহ",
+    "en": "The Chapters on Marriage",
+    "count": 170,
+    "first": "1845",
+    "last": "2015"
+   },
+   {
+    "n": 10,
+    "bn": "তালাক",
+    "en": "The Chapters on Divorce",
+    "count": 78,
+    "first": "2016",
+    "last": "2477"
+   },
+   {
+    "n": 11,
+    "bn": "কাফফারা",
+    "en": "The Chapters on Expiation",
+    "count": 47,
+    "first": "2090",
+    "last": "2136"
+   },
+   {
+    "n": 12,
+    "bn": "ক্রয়-বিক্রয়",
+    "en": "The Chapters on Business Transactions",
+    "count": 171,
+    "first": "2137",
+    "last": "2307"
+   },
+   {
+    "n": 13,
+    "bn": "বিচার-ফায়সালা",
+    "en": "The Chapters on Rulings",
+    "count": 67,
+    "first": "2308",
+    "last": "2374"
+   },
+   {
+    "n": 14,
+    "bn": "হেবা (উপহার)",
+    "en": "The Chapters on Gifts",
+    "count": 15,
+    "first": "2375",
+    "last": "2389"
+   },
+   {
+    "n": 15,
+    "bn": "সাদাকা",
+    "en": "The Chapters on Charity",
+    "count": 46,
+    "first": "2390",
+    "last": "2528"
+   },
+   {
+    "n": 16,
+    "bn": "বন্ধক",
+    "en": "The Chapters on Pawning",
+    "count": 53,
+    "first": "2436",
+    "last": "2491"
+   },
+   {
+    "n": 17,
+    "bn": "শুফ‘আ (অগ্রক্রয়)",
+    "en": "The Chapters on Pre-emption",
+    "count": 9,
+    "first": "2492",
+    "last": "2501"
+   },
+   {
+    "n": 18,
+    "bn": "হারানো বস্তু",
+    "en": "The Chapters on Lost Property",
+    "count": 10,
+    "first": "2502",
+    "last": "2511"
+   },
+   {
+    "n": 19,
+    "bn": "দাসমুক্তি",
+    "en": "The Chapters on Manumission (of Slaves)",
+    "count": 20,
+    "first": "2512",
+    "last": "2532"
+   },
+   {
+    "n": 20,
+    "bn": "দণ্ডবিধি",
+    "en": "The Chapters on Legal Punishments",
+    "count": 82,
+    "first": "2533",
+    "last": "2614"
+   },
+   {
+    "n": 21,
+    "bn": "দিয়াত (রক্তপণ)",
+    "en": "The Chapters on Blood Money",
+    "count": 80,
+    "first": "2615",
+    "last": "2694"
+   },
+   {
+    "n": 22,
+    "bn": "ওসিয়ত",
+    "en": "The Chapters on Wills",
+    "count": 24,
+    "first": "2695",
+    "last": "2718"
+   },
+   {
+    "n": 23,
+    "bn": "উত্তরাধিকারের অংশ",
+    "en": "Chapters on Shares of Inheritance",
+    "count": 34,
+    "first": "2719",
+    "last": "2752"
+   },
+   {
+    "n": 24,
+    "bn": "জিহাদ",
+    "en": "The Chapters on Jihad",
+    "count": 129,
+    "first": "2753",
+    "last": "2881"
+   },
+   {
+    "n": 25,
+    "bn": "হজ্জের বিধান",
+    "en": "Chapters on Hajj Rituals",
+    "count": 238,
+    "first": "2882",
+    "last": "3119"
+   },
+   {
+    "n": 26,
+    "bn": "কুরবানী",
+    "en": "Chapters on Sacrifices",
+    "count": 42,
+    "first": "3120",
+    "last": "3161"
+   },
+   {
+    "n": 27,
+    "bn": "যবেহ",
+    "en": "Chapters on Slaughtering",
+    "count": 38,
+    "first": "3162",
+    "last": "3199"
+   },
+   {
+    "n": 28,
+    "bn": "শিকার",
+    "en": "Chapters on Hunting",
+    "count": 51,
+    "first": "3200",
+    "last": "3250"
+   },
+   {
+    "n": 29,
+    "bn": "খাদ্য",
+    "en": "Chapters on Food",
+    "count": 120,
+    "first": "3251",
+    "last": "3370"
+   },
+   {
+    "n": 30,
+    "bn": "পানীয়",
+    "en": "Chapters on Drinks",
+    "count": 65,
+    "first": "3371",
+    "last": "3435"
+   },
+   {
+    "n": 31,
+    "bn": "চিকিৎসা",
+    "en": "Chapters on Medicine",
+    "count": 114,
+    "first": "3436",
+    "last": "3549"
+   },
+   {
+    "n": 32,
+    "bn": "পোশাক",
+    "en": "Chapters on Dress",
+    "count": 107,
+    "first": "3550",
+    "last": "3656"
+   },
+   {
+    "n": 33,
+    "bn": "শিষ্টাচার",
+    "en": "Etiquette",
+    "count": 170,
+    "first": "3657",
+    "last": "3826"
+   },
+   {
+    "n": 34,
+    "bn": "দু‘আ",
+    "en": "Supplication",
+    "count": 66,
+    "first": "3827",
+    "last": "3892"
+   },
+   {
+    "n": 35,
+    "bn": "স্বপ্নের ব্যাখ্যা",
+    "en": "Interpretation of Dreams",
+    "count": 34,
+    "first": "3893",
+    "last": "3926"
+   },
+   {
+    "n": 36,
+    "bn": "ফিতনা",
+    "en": "Tribulations",
+    "count": 175,
+    "first": "3927",
+    "last": "4099"
+   },
+   {
+    "n": 37,
+    "bn": "দুনিয়াবিমুখতা (যুহদ)",
+    "en": "Zuhd",
+    "count": 242,
+    "first": "4100",
+    "last": "4341"
+   }
+  ]
+ },
+ {
+  "id": "malik",
+  "bn": "মুওয়াত্তা মালিক",
+  "en": "Muwatta' Malik",
+  "ar": "موطأ مالك",
+  "author": "ইমাম মালিক (রহ.)",
+  "count": 1838,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "সালাতের সময়",
+    "en": "The Times of Prayer",
+    "count": 31,
+    "first": "1",
+    "last": "31"
+   },
+   {
+    "n": 2,
+    "bn": "পবিত্রতা",
+    "en": "Purity",
+    "count": 114,
+    "first": "32",
+    "last": "145"
+   },
+   {
+    "n": 3,
+    "bn": "সালাত",
+    "en": "Prayer",
+    "count": 75,
+    "first": "146",
+    "last": "221"
+   },
+   {
+    "n": 4,
+    "bn": "সালাতে ভুল (সাহু)",
+    "en": "Forgetfulness in Prayer",
+    "count": 3,
+    "first": "222",
+    "last": "224"
+   },
+   {
+    "n": 5,
+    "bn": "জুমু‘আ",
+    "en": "Jumu'a",
+    "count": 21,
+    "first": "225",
+    "last": "245"
+   },
+   {
+    "n": 6,
+    "bn": "রমযানের সালাত",
+    "en": "Prayer in Ramadan",
+    "count": 8,
+    "first": "246",
+    "last": "253"
+   },
+   {
+    "n": 7,
+    "bn": "তাহাজ্জুদ",
+    "en": "Tahajjud",
+    "count": 33,
+    "first": "254",
+    "last": "286"
+   },
+   {
+    "n": 8,
+    "bn": "জামা‘আতে সালাত",
+    "en": "Prayer in Congregation",
+    "count": 39,
+    "first": "287",
+    "last": "325"
+   },
+   {
+    "n": 9,
+    "bn": "কসর সালাত",
+    "en": "Shortening the Prayer",
+    "count": 102,
+    "first": "326",
+    "last": "427"
+   },
+   {
+    "n": 10,
+    "bn": "দুই ঈদ",
+    "en": "The Two 'Ids",
+    "count": 13,
+    "first": "428",
+    "last": "440"
+   },
+   {
+    "n": 11,
+    "bn": "ভয়কালীন সালাত",
+    "en": "The Fear Prayer",
+    "count": 4,
+    "first": "441",
+    "last": "444"
+   },
+   {
+    "n": 12,
+    "bn": "সূর্যগ্রহণের সালাত",
+    "en": "The Eclipse Prayer",
+    "count": 4,
+    "first": "445",
+    "last": "448"
+   },
+   {
+    "n": 13,
+    "bn": "বৃষ্টির জন্য দু‘আ (ইস্তিসকা)",
+    "en": "Asking for Rain",
+    "count": 6,
+    "first": "449",
+    "last": "454"
+   },
+   {
+    "n": 14,
+    "bn": "কিবলা",
+    "en": "The Qibla",
+    "count": 15,
+    "first": "455",
+    "last": "469"
+   },
+   {
+    "n": 15,
+    "bn": "কুরআন",
+    "en": "The Qur'an",
+    "count": 50,
+    "first": "470",
+    "last": "519"
+   },
+   {
+    "n": 16,
+    "bn": "জানাযা ও দাফন",
+    "en": "Burials",
+    "count": 58,
+    "first": "520",
+    "last": "577"
+   },
+   {
+    "n": 17,
+    "bn": "যাকাত",
+    "en": "Zakat",
+    "count": 52,
+    "first": "578",
+    "last": "629"
+   },
+   {
+    "n": 18,
+    "bn": "সাওম (রোযা)",
+    "en": "Fasting",
+    "count": 59,
+    "first": "630",
+    "last": "689"
+   },
+   {
+    "n": 19,
+    "bn": "রমযানে ই‘তিকাফ",
+    "en": "I'tikaf in Ramadan",
+    "count": 15,
+    "first": "690",
+    "last": "704"
+   },
+   {
+    "n": 20,
+    "bn": "হজ্জ",
+    "en": "Hajj",
+    "count": 251,
+    "first": "705",
+    "last": "957"
+   },
+   {
+    "n": 21,
+    "bn": "জিহাদ",
+    "en": "Jihad",
+    "count": 50,
+    "first": "959",
+    "last": "1008"
+   },
+   {
+    "n": 22,
+    "bn": "মানত ও কসম",
+    "en": "Vows and Oaths",
+    "count": 18,
+    "first": "1009",
+    "last": "1027"
+   },
+   {
+    "n": 23,
+    "bn": "কুরবানীর পশু",
+    "en": "Sacrificial Animals",
+    "count": 13,
+    "first": "1028",
+    "last": "1041"
+   },
+   {
+    "n": 24,
+    "bn": "পশু যবেহ",
+    "en": "Slaughtering Animals",
+    "count": 10,
+    "first": "1042",
+    "last": "1051"
+   },
+   {
+    "n": 25,
+    "bn": "শিকার",
+    "en": "Game",
+    "count": 13,
+    "first": "1052",
+    "last": "1066"
+   },
+   {
+    "n": 26,
+    "bn": "আকীকা",
+    "en": "The 'Aqiqa",
+    "count": 7,
+    "first": "1067",
+    "last": "1073"
+   },
+   {
+    "n": 27,
+    "bn": "ফারায়েয (উত্তরাধিকার)",
+    "en": "Fara'id",
+    "count": 16,
+    "first": "1074",
+    "last": "1089"
+   },
+   {
+    "n": 28,
+    "bn": "বিবাহ",
+    "en": "Marriage",
+    "count": 59,
+    "first": "1091",
+    "last": "1149"
+   },
+   {
+    "n": 29,
+    "bn": "তালাক",
+    "en": "Divorce",
+    "count": 118,
+    "first": "1150",
+    "last": "1271"
+   },
+   {
+    "n": 30,
+    "bn": "দুধপান",
+    "en": "Suckling",
+    "count": 18,
+    "first": "1272",
+    "last": "1289"
+   },
+   {
+    "n": 31,
+    "bn": "ক্রয়-বিক্রয়",
+    "en": "Business Transactions",
+    "count": 95,
+    "first": "1290",
+    "last": "1385"
+   },
+   {
+    "n": 32,
+    "bn": "মুদারাবা (কিরাদ)",
+    "en": "Qirad",
+    "count": 2,
+    "first": "1386",
+    "last": "1387"
+   },
+   {
+    "n": 33,
+    "bn": "বর্গাচাষ",
+    "en": "Sharecropping",
+    "count": 2,
+    "first": "1388",
+    "last": "1389"
+   },
+   {
+    "n": 34,
+    "bn": "জমি ইজারা",
+    "en": "Renting Land",
+    "count": 5,
+    "first": "1390",
+    "last": "1394"
+   },
+   {
+    "n": 35,
+    "bn": "শুফ‘আ (অগ্রক্রয়)",
+    "en": "Pre-emption in Property",
+    "count": 4,
+    "first": "1395",
+    "last": "1398"
+   },
+   {
+    "n": 36,
+    "bn": "বিচার-ফায়সালা",
+    "en": "Judgements",
+    "count": 56,
+    "first": "1399",
+    "last": "1454"
+   },
+   {
+    "n": 37,
+    "bn": "ওসিয়ত",
+    "en": "Wills and Testaments",
+    "count": 9,
+    "first": "1455",
+    "last": "1463"
+   },
+   {
+    "n": 38,
+    "bn": "দাসমুক্তি ও ওয়ালা",
+    "en": "Setting Free and Wala'",
+    "count": 25,
+    "first": "1464",
+    "last": "1488"
+   },
+   {
+    "n": 39,
+    "bn": "মুকাতাব দাস",
+    "en": "The Mukatab",
+    "count": 7,
+    "first": "1489",
+    "last": "1496"
+   },
+   {
+    "n": 40,
+    "bn": "মুদাব্বার দাস",
+    "en": "The Mudabbar",
+    "count": 3,
+    "first": "1497",
+    "last": "1499"
+   },
+   {
+    "n": 41,
+    "bn": "হুদূদ (দণ্ডবিধি)",
+    "en": "Hudud",
+    "count": 35,
+    "first": "1500",
+    "last": "1536"
+   },
+   {
+    "n": 42,
+    "bn": "পানীয়",
+    "en": "Drinks",
+    "count": 15,
+    "first": "1537",
+    "last": "1551"
+   },
+   {
+    "n": 43,
+    "bn": "দিয়াত (রক্তপণ)",
+    "en": "Blood-Money",
+    "count": 43,
+    "first": "1552",
+    "last": "1595"
+   },
+   {
+    "n": 44,
+    "bn": "কাসামা",
+    "en": "The Oath of Qasama",
+    "count": 2,
+    "first": "1596",
+    "last": "1597"
+   },
+   {
+    "n": 45,
+    "bn": "মদীনা",
+    "en": "Madina",
+    "count": 25,
+    "first": "1598",
+    "last": "1622"
+   },
+   {
+    "n": 46,
+    "bn": "তাকদীর",
+    "en": "The Decree",
+    "count": 10,
+    "first": "1623",
+    "last": "1632"
+   },
+   {
+    "n": 47,
+    "bn": "উত্তম চরিত্র",
+    "en": "Good Character",
+    "count": 18,
+    "first": "1633",
+    "last": "1650"
+   },
+   {
+    "n": 48,
+    "bn": "পোশাক",
+    "en": "Dress",
+    "count": 20,
+    "first": "1651",
+    "last": "1670"
+   },
+   {
+    "n": 49,
+    "bn": "নবী (সা.)-এর দৈহিক বর্ণনা",
+    "en": "The Description of the Prophet, may Allah Bless Him and Grant Him Peace",
+    "count": 40,
+    "first": "1671",
+    "last": "1710"
+   },
+   {
+    "n": 50,
+    "bn": "বদনজর",
+    "en": "The Evil Eye",
+    "count": 19,
+    "first": "1711",
+    "last": "1729"
+   },
+   {
+    "n": 51,
+    "bn": "চুল",
+    "en": "Hair",
+    "count": 17,
+    "first": "1730",
+    "last": "1746"
+   },
+   {
+    "n": 52,
+    "bn": "স্বপ্ন",
+    "en": "Visions",
+    "count": 8,
+    "first": "1747",
+    "last": "1755"
+   },
+   {
+    "n": 53,
+    "bn": "সালাম",
+    "en": "Greetings",
+    "count": 7,
+    "first": "1756",
+    "last": "1762"
+   },
+   {
+    "n": 54,
+    "bn": "বিবিধ বিষয়",
+    "en": "General Subjects",
+    "count": 45,
+    "first": "1763",
+    "last": "1807"
+   },
+   {
+    "n": 55,
+    "bn": "বাই‘আত",
+    "en": "The Oath of Allegiance",
+    "count": 3,
+    "first": "1808",
+    "last": "1810"
+   },
+   {
+    "n": 56,
+    "bn": "কথাবার্তা",
+    "en": "Speech",
+    "count": 28,
+    "first": "1811",
+    "last": "1838"
+   },
+   {
+    "n": 57,
+    "bn": "জাহান্নাম",
+    "en": "Jahannam",
+    "count": 2,
+    "first": "1839",
+    "last": "1840"
+   },
+   {
+    "n": 58,
+    "bn": "সাদাকা",
+    "en": "Sadaqa",
+    "count": 15,
+    "first": "1841",
+    "last": "1855"
+   },
+   {
+    "n": 59,
+    "bn": "ইলম (জ্ঞান)",
+    "en": "Knowledge",
+    "count": 1,
+    "first": "1856",
+    "last": "1856"
+   },
+   {
+    "n": 60,
+    "bn": "মযলুমের দু‘আ",
+    "en": "The Supplication of the Unjustly Wronged",
+    "count": 1,
+    "first": "1857",
+    "last": "1857"
+   },
+   {
+    "n": 61,
+    "bn": "নবী (সা.)-এর নামসমূহ",
+    "en": "The Names of the Prophet, may Allah Bless Him and Grant Him Peace",
+    "count": 1,
+    "first": "1858",
+    "last": "1858"
+   }
+  ]
+ },
+ {
+  "id": "nawawi",
+  "bn": "চল্লিশ হাদীস",
+  "en": "Forty Hadith of an-Nawawi",
+  "ar": "الأربعون النووية",
+  "author": "ইমাম নববী (রহ.)",
+  "count": 42,
+  "chapters": [
+   {
+    "n": 1,
+    "bn": "চল্লিশ হাদীস",
+    "en": "Forty Hadith of an-Nawawi",
+    "count": 42,
+    "first": "1",
+    "last": "42"
+   }
+  ]
+ }
+]

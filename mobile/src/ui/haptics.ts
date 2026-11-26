@@ -2,7 +2,10 @@ import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { useData } from '@/store/data';
 
-const on = () => Platform.OS !== 'web' && useData.getState().settings.haptics;
+const on = () => {
+  const st = useData.getState().settings;
+  return Platform.OS !== 'web' && st.haptics && !st.muteAll;
+};
 
 export const haptic = {
   tap: () => on() && void Haptics.selectionAsync().catch(() => undefined),

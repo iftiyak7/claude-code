@@ -141,6 +141,8 @@ export interface Settings {
   haptics: boolean;
   onboarded: boolean;
   zikrSound: boolean;
+  /** One switch that silences every notification, alarm and vibration. */
+  muteAll: boolean;
   quran: QuranPrefs;
 }
 
