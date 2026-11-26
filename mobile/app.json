@@ -79,7 +79,15 @@
       "@react-native-community/datetimepicker",
       "expo-image",
       "expo-background-task",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class androidx.work.impl.** { *; }\n-keep class * extends androidx.work.ListenableWorker { <init>(...); }"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
