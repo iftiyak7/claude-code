@@ -18,6 +18,8 @@ const light = {
   border: '#EFE1D9',
   ink: '#16151A',
   onInk: '#FFFFFF',
+  /** Dark feature-card background with white text — stays dark in both themes. */
+  hero: '#16151A',
   primary: '#F2703F',
   primaryDeep: '#D95A2B',
   primarySoft: '#FFE4D7',
@@ -52,6 +54,7 @@ const dark: Theme = {
   border: '#2A2830',
   ink: '#F5F0ED',
   onInk: '#16151A',
+  hero: '#24212A',
   primary: '#FF8352',
   primaryDeep: '#F2703F',
   primarySoft: '#3A2219',

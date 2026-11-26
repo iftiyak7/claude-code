@@ -95,7 +95,7 @@ export default function SurahReader() {
   const header = useMemo(
     () => (
       <Animated.View entering={FadeInDown.duration(400)} style={{ paddingHorizontal: 20 }}>
-        <View style={[styles.banner, { backgroundColor: t.ink }]}>
+        <View style={[styles.banner, { backgroundColor: t.hero }]}>
           <View style={styles.bannerOrnL} pointerEvents="none">
             <Khatam size={90} color="rgba(255,255,255,0.07)" />
           </View>
@@ -116,7 +116,7 @@ export default function SurahReader() {
         {q.mushaf === 'tajweed' && <TajweedLegend />}
       </Animated.View>
     ),
-    [meta, lang, t.ink, tr, n, showBismillah, fontReady, q.mushaf, size, color],
+    [meta, lang, t.hero, tr, n, showBismillah, fontReady, q.mushaf, size, color],
   );
 
   return (

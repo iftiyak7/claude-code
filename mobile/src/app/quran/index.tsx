@@ -49,7 +49,7 @@ export default function QuranHome() {
         <Text style={[font.display, { color: t.text, marginTop: 10 }]}>{tr.quran.title}</Text>
 
         {/* continue reading */}
-        <PressableScale onPress={() => open(last?.surah ?? 1, last?.ayah)} style={[styles.continue, { backgroundColor: t.ink }]}>
+        <PressableScale onPress={() => open(last?.surah ?? 1, last?.ayah)} style={[styles.continue, { backgroundColor: t.hero }]}>
           <View style={styles.continueOrn} pointerEvents="none">
             <Khatam size={150} color="rgba(255,255,255,0.06)" />
           </View>
