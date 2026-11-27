@@ -218,9 +218,13 @@ final class Kernel {
 			case 'cash':
 				return new CashService( $d, $c, $e, $this->accounts, $this->journal, $this->numbers, $this->audit );
 			case 'reports':
-				return new ReportService( $d, $c, $e, $this->accounts );
+				$reports = new ReportService( $d, $c, $e, $this->accounts );
+				$reports->setStock( $this->stock );
+				return $reports;
 			case 'notifications':
-				return new NotificationService( $d, $c, $e, $this->settings );
+				$notes = new NotificationService( $d, $c, $e, $this->settings );
+				$notes->setStock( $this->stock );
+				return $notes;
 			case 'businesses':
 				return new BusinessService( $d, $c, $e, $this->accounts, $this->taxonomy, $this->taxes, $this->settings, $this->permissions, $this->audit );
 			case 'members':

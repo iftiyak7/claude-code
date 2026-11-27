@@ -151,7 +151,7 @@ final class PurchaseService extends Service {
 		if ( 'void' === $purchase['status'] ) {
 			throw new ConflictException( 'A voided purchase cannot be edited.' );
 		}
-		if ( Decimal::of( $purchase['return_amount'] ) > 0 ) {
+		if ( $this->hasReturns( $ctx, 'purchase', $id ) ) {
 			throw new ConflictException( 'This purchase has returns. Void the returns before editing it.' );
 		}
 		$doc = $this->prepare( $ctx, array_merge( $this->asInput( $ctx, $id, $purchase ), $data ) );
@@ -164,6 +164,11 @@ final class PurchaseService extends Service {
 				$kept     = array();
 				if ( 'completed' === $purchase['status'] ) {
 					$kept     = null === $tenders ? $this->payments->forSource( $ctx, 'purchase', $id ) : array();
+					if ( $kept && (int) $purchase['supplier_id'] !== (int) $doc['supplier_id'] ) {
+						// New supplier: the money paid with the purchase is paid to them now.
+						$tenders = array_map( static fn( $p ) => array( 'account_id' => (int) $p['account_id'], 'amount' => $p['amount'], 'reference' => (string) ( $p['reference'] ?? '' ) ), $kept );
+						$kept    = array();
+					}
 					$kept_sum = Decimal::sum( array_map( static fn( $p ) => Decimal::of( $p['amount'] ), $kept ) );
 					if ( $kept_sum > $doc['totals']['total'] ) {
 						throw ValidationException::field( 'payments', 'The new total is less than the amount already paid. Update the payments as well.' );
@@ -648,7 +653,7 @@ final class PurchaseService extends Service {
 		$variance = 0;
 		$removed  = 0;
 		foreach ( $items as $item ) {
-			if ( ! (int) $item['track_stock'] ) {
+			if ( ! $this->stock->moved( $ctx, 'purchase', $id, (int) $item['product_id'], (int) $item['variant_id'] ) ) {
 				continue;
 			}
 			$res       = $this->stock->out(
@@ -744,5 +749,10 @@ final class PurchaseService extends Service {
 			WHERE p.business_id = %d AND p.status = 'completed' AND p.id <> %d AND i.product_id = %d AND i.variant_id = %d AND p.purchase_date > %s",
 			array( $ctx->business_id, $id, $product_id, $variant_id, $date )
 		) > 0;
+	}
+
+	private function hasReturns( BusinessContext $ctx, string $type, int $id ): bool {
+		$rt = $this->db->table( 'returns' );
+		return (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND return_type = %s AND document_id = %d AND status = 'completed'", array( $ctx->business_id, $type, $id ) ) > 0;
 	}
 }

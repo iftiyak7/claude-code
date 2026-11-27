@@ -53,9 +53,16 @@ export async function cacheGet(name) {
   try { const r = await tx('cache', 'readonly', (s) => s.get(key(name))); return r?.value ?? null; } catch { return null; }
 }
 
-/** Refresh the product + customer snapshot used offline. */
-export async function refreshSnapshot() {
-  if (!navigator.onLine) return;
+/**
+ * Refresh the product + customer snapshot used offline. Only the Android app
+ * works offline, so the website never downloads it; the app does so at most
+ * every 15 minutes unless something changed (force).
+ */
+let snapAt = 0;
+export async function refreshSnapshot({ force = false } = {}) {
+  if (!navigator.onLine || !window.GoriberHisabNative) return;
+  if (!force && Date.now() - snapAt < 15 * 60000) return;
+  snapAt = Date.now();
   try {
     const [products, customers] = await Promise.all([
       api.get('products', { per_page: 500, orderby: 'name' }),
@@ -178,7 +185,7 @@ async function run() {
     }
   } finally {
     emit('queue', await queued());
-    if (sent) refreshSnapshot();
+    if (sent) refreshSnapshot({ force: true });
   }
 }
 

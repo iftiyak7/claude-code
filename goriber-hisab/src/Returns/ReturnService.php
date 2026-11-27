@@ -209,7 +209,8 @@ final class ReturnService extends Service {
 				$variance   = 0;
 				foreach ( $lines as $line ) {
 					$item  = $line['item'];
-					$track = (int) $this->db->value( "SELECT track_stock FROM {$pt} WHERE id = %d", array( (int) $item['product_id'] ) );
+					// Follow what the original document did with stock, not today's product setting.
+					$track = $this->stock->moved( $ctx, $type, (int) $item[ 'sale' === $type ? 'sale_id' : 'purchase_id' ], (int) $item['product_id'], (int) $item['variant_id'] );
 					$cost  = $line['cost'];
 					$meta  = array(
 						'type'           => $type . '_return',
@@ -358,7 +359,7 @@ final class ReturnService extends Service {
 					$used = Json::decode( $item['components'] ?? null );
 					if ( $used ) {
 						$variance += $this->stock->moveComponents( $ctx, $used, 'out', $meta );
-					} elseif ( (int) $item['track_stock'] ) {
+					} elseif ( $this->stock->moved( $ctx, 'return', $id, (int) $item['product_id'], (int) $item['variant_id'] ) ) {
 						if ( 'sale' === $type ) {
 							$res       = $this->stock->out( $ctx, array( 'product_id' => (int) $item['product_id'], 'variant_id' => (int) $item['variant_id'], 'qty' => $qty, 'value' => $cost ), $meta );
 							$variance += $res['variance'];
@@ -478,7 +479,7 @@ final class ReturnService extends Service {
 		$pt    = $this->db->table( 'products' );
 		$value = 0;
 		foreach ( $lines as $line ) {
-			$track = (int) $this->db->value( "SELECT track_stock FROM {$pt} WHERE id = %d", array( (int) $line['item']['product_id'] ) );
+			$track = $this->stock->moved( $ctx, 'purchase', (int) $line['item']['purchase_id'], (int) $line['item']['product_id'], (int) $line['item']['variant_id'] );
 			if ( ! $track ) {
 				$value += $line['net'];
 			}

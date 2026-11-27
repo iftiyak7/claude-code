@@ -23,6 +23,6 @@ export function lightCounts(d, href = (level) => `#/stock-status?level=${level}`
 export function lightRow(p) {
   return h('li', {}, h('a', { href: `#/products/${p.id}`, class: 'light-row' },
     light(p.level),
-    h('span', { class: 'grow' }, h('strong', {}, p.name), p.sku ? h('small', { class: 'muted' }, ` · ${p.sku}`) : null),
+    h('span', { class: 'grow' }, h('strong', {}, p.name, p.loose ? ` (${t('loose')})` : ''), p.sku ? h('small', { class: 'muted' }, ` · ${p.sku}`) : null),
     h('span', { class: `lq lq-${p.level}` }, `${qty(p.qty)}${p.unit ? ` ${p.unit}` : ''}`)));
 }

@@ -156,7 +156,9 @@ final class SaleService extends Service {
 		if ( 'void' === $sale['status'] ) {
 			throw new ConflictException( 'A voided sale cannot be edited.' );
 		}
-		if ( Decimal::of( $sale['return_amount'] ) > 0 ) {
+		// Any completed return counts, even a ৳0 one (a free item): editing rebuilds the lines.
+		$rt = $this->db->table( 'returns' );
+		if ( (int) $this->db->value( "SELECT COUNT(*) FROM {$rt} WHERE business_id = %d AND return_type = 'sale' AND document_id = %d AND status = 'completed'", array( $ctx->business_id, $id ) ) ) {
 			throw new ConflictException( 'This sale has returns. Void the returns before editing it.' );
 		}
 		$before = $this->get( $ctx, $id );
@@ -171,6 +173,11 @@ final class SaleService extends Service {
 				}
 				$tenders = array_key_exists( 'payments', $data ) ? (array) $data['payments'] : null;
 				$kept    = null === $tenders ? $this->payments->forSource( $ctx, 'sale', $id ) : array();
+				if ( $kept && (int) $sale['customer_id'] !== (int) $doc['customer_id'] ) {
+					// New customer: the money taken with the sale is theirs now, so it is taken again for them.
+					$tenders = array_map( static fn( $p ) => array( 'account_id' => (int) $p['account_id'], 'amount' => $p['amount'], 'reference' => (string) ( $p['reference'] ?? '' ) ), $kept );
+					$kept    = array();
+				}
 				$kept_sum = Decimal::sum( array_map( static fn( $p ) => Decimal::of( $p['amount'] ), $kept ) );
 				if ( $kept_sum > $doc['totals']['total'] ) {
 					throw ValidationException::field( 'payments', 'The new total is less than the amount already paid. Update the payments as well.' );
@@ -320,10 +327,16 @@ final class SaleService extends Service {
 		$sale['cashier_name']     = $this->userName( (int) $sale['created_by'] );
 		if ( $ctx->can( 'reports.profit' ) ) {
 			$net                  = Decimal::sum( array_map( static fn( $i ) => Decimal::of( $i['net_amount'] ), $sale['items'] ) );
-			$sale['gross_profit'] = Decimal::toString( $net - Decimal::of( $sale['cost_amount'] ) );
-			// Profit of each product on the bill: what it sold for (after discounts) minus what it cost.
+			// Profit of each product on the bill: what it sold for (after discounts) minus what it cost,
+			// less whatever came back in a return.
+			$ri   = $this->db->table( 'return_items' );
+			$back = array();
+			foreach ( $this->db->rows( "SELECT ri.document_item_id, SUM(ri.net_amount) AS net, SUM(ri.cost_amount) AS cost FROM {$ri} ri JOIN {$rt} r ON r.id = ri.return_id WHERE r.business_id = %d AND r.return_type = 'sale' AND r.status = 'completed' AND r.document_id = %d GROUP BY ri.document_item_id", array( $ctx->business_id, $id ) ) as $x ) {
+				$back[ (int) $x['document_item_id'] ] = Decimal::of( $x['net'] ) - Decimal::of( $x['cost'] );
+			}
+			$sale['gross_profit'] = Decimal::toString( $net - Decimal::of( $sale['cost_amount'] ) - array_sum( $back ) );
 			foreach ( $sale['items'] as &$item ) {
-				$item['profit'] = Decimal::toString( Decimal::of( $item['net_amount'] ) - Decimal::of( $item['cost_amount'] ) );
+				$item['profit'] = Decimal::toString( Decimal::of( $item['net_amount'] ) - Decimal::of( $item['cost_amount'] ) - ( $back[ (int) $item['id'] ] ?? 0 ) );
 			}
 			unset( $item );
 		} else {
@@ -362,11 +375,21 @@ final class SaleService extends Service {
 		if ( ! empty( $args['unpaid'] ) ) {
 			$where[] = 's.due_amount > 0';
 		}
-		foreach ( array( 'customer_id', 'created_by', 'branch_id' ) as $f ) {
+		foreach ( array( 'customer_id', 'created_by' ) as $f ) {
 			if ( isset( $args[ $f ] ) && '' !== $args[ $f ] && null !== $args[ $f ] ) {
 				$where[]  = "s.{$f} = %d";
 				$params[] = (int) $args[ $f ];
 			}
+		}
+		// Staff limited to some branches only ever see those branches' sales.
+		if ( ! empty( $args['branch_id'] ) ) {
+			if ( ! $ctx->canAccessBranch( (int) $args['branch_id'] ) ) {
+				throw new \GoriberHisab\Support\PermissionException( 'You do not have access to this branch.' );
+			}
+			$where[]  = 's.branch_id = %d';
+			$params[] = (int) $args['branch_id'];
+		} elseif ( array() !== $ctx->branch_ids ) {
+			$where[] = 's.branch_id IN (' . implode( ',', array_map( 'intval', $ctx->branch_ids ) ) . ')';
 		}
 		if ( isset( $args['salesperson_id'] ) && 's' === substr( (string) $args['salesperson_id'], 0, 1 ) ) {
 			$args['seller_id'] = (int) substr( (string) $args['salesperson_id'], 1 );
@@ -403,7 +426,8 @@ final class SaleService extends Service {
 		}
 		$w    = implode( ' AND ', $where );
 		$base = "FROM {$st} s LEFT JOIN {$ct} c ON c.id = s.customer_id WHERE {$w}";
-		$agg  = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(s.total),0) AS total, COALESCE(SUM(s.paid_amount),0) AS paid, COALESCE(SUM(s.due_amount),0) AS due {$base}", $params );
+		// Money totals count completed sales only, even when the list shows held or voided ones too.
+		$agg  = $this->db->row( "SELECT COUNT(*) AS n, SUM(CASE WHEN s.status = 'completed' THEN 1 ELSE 0 END) AS done, COALESCE(SUM(CASE WHEN s.status = 'completed' THEN s.total ELSE 0 END),0) AS total, COALESCE(SUM(CASE WHEN s.status = 'completed' THEN s.paid_amount ELSE 0 END),0) AS paid, COALESCE(SUM(CASE WHEN s.status = 'completed' THEN s.due_amount ELSE 0 END),0) AS due {$base}", $params );
 		$rows = $this->db->rows(
 			"SELECT s.id, s.number, s.sale_date, s.customer_id, c.name AS customer_name, c.phone AS customer_phone, s.status, s.channel, s.total, s.paid_amount, s.due_amount, s.return_amount, s.payment_status, s.created_by, s.salesperson_id, s.seller_id, s.created_at, s.cost_amount {$base} ORDER BY s.sale_date DESC, s.id DESC LIMIT %d OFFSET %d",
 			array_merge( $params, array( $per_page, $offset ) )
@@ -412,8 +436,14 @@ final class SaleService extends Service {
 		$it         = $this->db->table( 'sale_items' );
 		$see_profit = $ctx->can( 'reports.profit' );
 		$lines      = array();
+		$returned   = array(); // profit given back by returns, per sale
 		$ids        = array_map( static fn( $r ) => (int) $r['id'], $rows );
 		if ( $ids ) {
+			$ri = $this->db->table( 'return_items' );
+			$rt = $this->db->table( 'returns' );
+			foreach ( $this->db->rows( "SELECT r.document_id, SUM(ri.net_amount) AS net, SUM(ri.cost_amount) AS cost FROM {$ri} ri JOIN {$rt} r ON r.id = ri.return_id WHERE r.business_id = %d AND r.return_type = 'sale' AND r.status = 'completed' AND r.document_id IN (" . implode( ',', $ids ) . ') GROUP BY r.document_id', array( $ctx->business_id ) ) as $x ) {
+				$returned[ (int) $x['document_id'] ] = Decimal::of( $x['net'] ) - Decimal::of( $x['cost'] );
+			}
 			foreach ( $this->db->rows( "SELECT sale_id, name, qty, net_amount FROM {$it} WHERE business_id = %d AND sale_id IN (" . implode( ',', $ids ) . ') ORDER BY sale_id, sort_order, id', array( $ctx->business_id ) ) as $l ) {
 				$lines[ (int) $l['sale_id'] ][] = $l;
 			}
@@ -426,14 +456,14 @@ final class SaleService extends Service {
 			$r['item_count']       = count( $mine );
 			$r['items']            = array_map( static fn( $l ) => array( 'name' => (string) $l['name'], 'qty' => Decimal::toString( Decimal::of( $l['qty'] ) ) ), array_slice( $mine, 0, 3 ) );
 			if ( $see_profit && 'completed' === $r['status'] ) {
-				$r['profit'] = Decimal::toString( Decimal::sum( array_map( static fn( $l ) => Decimal::of( $l['net_amount'] ), $mine ) ) - Decimal::of( $r['cost_amount'] ) );
+				$r['profit'] = Decimal::toString( Decimal::sum( array_map( static fn( $l ) => Decimal::of( $l['net_amount'] ), $mine ) ) - Decimal::of( $r['cost_amount'] ) - ( $returned[ (int) $r['id'] ] ?? 0 ) );
 			}
 			unset( $r['cost_amount'] );
 		}
 		unset( $r );
 		$out            = $this->paged( $rows, (int) $agg['n'], $page, $per_page );
 		$out['summary'] = array(
-			'count' => (int) $agg['n'],
+			'count' => (int) $agg['done'],
 			'total' => Decimal::toString( Decimal::of( $agg['total'] ) ),
 			'paid'  => Decimal::toString( Decimal::of( $agg['paid'] ) ),
 			'due'   => Decimal::toString( Decimal::of( $agg['due'] ) ),
@@ -441,7 +471,10 @@ final class SaleService extends Service {
 		if ( $see_profit ) {
 			$net                      = $this->db->value( "SELECT COALESCE(SUM(i.net_amount),0) FROM {$it} i JOIN {$st} s ON s.id = i.sale_id LEFT JOIN {$ct} c ON c.id = s.customer_id WHERE {$w} AND s.status = 'completed'", $params );
 			$cost                     = $this->db->value( "SELECT COALESCE(SUM(s.cost_amount),0) {$base} AND s.status = 'completed'", $params );
-			$out['summary']['profit'] = Decimal::toString( Decimal::of( $net ) - Decimal::of( $cost ) );
+			$ri                       = $this->db->table( 'return_items' );
+			$rt                       = $this->db->table( 'returns' );
+			$back                     = $this->db->value( "SELECT COALESCE(SUM(ri.net_amount - ri.cost_amount),0) FROM {$ri} ri JOIN {$rt} r ON r.id = ri.return_id JOIN {$st} s ON s.id = r.document_id LEFT JOIN {$ct} c ON c.id = s.customer_id WHERE {$w} AND s.status = 'completed' AND r.return_type = 'sale' AND r.status = 'completed'", $params );
+			$out['summary']['profit'] = Decimal::toString( Decimal::of( $net ) - Decimal::of( $cost ) - Decimal::of( $back ) );
 		}
 		return $out;
 	}
@@ -1010,7 +1043,7 @@ final class SaleService extends Service {
 				continue;
 			}
 			$pt   = $this->db->table( 'products' );
-			$trk  = (int) $this->db->value( "SELECT track_stock FROM {$pt} WHERE id = %d", array( (int) $item['product_id'] ) );
+			$trk  = $this->stock->moved( $ctx, 'sale', $id, (int) $item['product_id'], (int) $item['variant_id'] );
 			if ( ! $trk || $qty <= 0 ) {
 				continue;
 			}

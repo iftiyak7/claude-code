@@ -16,7 +16,7 @@ import { icon } from '../core/icons.js';
 import { whatsappUrl } from '../core/remind.js';
 import { onScan, scanWithCamera, cameraSupported } from '../core/scanner.js';
 import { printSale, openPrint } from '../core/printer.js';
-import { cacheGet, queueSale, queueWrite, localId, sync, refreshSnapshot } from '../core/offline.js';
+import { cacheGet, cacheSet, queueSale, queueWrite, localId, sync } from '../core/offline.js';
 import { navigate } from '../core/router.js';
 
 export default async function pos(el) {
@@ -41,6 +41,7 @@ export default async function pos(el) {
     try {
       const res = await api.get('products', { per_page: 500, orderby: 'name' });
       catalogue = res.items;
+      cacheSet('products', catalogue); // the offline copy, without a second download
     } catch (err) {
       catalogue = (await cacheGet('products')) || [];
       if (!catalogue.length) toast(t('Offline and no product data cached yet.'), 'error');
@@ -596,7 +597,6 @@ export default async function pos(el) {
   function done(sale, print) {
     if (print) printSale(sale).catch(() => {});
     reset();
-    refreshSnapshot();
     loadCatalogue();
     const small = (label, ic, attrs) => h(attrs.href ? 'a' : 'button', { class: `done-act ${attrs.cls || ''}`, type: attrs.href ? null : 'button', ...attrs }, icon(ic, 18), h('span', {}, label));
     const m = modal({

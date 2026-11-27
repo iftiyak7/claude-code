@@ -159,6 +159,11 @@ export async function request(method, path, body, params, retried = false) {
   return data;
 }
 
+/** Keep an answer fetched outside request() for offline use (the app's early session request). */
+export function rememberRead(path, params, data) {
+  if (window.GoriberHisabNative) saveRead(endpoint(path, params), data);
+}
+
 /** Forget everything saved on this device (log out). */
 export function clearSavedReads() {
   try { indexedDB.deleteDatabase(READS); } catch { /* ignore */ }

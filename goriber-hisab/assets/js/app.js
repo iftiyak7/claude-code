@@ -4,7 +4,7 @@
  */
 import { h, mount, $, debounce } from './core/dom.js';
 import { icon } from './core/icons.js';
-import { api, clearSavedReads } from './core/api.js';
+import { api, clearSavedReads, endpoint, rememberRead } from './core/api.js';
 import { state, can, canAny, setBusiness, on, emit } from './core/state.js';
 import { route, start, navigate, current } from './core/router.js';
 import { loadLanguage, t, currentLang } from './core/i18n.js';
@@ -158,14 +158,19 @@ async function boot() {
     sync();
     // Phones do not always say when the internet comes back: try again every minute.
     setInterval(() => { if (navigator.onLine) sync(); }, 60000);
-    refreshSnapshot();
-    startAlerts();
+    // Offline data and alerts wait until the first page has its data: the page comes first.
+    setTimeout(() => { refreshSnapshot(); startAlerts(); }, 6000);
   }
 }
 
 async function loadSession() {
   try {
-    state.me = await api.get('me', { business: state.businessId, branch: state.branchId });
+    const params = { business: state.businessId, branch: state.branchId };
+    // The page started asking for the session before the code loaded; use that answer when it fits.
+    const early = window.__ghMe;
+    window.__ghMe = null;
+    const got = early && early.url === endpoint('me', params) ? await early.p : null;
+    if (got) { state.me = got; rememberRead('me', params, got); } else state.me = await api.get('me', params);
   } catch (err) {
     if (err.status === 401 && window.BZL.loginUrl) { location.replace(window.BZL.loginUrl); throw err; }
     mount(app, h('div', { class: 'boot-error' }, icon('alert', 40), h('h1', {}, t('Could not load Goriber Hisab')), h('p', {}, err.message),
@@ -387,7 +392,7 @@ async function switchBusiness(businessId, branchId) {
   mount(app, spinner());
   await loadSession();
   render(current());
-  refreshSnapshot();
+  refreshSnapshot({ force: true });
 }
 
 function globalSearch() {

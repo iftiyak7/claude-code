@@ -309,7 +309,7 @@ function termForm(kind, x, onDone) {
   const m = modal({
     title: x ? t('Edit') : t('Add'), size: 'sm', body: f,
     actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
-      try { if (x) await api.put(`taxonomies/${kind}/${x.id}`, values(f)); else await api.post(`taxonomies/${kind}`, values(f)); m.close(); onDone(); refreshSnapshot(); }
+      try { if (x) await api.put(`taxonomies/${kind}/${x.id}`, values(f)); else await api.post(`taxonomies/${kind}`, values(f)); m.close(); onDone(); refreshSnapshot({ force: true }); }
       catch (err) { showFieldErrors(f, err.errors || {}); showError(err); }
     } }, t('Save'))],
   });

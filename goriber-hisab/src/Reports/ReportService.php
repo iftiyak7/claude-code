@@ -33,6 +33,13 @@ final class ReportService extends Service {
 
 	private AccountService $accounts;
 
+	private ?\GoriberHisab\Inventory\StockService $stock = null;
+
+	/** Stock items (each size on its own) come from the stock service. */
+	public function setStock( \GoriberHisab\Inventory\StockService $stock ): void {
+		$this->stock = $stock;
+	}
+
 	public function __construct( Database $db, Clock $clock, Events $events, AccountService $accounts ) {
 		parent::__construct( $db, $clock, $events );
 		$this->accounts = $accounts;
@@ -82,13 +89,9 @@ final class ReportService extends Service {
 			)
 		);
 
-		$pt  = $this->db->table( 'products' );
-		$low = (int) $this->db->value(
-			"SELECT COUNT(*) FROM {$pt} p
-			WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active' AND p.min_stock > 0
-			AND COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) <= p.min_stock",
-			array( $ctx->business_id, $ctx->branch_id )
-		);
+		// Low stock for the same branches as every other number here; each size on its own.
+		$low_list = array_values( array_filter( $this->stock->stockItems( $ctx, $branch ), array( \GoriberHisab\Inventory\StockService::class, 'isLow' ) ) );
+		$low      = count( $low_list );
 
 
 		// Same length period just before, for "▲ 12%" hints.
@@ -102,14 +105,9 @@ final class ReportService extends Service {
 			"SELECT id, name, phone, balance FROM {$ct} WHERE business_id = %d AND type = 'customer' AND balance > 0 AND deleted_at IS NULL ORDER BY balance DESC LIMIT 5",
 			array( $ctx->business_id )
 		);
-		$low_items = $this->db->rows(
-			"SELECT p.id, p.name, p.min_stock,
-				COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) AS qty
-			FROM {$pt} p
-			WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active' AND p.min_stock > 0
-			AND COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.branch_id = %d),0) <= p.min_stock
-			ORDER BY qty ASC LIMIT 6",
-			array( $ctx->branch_id, $ctx->business_id, $ctx->branch_id )
+		$low_items = array_map(
+			static fn( $i ) => array( 'id' => $i['product_id'], 'variant_id' => $i['variant_id'], 'name' => $i['name'], 'min_stock' => Decimal::toString( $i['min_stock'] ), 'qty' => Decimal::toString( $i['qty'] ) ),
+			array_slice( $low_list, 0, 6 )
 		);
 
 		return array(
@@ -304,8 +302,13 @@ final class ReportService extends Service {
 					$due   += Decimal::of( $r['due_amount'] );
 					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/sales/' . $r['id'], 'title' => $r['number'], 'sub' => $r['contact'] ?: '', 'phone' => (string) $r['phone'], 'date' => $r['date'], 'amount' => $m( $r['total'] ), 'due' => $m( $r['due_amount'] ), 'status' => $r['payment_status'] );
 				}
+				// Totals over every invoice; the list itself shows the latest 300.
+				$all   = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(x.total),0) AS total, COALESCE(SUM(x.paid_amount),0) AS paid, COALESCE(SUM(x.due_amount),0) AS due FROM {$st} x WHERE x.business_id = %d AND x.status = 'completed' AND x.sale_date BETWEEN %s AND %s{$bs}{$where}", $base );
+				$total = Decimal::of( $all['total'] );
+				$paid  = Decimal::of( $all['paid'] );
+				$due   = Decimal::of( $all['due'] );
 				$out['summary'] = array(
-					array( 'label' => 'Invoices', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Invoices', 'value' => (string) (int) $all['n'], 'count' => true ),
 					array( 'label' => 'Total', 'value' => Decimal::toString( $total ) ),
 					array( 'label' => 'Paid', 'value' => Decimal::toString( $paid ), 'tone' => 'ok' ),
 					array( 'label' => 'Due', 'value' => Decimal::toString( $due ), 'tone' => $due > 0 ? 'warn' : '' ),
@@ -328,8 +331,11 @@ final class ReportService extends Service {
 					$due   += Decimal::of( $r['due_amount'] );
 					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/purchases/' . $r['id'], 'title' => $r['number'], 'sub' => $r['contact'] ?: '', 'date' => $r['date'], 'amount' => $m( $r['total'] ), 'due' => $m( $r['due_amount'] ), 'status' => $r['payment_status'] );
 				}
+				$all   = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(x.total),0) AS total, COALESCE(SUM(x.due_amount),0) AS due FROM {$pt} x WHERE x.business_id = %d AND x.status = 'completed' AND x.purchase_date BETWEEN %s AND %s{$bs}", $base );
+				$total = Decimal::of( $all['total'] );
+				$due   = Decimal::of( $all['due'] );
 				$out['summary'] = array(
-					array( 'label' => 'Purchases', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Purchases', 'value' => (string) (int) $all['n'], 'count' => true ),
 					array( 'label' => 'Total', 'value' => Decimal::toString( $total ) ),
 					array( 'label' => 'Unpaid', 'value' => Decimal::toString( $due ), 'tone' => $due > 0 ? 'warn' : '' ),
 				);
@@ -352,6 +358,12 @@ final class ReportService extends Service {
 					$total += Decimal::of( $r['amount'] );
 					$by[ (string) $r['category'] ] = ( $by[ (string) $r['category'] ] ?? 0 ) + Decimal::of( $r['amount'] );
 					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/expenses/' . $r['id'], 'title' => (string) $r['category'], 'sub' => trim( (string) $r['description'] ), 'date' => $r['date'], 'amount' => $m( $r['amount'] ) );
+				}
+				$by    = array();
+				$total = 0;
+				foreach ( $this->db->rows( "SELECT a.name AS category, SUM(x.amount) AS amount FROM {$et} x LEFT JOIN {$at} a ON a.id = x.account_id WHERE x.business_id = %d AND x.status = 'completed' AND x.expense_date BETWEEN %s AND %s{$bs} GROUP BY a.name", $base ) as $r ) {
+					$by[ (string) $r['category'] ] = Decimal::of( $r['amount'] );
+					$total                        += Decimal::of( $r['amount'] );
 				}
 				arsort( $by );
 				$out['summary'][] = array( 'label' => 'Total', 'value' => Decimal::toString( $total ) );
@@ -377,6 +389,12 @@ final class ReportService extends Service {
 					$total += Decimal::of( $r['amount'] );
 					$by[ (string) $r['account'] ] = ( $by[ (string) $r['account'] ] ?? 0 ) + Decimal::of( $r['amount'] );
 					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/payments/' . $r['id'], 'title' => $r['contact'] ?: (string) $r['number'], 'sub' => (string) $r['account'], 'date' => $r['date'], 'amount' => $m( $r['amount'] ) );
+				}
+				$by    = array();
+				$total = 0;
+				foreach ( $this->db->rows( "SELECT a.name AS account, SUM(x.amount) AS amount FROM {$pm} x LEFT JOIN {$at} a ON a.id = x.account_id WHERE x.business_id = %d AND x.status = 'completed' AND x.direction = 'in' AND x.source IN ('sale','collection') AND x.payment_date BETWEEN %s AND %s{$bs} GROUP BY a.name", $base ) as $r ) {
+					$by[ (string) $r['account'] ] = Decimal::of( $r['amount'] );
+					$total                       += Decimal::of( $r['amount'] );
 				}
 				$out['summary'][] = array( 'label' => 'Total', 'value' => Decimal::toString( $total ), 'tone' => 'ok' );
 				foreach ( $by as $name => $v ) {
@@ -415,8 +433,10 @@ final class ReportService extends Service {
 					$total += Decimal::of( $r['balance'] );
 					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/' . $type . 's/' . $r['id'], 'title' => $r['name'], 'sub' => (string) $r['phone'], 'phone' => (string) $r['phone'], 'date' => $r['last_activity_at'] ? substr( (string) $r['last_activity_at'], 0, 10 ) : '', 'amount' => $m( $r['balance'] ) );
 				}
+				$all   = $this->db->row( "SELECT COUNT(*) AS n, COALESCE(SUM(balance),0) AS total FROM {$ct} WHERE business_id = %d AND type = %s AND balance > 0 AND deleted_at IS NULL", array( $ctx->business_id, $type ) );
+				$total = Decimal::of( $all['total'] );
 				$out['summary'] = array(
-					array( 'label' => 'customer' === $type ? 'Customers with due' : 'Suppliers to pay', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'customer' === $type ? 'Customers with due' : 'Suppliers to pay', 'value' => (string) (int) $all['n'], 'count' => true ),
 					array( 'label' => 'Total', 'value' => Decimal::toString( $total ), 'tone' => 'warn' ),
 				);
 				$out['link'] = 'customer' === $type ? '/reports/dues' : '/reports/dues?type=supplier';
@@ -424,26 +444,21 @@ final class ReportService extends Service {
 
 			case 'stock':
 				$ctx->authorize( 'inventory.view' );
-				$pt   = $this->db->table( 'products' );
-				$sl   = $this->db->table( 'stock_levels' );
-				$cost = $ctx->can( 'products.cost' );
-				$rows = $this->db->rows(
-					"SELECT p.id, p.name, p.min_stock, COALESCE(SUM(s.qty),0) AS qty, COALESCE(SUM(s.value),0) AS value
-					FROM {$pt} p LEFT JOIN {$sl} s ON s.product_id = p.id AND s.business_id = p.business_id
-					WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'
-					GROUP BY p.id, p.name, p.min_stock ORDER BY (COALESCE(SUM(s.qty),0) <= p.min_stock) DESC, value DESC LIMIT 300",
-					array( $ctx->business_id )
-				);
+				$cost  = $ctx->can( 'products.cost' );
+				$items = $this->stock->stockItems( $ctx, $branch );
 				$total = 0;
 				$low   = 0;
-				foreach ( $rows as $r ) {
-					$is_low = Decimal::of( $r['qty'] ) <= Decimal::of( $r['min_stock'] ) && Decimal::of( $r['min_stock'] ) > 0;
-					$low   += $is_low ? 1 : 0;
-					$total += Decimal::of( $r['value'] );
-					$out['items'][] = array( 'id' => (int) $r['id'], 'link' => '/products/' . $r['id'], 'title' => $r['name'], 'qty' => $m( $r['qty'] ), 'amount' => $cost ? $m( $r['value'] ) : null, 'low' => $is_low );
+				foreach ( $items as $r ) {
+					$low   += \GoriberHisab\Inventory\StockService::isLow( $r ) ? 1 : 0;
+					$total += $r['value'];
+				}
+				// Low ones first, then the most valuable; the list shows 300, the totals count all.
+				usort( $items, static fn( $a, $b ) => ( \GoriberHisab\Inventory\StockService::isLow( $b ) <=> \GoriberHisab\Inventory\StockService::isLow( $a ) ) ?: $b['value'] <=> $a['value'] );
+				foreach ( array_slice( $items, 0, 300 ) as $r ) {
+					$out['items'][] = array( 'id' => $r['product_id'], 'link' => '/products/' . $r['product_id'], 'title' => $r['name'], 'qty' => Decimal::toString( $r['qty'] ), 'amount' => $cost ? Decimal::toString( $r['value'] ) : null, 'low' => \GoriberHisab\Inventory\StockService::isLow( $r ) );
 				}
 				$out['summary'] = array(
-					array( 'label' => 'Products', 'value' => (string) count( $rows ), 'count' => true ),
+					array( 'label' => 'Products', 'value' => (string) count( $items ), 'count' => true ),
 					array( 'label' => 'Low on stock', 'value' => (string) $low, 'count' => true, 'tone' => $low ? 'warn' : '' ),
 				);
 				if ( $cost ) {
@@ -523,7 +538,11 @@ final class ReportService extends Service {
 		$f                 = new \DateTimeImmutable( $from );
 		$t                 = new \DateTimeImmutable( $to );
 		$days              = (int) $f->diff( $t )->days + 1;
-		if ( '01' === $f->format( 'd' ) && $days <= 31 ) {
+		if ( '01' === $f->format( 'd' ) && $t->format( 'Y-m-d' ) === $t->modify( 'last day of this month' )->format( 'Y-m-d' ) && $f->format( 'Y-m' ) === $t->format( 'Y-m' ) ) {
+			// A whole month → the whole month before (February is not cut to 28 days of January).
+			$pf = $f->modify( 'first day of last month' );
+			$pt = $pf->modify( 'last day of this month' );
+		} elseif ( '01' === $f->format( 'd' ) && $days <= 31 ) {
 			// Month so far → the same days of last month.
 			$pf = $f->modify( 'first day of last month' );
 			$pt = $pf->modify( '+' . ( $days - 1 ) . ' days' );
@@ -649,10 +668,10 @@ final class ReportService extends Service {
 		list( $bs, $bp ) = $this->branchSql( $branch, 's.branch_id' );
 		$order = $profit_ok ? 'profit DESC' : 'net DESC';
 		$prods = $this->db->rows(
-			"SELECT i.product_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit
+			"SELECT i.product_id, i.variant_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit, COUNT(DISTINCT i.sale_id) AS orders
 			FROM {$si} i JOIN {$st} s ON s.id = i.sale_id
 			WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}
-			GROUP BY i.product_id ORDER BY {$order} LIMIT 5",
+			GROUP BY i.product_id, i.variant_id ORDER BY {$order} LIMIT 5",
 			array_merge( array( $ctx->business_id, $from, $to ), $bp )
 		);
 		$shape    = static fn( $r ) => array(
@@ -669,10 +688,10 @@ final class ReportService extends Service {
 		$best = array_map(
 			$shape,
 			$this->db->rows(
-				"SELECT i.product_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit, COUNT(DISTINCT i.sale_id) AS orders
+				"SELECT i.product_id, i.variant_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS net, SUM(i.net_amount - i.cost_amount) AS profit, COUNT(DISTINCT i.sale_id) AS orders
 				FROM {$si} i JOIN {$st} s ON s.id = i.sale_id
 				WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}
-				GROUP BY i.product_id HAVING SUM(i.qty - i.returned_qty) > 0 ORDER BY qty DESC, net DESC LIMIT 5",
+				GROUP BY i.product_id, i.variant_id HAVING SUM(i.qty - i.returned_qty) > 0 ORDER BY qty DESC, net DESC LIMIT 5",
 				array_merge( array( $ctx->business_id, $from, $to ), $bp )
 			)
 		);
@@ -887,8 +906,8 @@ final class ReportService extends Service {
 				'amount'     => Decimal::toString( Decimal::of( $r['amount'] ) ),
 			),
 			$this->db->rows(
-				"SELECT i.product_id, MAX(i.name) AS name, SUM(i.qty) AS qty, SUM(i.net_amount) AS amount FROM {$i} i JOIN {$s} s ON s.id = i.sale_id
-				WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs} GROUP BY i.product_id ORDER BY amount DESC LIMIT %d",
+				"SELECT i.product_id, i.variant_id, MAX(i.name) AS name, SUM(i.qty - i.returned_qty) AS qty, SUM(i.net_amount) AS amount FROM {$i} i JOIN {$s} s ON s.id = i.sale_id
+				WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs} GROUP BY i.product_id, i.variant_id ORDER BY amount DESC LIMIT %d",
 				array_merge( array( $ctx->business_id, $from, $to ), $bp, array( $limit ) )
 			)
 		);
@@ -1216,7 +1235,7 @@ final class ReportService extends Service {
 		$groups = array(
 			'day'      => array( 's.sale_date', 'MAX(s.sale_date)', '' ),
 			'month'    => array( 'SUBSTR(s.sale_date,1,7)', 'MAX(SUBSTR(s.sale_date,1,7))', '' ),
-			'product'  => array( 'i.product_id', 'MAX(i.name)', '' ),
+			'product'  => array( '(i.product_id * 1000000 + i.variant_id)', 'MAX(i.name)', '' ), // each size is its own row
 			'customer' => array( 's.customer_id', "COALESCE(MAX(c.name), 'Walk-in')", "LEFT JOIN {$c} c ON c.id = s.customer_id" ),
 			'user'     => array( '(CASE WHEN s.seller_id > 0 THEN ' . self::SELLER_KEY . ' + s.seller_id WHEN s.salesperson_id > 0 THEN s.salesperson_id ELSE s.created_by END)', 'MAX(s.created_by)', '' ),
 			'branch'   => array( 's.branch_id', 'MAX(b.name)', "LEFT JOIN {$b} b ON b.id = s.branch_id" ),
@@ -1228,8 +1247,9 @@ final class ReportService extends Service {
 		list( $key, $label, $join ) = $groups[ $group ];
 		$limit                      = max( 1, min( 1000, (int) ( $args['limit'] ?? 500 ) ) );
 
+		list( $ln, $lc ) = $this->returnedOfLine( 'i.id' );
 		$rows = $this->db->rows(
-			"SELECT {$key} AS group_key, {$label} AS label, COUNT(DISTINCT s.id) AS invoices, SUM(i.qty) AS qty, SUM(i.net_amount) AS net, SUM(i.tax_amount) AS tax, SUM(i.cost_amount) AS cost, SUM(i.returned_qty) AS returned_qty
+			"SELECT {$key} AS group_key, {$label} AS label, COUNT(DISTINCT s.id) AS invoices, SUM(i.qty) AS qty, SUM(i.net_amount) AS net, SUM(i.tax_amount) AS tax, SUM(i.cost_amount) AS cost, SUM(i.returned_qty) AS returned_qty, SUM({$ln}) AS ret_net, SUM({$lc}) AS ret_cost
 			FROM {$i} i JOIN {$s} s ON s.id = i.sale_id {$join}
 			WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}
 			GROUP BY {$key} ORDER BY " . ( in_array( $group, array( 'day', 'month' ), true ) ? 'group_key' : 'net DESC' ) . ' LIMIT %d',
@@ -1260,6 +1280,9 @@ final class ReportService extends Service {
 			$net             = Decimal::of( $r['net'] );
 			$tax             = Decimal::of( $r['tax'] );
 			$cost            = Decimal::of( $r['cost'] );
+			$kept_net        = $net - Decimal::of( $r['ret_net'] );  // after returns
+			$kept_cost       = $cost - Decimal::of( $r['ret_cost'] );
+			$totals['kept']  = ( $totals['kept'] ?? 0 ) + $kept_net - $kept_cost;
 			$totals['net']  += $net;
 			$totals['tax']  += $tax;
 			$totals['cost'] += $cost;
@@ -1273,8 +1296,8 @@ final class ReportService extends Service {
 				'tax'          => Decimal::toString( $tax ),
 				'total'        => Decimal::toString( $net + $tax ),
 				'cost'         => $profit_ok ? Decimal::toString( $cost ) : null,
-				'profit'       => $profit_ok ? Decimal::toString( $net - $cost ) : null,
-				'margin'       => $profit_ok && $net ? Decimal::toString( Decimal::mul( Decimal::div( $net - $cost, $net ), Decimal::of( 100 ) ), 2 ) : null,
+				'profit'       => $profit_ok ? Decimal::toString( $kept_net - $kept_cost ) : null,
+				'margin'       => $profit_ok && $kept_net ? Decimal::toString( Decimal::mul( Decimal::div( $kept_net - $kept_cost, $kept_net ), Decimal::of( 100 ) ), 2 ) : null,
 			);
 		}
 		return array(
@@ -1287,9 +1310,9 @@ final class ReportService extends Service {
 				'tax'    => Decimal::toString( $totals['tax'] ),
 				'total'  => Decimal::toString( $totals['net'] + $totals['tax'] ),
 				'cost'   => $profit_ok ? Decimal::toString( $totals['cost'] ) : null,
-				'profit' => $profit_ok ? Decimal::toString( $totals['net'] - $totals['cost'] ) : null,
+				'profit' => $profit_ok ? Decimal::toString( $totals['kept'] ?? 0 ) : null,
 			),
-			'note'     => 'Figures are gross of returns; see returns report for credits.',
+			'note'     => 'Sales and cost are before returns; profit is after returns.',
 		);
 	}
 
@@ -1300,6 +1323,7 @@ final class ReportService extends Service {
 	 * @return array<string,mixed>
 	 */
 	public function invoiceProfit( BusinessContext $ctx, array $args ): array {
+		list( $ret_net, $ret_cost ) = $this->returnedOfSale( 's.id' );
 		$ctx->authorize( 'reports.profit' );
 		list( $from, $to )                = $this->range( $ctx, $args + array( 'range' => 'this_month' ) );
 		$branch                           = $this->branchFilter( $ctx, $args );
@@ -1312,19 +1336,45 @@ final class ReportService extends Service {
 		$total                            = (int) $this->db->value( "SELECT COUNT(*) FROM {$s} s WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs}", $params );
 		$rows                             = $this->db->rows(
 			"SELECT s.id, s.number, s.sale_date, c.name AS customer_name, s.total, s.cost_amount,
-				(SELECT COALESCE(SUM(i.net_amount),0) FROM {$i} i WHERE i.sale_id = s.id) AS net
+				(SELECT COALESCE(SUM(i.net_amount),0) FROM {$i} i WHERE i.sale_id = s.id) AS net, {$ret_net} AS ret_net, {$ret_cost} AS ret_cost
 			FROM {$s} s LEFT JOIN {$c} c ON c.id = s.customer_id
 			WHERE s.business_id = %d AND s.status = 'completed' AND s.sale_date BETWEEN %s AND %s{$bs} ORDER BY s.sale_date DESC, s.id DESC LIMIT %d OFFSET %d",
 			array_merge( $params, array( $per_page, $offset ) )
 		);
 		foreach ( $rows as &$r ) {
-			$net         = Decimal::of( $r['net'] );
-			$cost        = Decimal::of( $r['cost_amount'] );
+			// What was returned is no longer sold: take it off both sides.
+			$net         = Decimal::of( $r['net'] ) - Decimal::of( $r['ret_net'] );
+			$cost        = Decimal::of( $r['cost_amount'] ) - Decimal::of( $r['ret_cost'] );
+			unset( $r['ret_net'], $r['ret_cost'] );
 			$r['net']    = Decimal::toString( $net );
 			$r['profit'] = Decimal::toString( $net - $cost );
 			$r['margin'] = $net ? Decimal::toString( Decimal::mul( Decimal::div( $net - $cost, $net ), Decimal::of( 100 ) ), 2 ) : '0.00';
 		}
 		return $this->paged( $rows, $total, $page, $per_page );
+	}
+
+	/**
+	 * SQL for the net amount and cost returned against a sale (completed sale returns).
+	 *
+	 * @return array{0:string,1:string}
+	 */
+	public function returnedOfSale( string $sale_id_sql ): array {
+		$ri = $this->db->table( 'return_items' );
+		$rt = $this->db->table( 'returns' );
+		$w  = "FROM {$ri} ri JOIN {$rt} r ON r.id = ri.return_id WHERE r.document_id = {$sale_id_sql} AND r.return_type = 'sale' AND r.status = 'completed'";
+		return array( "(SELECT COALESCE(SUM(ri.net_amount),0) {$w})", "(SELECT COALESCE(SUM(ri.cost_amount),0) {$w})" );
+	}
+
+	/**
+	 * SQL for the net amount and cost returned of one sale line.
+	 *
+	 * @return array{0:string,1:string}
+	 */
+	public function returnedOfLine( string $item_id_sql ): array {
+		$ri = $this->db->table( 'return_items' );
+		$rt = $this->db->table( 'returns' );
+		$w  = "FROM {$ri} ri JOIN {$rt} r ON r.id = ri.return_id WHERE ri.document_item_id = {$item_id_sql} AND r.return_type = 'sale' AND r.status = 'completed'";
+		return array( "(SELECT COALESCE(SUM(ri.net_amount),0) {$w})", "(SELECT COALESCE(SUM(ri.cost_amount),0) {$w})" );
 	}
 
 	/**
@@ -1344,7 +1394,7 @@ final class ReportService extends Service {
 		list( $bs, $bp )   = $this->branchSql( $branch, 'p.branch_id' );
 		$groups            = array(
 			'supplier' => array( 'p.supplier_id', "COALESCE(MAX(c.name), 'Cash purchase')", "LEFT JOIN {$c} c ON c.id = p.supplier_id" ),
-			'product'  => array( 'i.product_id', 'MAX(i.name)', '' ),
+			'product'  => array( '(i.product_id * 1000000 + i.variant_id)', 'MAX(i.name)', '' ), // each size is its own row
 			'day'      => array( 'p.purchase_date', 'MAX(p.purchase_date)', '' ),
 			'month'    => array( 'SUBSTR(p.purchase_date,1,7)', 'MAX(SUBSTR(p.purchase_date,1,7))', '' ),
 		);
@@ -1523,28 +1573,40 @@ final class ReportService extends Service {
 	public function slowMovers( BusinessContext $ctx, array $args ): array {
 		$ctx->authorize( 'reports.view' );
 		list( $from, $to ) = $this->range( $ctx, $args + array( 'range' => 'last_90' ) );
-		$p                 = $this->db->table( 'products' );
-		$st                = $this->db->table( 'stock_levels' );
-		$i                 = $this->db->table( 'sale_items' );
-		$s                 = $this->db->table( 'sales' );
-		$rows              = $this->db->rows(
-			"SELECT p.id, p.name, p.sku, COALESCE((SELECT SUM(x.qty) FROM {$st} x WHERE x.business_id = p.business_id AND x.product_id = p.id),0) AS stock,
-				COALESCE((SELECT SUM(si.qty) FROM {$i} si JOIN {$s} sa ON sa.id = si.sale_id WHERE si.product_id = p.id AND sa.business_id = p.business_id AND sa.status = 'completed' AND sa.sale_date BETWEEN %s AND %s),0) AS sold
-			FROM {$p} p WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'
-			ORDER BY sold ASC, stock DESC LIMIT %d",
-			array( $from, $to, $ctx->business_id, max( 1, min( 200, (int) ( $args['limit'] ?? 20 ) ) ) )
-		);
-		$out = array();
-		foreach ( $rows as $r ) {
-			if ( Decimal::of( $r['stock'] ) <= 0 ) {
+		$branch            = $this->branchFilter( $ctx, $args );
+		list( $bs, $bp )   = $this->branchSql( $branch, 'm.branch_id' );
+		$mt                = $this->db->table( 'stock_movements' );
+		// What actually left the shelf by selling: sales net of voids and returns, plus
+		// ingredients used by recipes and packing (counted from stock moves, per size).
+		$used = array();
+		foreach ( $this->db->rows(
+			"SELECT m.product_id, m.variant_id, -SUM(CASE
+				WHEN m.movement_type IN ('sale','sale_void','sale_return','sale_return_void') THEN m.qty
+				WHEN m.movement_type = 'pack' AND m.qty < 0 THEN m.qty
+				WHEN m.movement_type = 'unpack' AND m.qty > 0 THEN m.qty
+				ELSE 0 END) AS sold
+			FROM {$mt} m WHERE m.business_id = %d AND m.movement_date BETWEEN %s AND %s{$bs} GROUP BY m.product_id, m.variant_id",
+			array_merge( array( $ctx->business_id, $from, $to ), $bp )
+		) as $r ) {
+			$used[ $r['product_id'] . ':' . $r['variant_id'] ] = Decimal::of( $r['sold'] );
+		}
+		$rows = array();
+		foreach ( $this->stock->stockItems( $ctx, $branch ) as $item ) {
+			if ( $item['qty'] <= 0 ) {
 				continue;
 			}
+			$rows[] = array( $item, $used[ $item['product_id'] . ':' . $item['variant_id'] ] ?? 0 );
+		}
+		usort( $rows, static fn( $x, $y ) => $x[1] <=> $y[1] ?: $y[0]['qty'] <=> $x[0]['qty'] );
+		$out = array();
+		foreach ( array_slice( $rows, 0, max( 1, min( 200, (int) ( $args['limit'] ?? 20 ) ) ) ) as list( $item, $sold ) ) {
 			$out[] = array(
-				'product_id' => (int) $r['id'],
-				'name'       => $r['name'],
-				'sku'        => $r['sku'],
-				'stock'      => Decimal::toString( Decimal::of( $r['stock'] ) ),
-				'sold'       => Decimal::toString( Decimal::of( $r['sold'] ) ),
+				'product_id' => $item['product_id'],
+				'variant_id' => $item['variant_id'],
+				'name'       => $item['name'],
+				'sku'        => $item['sku'],
+				'stock'      => Decimal::toString( $item['qty'] ),
+				'sold'       => Decimal::toString( max( 0, $sold ) ),
 			);
 		}
 		return $out;

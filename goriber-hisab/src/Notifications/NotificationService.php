@@ -34,6 +34,12 @@ final class NotificationService extends Service {
 	 */
 	private ?array $channels = null;
 
+	private ?\GoriberHisab\Inventory\StockService $stock = null;
+
+	public function setStock( \GoriberHisab\Inventory\StockService $stock ): void {
+		$this->stock = $stock;
+	}
+
 	public function __construct( Database $db, Clock $clock, Events $events, SettingsService $settings ) {
 		parent::__construct( $db, $clock, $events );
 		$this->settings = $settings;
@@ -45,7 +51,7 @@ final class NotificationService extends Service {
 	public function subscribe(): void {
 		$this->events->listen(
 			'goriber_hisab/stock/low',
-			function ( BusinessContext $ctx, array $product, int $qty ) {
+			function ( BusinessContext $ctx, array $product, int $qty, int $branch = 0 ) {
 				if ( $this->settings->all( $ctx )['notifications.low_stock'] ) {
 					$left = self::qty( Decimal::toString( $qty ) );
 					$min  = self::qty( Decimal::toString( Decimal::of( $product['min_stock'] ) ) );
@@ -56,12 +62,13 @@ final class NotificationService extends Service {
 						sprintf( 'Only %s left (minimum %s).', $left, $min ),
 						array(
 							'product_id' => (int) $product['id'],
+							'variant_id' => (int) ( $product['variant_id'] ?? 0 ),
 							'name'       => (string) $product['name'],
 							'qty'        => $left,
 							'min'        => $min,
 						),
 						'warning',
-						'low_stock:' . $product['id']
+						'low_stock:' . $product['id'] . ':' . (int) ( $product['variant_id'] ?? 0 ) . ':' . $branch
 					);
 				}
 			}
@@ -207,19 +214,21 @@ final class NotificationService extends Service {
 		if ( ! $this->settings->all( $ctx )['notifications.low_stock'] ) {
 			return;
 		}
-		$pt   = $this->db->table( 'products' );
-		$st   = $this->db->table( 'stock_levels' );
-		$rows = $this->db->rows(
-			"SELECT p.name FROM {$pt} p
-			WHERE p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active' AND p.min_stock > 0
-			AND COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id),0) <= p.min_stock
-			ORDER BY p.name",
-			array( $ctx->business_id )
-		);
-		if ( ! $rows ) {
+		// Branch by branch, each size on its own: 0 here and 50 in another branch is still low here.
+		$bt       = $this->db->table( 'branches' );
+		$branches = array_map( 'intval', $this->db->column( "SELECT id FROM {$bt} WHERE business_id = %d AND deleted_at IS NULL", array( $ctx->business_id ) ) );
+		$names    = array();
+		foreach ( $branches as $b ) {
+			foreach ( $this->stock->stockItems( $ctx, array( $b ) ) as $i ) {
+				if ( \GoriberHisab\Inventory\StockService::isLow( $i ) ) {
+					$names[] = $i['name'] . ( count( $branches ) > 1 ? ' (' . (string) $this->db->value( "SELECT name FROM {$bt} WHERE id = %d", array( $b ) ) . ')' : '' );
+				}
+			}
+		}
+		if ( ! $names ) {
 			return;
 		}
-		$names = array_column( $rows, 'name' );
+		sort( $names );
 		$list  = implode( ', ', array_slice( $names, 0, 6 ) ) . ( count( $names ) > 6 ? ' …' : '' );
 		$this->notify( $ctx, 'low_stock_summary', sprintf( '%d products are low on stock', count( $names ) ), $list, array( 'count' => count( $names ), 'names' => $list ), 'warning', 'low_stock_summary:' . substr( $this->now(), 0, 10 ) );
 	}

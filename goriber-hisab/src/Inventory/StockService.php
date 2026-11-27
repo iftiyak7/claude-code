@@ -67,6 +67,23 @@ final class StockService extends Service {
 				$new_qty   = $qty + $item['qty'];
 				$new_value = $value + $item['value'];
 				$unit      = Decimal::div( $item['value'], $item['qty'] );
+				if ( $qty < 0 ) {
+					// Stock was sold before it was here (minus stock). The units now coming in first
+					// cover those sales: their cost goes to those sales, the rest stays as stock.
+					$keep  = $new_qty > 0 ? Decimal::mul( $new_qty, $unit ) : $value;
+					$extra = $new_value - $keep;
+					if ( 0 !== $extra ) {
+						$this->journal->post(
+							$ctx,
+							array( 'date' => Text::date( $meta['date'] ?? null ) ?? $this->today( $ctx ), 'source' => 'stock_cover', 'source_id' => (int) $item['product_id'], 'memo' => 'Cost of goods sold before they were in stock: ' . ( $meta['product_name'] ?? '#' . $item['product_id'] ) ),
+							array(
+								array( 'account' => 'cogs', 'debit' => max( 0, $extra ), 'credit' => max( 0, -$extra ) ),
+								array( 'account' => 'inventory', 'credit' => max( 0, $extra ), 'debit' => max( 0, -$extra ) ),
+							)
+						);
+					}
+					$new_value = $keep;
+				}
 				$new_avg   = $new_qty > 0 ? Decimal::div( $new_value, $new_qty ) : ( $avg > 0 ? $avg : $unit );
 
 				$this->save( $level, $new_qty, $new_value, $new_avg );
@@ -116,7 +133,8 @@ final class StockService extends Service {
 				if ( 0 === $new_qty ) {
 					$cost = $value; // Emptying: take exactly what is left.
 				} elseif ( null !== $requested && $new_qty > 0 ) {
-					$cost = $requested;
+					// Never take off more than the stock is worth: what stays must not go below ৳0.
+					$cost = min( $requested, max( 0, $value ) );
 				} else {
 					$cost = Decimal::mul( $item['qty'], $avg );
 				}
@@ -134,7 +152,7 @@ final class StockService extends Service {
 				$this->record( $ctx, $branch, $item, $meta, -$item['qty'], $unit, -$cost, $qty, $new_qty );
 
 				$this->events->dispatch( 'goriber_hisab/stock/changed', $ctx, (int) $item['product_id'], $new_qty, $branch );
-				$this->checkLow( $ctx, (int) $item['product_id'], $qty, $new_qty, $branch );
+				$this->checkLow( $ctx, (int) $item['product_id'], (int) ( $item['variant_id'] ?? 0 ), $qty, $new_qty, $branch );
 
 				return array(
 					'cost'      => $cost,
@@ -164,10 +182,15 @@ final class StockService extends Service {
 		$sa     = $this->db->table( 'sales' );
 		$mt     = $this->db->table( 'stock_movements' );
 		$levels = $this->db->rows( "SELECT * FROM {$st} WHERE business_id = %d AND product_id = %d AND variant_id = %d AND qty > 0 AND value <= 0", array( $ctx->business_id, $product_id, $variant_id ) );
+		$pt     = $this->db->table( 'products' );
+		// Only lines that really took stock out at ৳0: a stock item, and not sold into minus
+		// (stock sold before it existed gets its cost when it is bought, not from here).
 		$lines  = $this->db->rows(
-			"SELECT i.id, i.sale_id, i.qty, i.name, s.sale_date, s.number, s.branch_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id
-			WHERE i.business_id = %d AND i.product_id = %d AND i.variant_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND i.returned_qty = 0
-				AND (i.components IS NULL OR i.components = '' OR i.components = '[]') AND s.status = 'completed'",
+			"SELECT i.id, i.sale_id, i.qty, i.name, s.sale_date, s.number, s.branch_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id JOIN {$pt} p ON p.id = i.product_id
+			WHERE i.business_id = %d AND i.product_id = %d AND i.variant_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND i.returned_qty = 0 AND p.track_stock = 1
+				AND (i.components IS NULL OR i.components = '' OR i.components = '[]') AND s.status = 'completed'
+				AND EXISTS (SELECT 1 FROM {$mt} m WHERE m.business_id = i.business_id AND m.reference_type = 'sale' AND m.reference_id = i.sale_id AND m.product_id = i.product_id AND m.variant_id = i.variant_id AND m.qty < 0)
+				AND NOT EXISTS (SELECT 1 FROM {$mt} m WHERE m.business_id = i.business_id AND m.reference_type = 'sale' AND m.reference_id = i.sale_id AND m.product_id = i.product_id AND m.variant_id = i.variant_id AND m.qty_after < 0)",
 			array( $ctx->business_id, $product_id, $variant_id )
 		);
 		if ( ! $levels && ! $lines ) {
@@ -233,6 +256,16 @@ final class StockService extends Service {
 	}
 
 	/**
+	 * Did this document move stock of this product / size? Undoing a document
+	 * (void, return) follows what the document really did, not the product's
+	 * current "track stock" switch, which may have been changed since.
+	 */
+	public function moved( BusinessContext $ctx, string $ref_type, int $ref_id, int $product_id, int $variant_id ): bool {
+		$mt = $this->db->table( 'stock_movements' );
+		return (int) $this->db->value( "SELECT COUNT(*) FROM {$mt} WHERE business_id = %d AND reference_type = %s AND reference_id = %d AND product_id = %d AND variant_id = %d", array( $ctx->business_id, $ref_type, $ref_id, $product_id, $variant_id ) ) > 0;
+	}
+
+	/**
 	 * Purchase price of a product or one of its sizes (0 when not set).
 	 */
 	public function purchasePrice( BusinessContext $ctx, int $product_id, int $variant_id ): int {
@@ -268,10 +301,11 @@ final class StockService extends Service {
 		$st    = $this->db->table( 'stock_levels' );
 		$it    = $this->db->table( 'sale_items' );
 		$sa    = $this->db->table( 'sales' );
+		$pt    = $this->db->table( 'products' );
 		$pairs = $this->db->rows(
-			"SELECT DISTINCT product_id, variant_id FROM {$st} WHERE business_id = %d AND qty > 0 AND value <= 0
-			UNION SELECT DISTINCT i.product_id, i.variant_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id
-				WHERE i.business_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND s.status = 'completed'",
+			"SELECT DISTINCT s.product_id, s.variant_id FROM {$st} s JOIN {$pt} p ON p.id = s.product_id WHERE s.business_id = %d AND s.qty > 0 AND s.value <= 0 AND p.track_stock = 1
+			UNION SELECT DISTINCT i.product_id, i.variant_id FROM {$it} i JOIN {$sa} s ON s.id = i.sale_id JOIN {$pt} p ON p.id = i.product_id
+				WHERE i.business_id = %d AND i.cost_amount = 0 AND i.qty > 0 AND s.status = 'completed' AND p.track_stock = 1",
 			array( $ctx->business_id, $ctx->business_id )
 		);
 		$out = array( 'items' => 0, 'sales' => 0 );
@@ -504,9 +538,103 @@ final class StockService extends Service {
 	}
 
 	/**
+	 * Every stock item of the shop, the way a shop owner counts it: a product
+	 * without sizes is one item; each size of a product is its own item (500 g
+	 * and 1 kg never add up); the size-less "loose" stock of a product with
+	 * sizes is one more item when there is any. The single source for low-stock
+	 * checks, stock lights and stock lists.
+	 *
+	 * @param int[]|null $branches Branches to count (null = all).
+	 * @param string     $search   Name / SKU / barcode filter.
+	 * @return array<int,array{product_id:int,variant_id:int,name:string,size:string,loose:bool,sku:string,barcode:string,unit:string,image_id:int,min_stock:int,selling_price:int,qty:int,value:int}>
+	 */
+	public function stockItems( BusinessContext $ctx, ?array $branches, string $search = '' ): array {
+		$pt     = $this->db->table( 'products' );
+		$vt     = $this->db->table( 'product_variants' );
+		$st     = $this->db->table( 'stock_levels' );
+		$ut     = $this->db->table( 'units' );
+		$bc     = null === $branches ? '' : ( $branches ? ' AND s.branch_id IN (' . implode( ',', array_map( 'intval', $branches ) ) . ')' : ' AND 1 = 0' );
+		$where  = "p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'";
+		$params = array( $ctx->business_id );
+		$search = Text::line( $search, 100 );
+		if ( '' !== $search ) {
+			$where  .= ' AND (p.name LIKE %s OR p.sku LIKE %s OR p.barcode LIKE %s)';
+			$like    = '%' . $this->db->escapeLike( $search ) . '%';
+			$params  = array_merge( $params, array( $like, $like, $like ) );
+		}
+		$cols  = 'p.id AS product_id, p.name, p.sku, p.barcode, p.min_stock, p.selling_price, p.image_id, u.short_name AS unit';
+		$sum   = static fn( string $field, string $variant ) => "COALESCE((SELECT SUM(s.{$field}) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id AND s.variant_id = {$variant}{$bc}),0)";
+		$plain = $this->db->rows(
+			"SELECT {$cols}, 0 AS variant_id, '' AS size, " . $sum( 'qty', '0' ) . ' AS qty, ' . $sum( 'value', '0' ) . " AS value
+			FROM {$pt} p LEFT JOIN {$ut} u ON u.id = p.unit_id WHERE {$where} AND p.has_variants = 0",
+			$params
+		);
+		$sizes = $this->db->rows(
+			"SELECT p.id AS product_id, p.name, COALESCE(NULLIF(v.sku, ''), p.sku) AS sku, COALESCE(NULLIF(v.barcode, ''), p.barcode) AS barcode, p.min_stock, v.selling_price, p.image_id, u.short_name AS unit,
+				v.id AS variant_id, v.name AS size, " . $sum( 'qty', 'v.id' ) . ' AS qty, ' . $sum( 'value', 'v.id' ) . " AS value
+			FROM {$vt} v JOIN {$pt} p ON p.id = v.product_id LEFT JOIN {$ut} u ON u.id = p.unit_id WHERE {$where} AND p.has_variants = 1 AND v.deleted_at IS NULL",
+			$params
+		);
+		$loose = $this->db->rows(
+			"SELECT {$cols}, 0 AS variant_id, '' AS size, " . $sum( 'qty', '0' ) . ' AS qty, ' . $sum( 'value', '0' ) . " AS value
+			FROM {$pt} p LEFT JOIN {$ut} u ON u.id = p.unit_id WHERE {$where} AND p.has_variants = 1",
+			$params
+		);
+		$out = array();
+		foreach ( array( $plain, $sizes, $loose ) as $set => $rows ) {
+			foreach ( $rows as $r ) {
+				$qty = Decimal::of( $r['qty'] );
+				if ( 2 === $set && 0 === $qty ) {
+					continue; // a product with sizes and no loose stock has no loose item
+				}
+				$out[] = array(
+					'product_id'    => (int) $r['product_id'],
+					'variant_id'    => (int) $r['variant_id'],
+					'name'          => (string) $r['name'] . ( '' !== (string) $r['size'] ? ' - ' . $r['size'] : '' ),
+					'size'          => (string) $r['size'],
+					'loose'         => 2 === $set,
+					'sku'           => (string) $r['sku'],
+					'barcode'       => (string) $r['barcode'],
+					'unit'          => (string) ( $r['unit'] ?? '' ),
+					'image_id'      => (int) $r['image_id'],
+					'min_stock'     => Decimal::of( $r['min_stock'] ),
+					'selling_price' => Decimal::of( $r['selling_price'] ),
+					'qty'           => $qty,
+					'value'         => Decimal::of( $r['value'] ),
+				);
+			}
+		}
+		usort( $out, static fn( $a, $b ) => $a['qty'] <=> $b['qty'] ?: strcmp( $a['name'], $b['name'] ) );
+		return $out;
+	}
+
+	/** Is this item at or below the product's own minimum? */
+	public static function isLow( array $item ): bool {
+		return $item['min_stock'] > 0 && $item['qty'] <= $item['min_stock'];
+	}
+
+	/**
+	 * Branches to count for a request: one branch (if allowed), or every
+	 * branch the person may see (null = all).
+	 *
+	 * @return int[]|null
+	 */
+	public function branchScope( BusinessContext $ctx, $branch_id ): ?array {
+		$b = (int) $branch_id;
+		if ( $b > 0 ) {
+			if ( ! $ctx->canAccessBranch( $b ) ) {
+				throw new \GoriberHisab\Support\PermissionException( 'You do not have access to this branch.' );
+			}
+			return array( $b );
+		}
+		return array() === $ctx->branch_ids ? null : $ctx->branch_ids;
+	}
+
+	/**
 	 * Stock lights: red (about to run out), yellow (getting low), green (fine).
 	 * Red = at or below the shop's red mark or the product's own minimum;
 	 * yellow = at or below the yellow mark; everything above is green.
+	 * Each size is its own item.
 	 *
 	 * @param array<string,mixed> $args level (red|yellow|green), search, branch_id, limit.
 	 * @return array{marks:array{red:string,yellow:string},counts:array<string,int>,items:array<int,array<string,mixed>>}
@@ -518,43 +646,26 @@ final class StockService extends Service {
 		$s      = $this->settings->all( $ctx );
 		$red    = Decimal::of( max( 0, (int) $s['inventory.stock_red'] ) );
 		$yellow = Decimal::of( max( (int) $s['inventory.stock_red'], (int) $s['inventory.stock_yellow'] ) );
-		$branch = (int) ( $args['branch_id'] ?? 0 );
-		$pt     = $this->db->table( 'products' );
-		$st     = $this->db->table( 'stock_levels' );
-		$ut     = $this->db->table( 'units' );
-		$scope  = $branch > 0 && $ctx->canAccessBranch( $branch ) ? ' AND s.branch_id = ' . $branch : '';
-		$where  = "p.business_id = %d AND p.deleted_at IS NULL AND p.track_stock = 1 AND p.status = 'active'";
-		$params = array( $ctx->business_id );
-		$search = Text::line( $args['search'] ?? '', 100 );
-		if ( '' !== $search ) {
-			$where   .= ' AND (p.name LIKE %s OR p.sku LIKE %s OR p.barcode LIKE %s)';
-			$like     = '%' . $this->db->escapeLike( $search ) . '%';
-			$params   = array_merge( $params, array( $like, $like, $like ) );
-		}
-		$rows = $this->db->rows(
-			"SELECT p.id, p.name, p.sku, p.min_stock, p.image_id, u.short_name AS unit,
-				COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$scope}),0) AS qty
-			FROM {$pt} p LEFT JOIN {$ut} u ON u.id = p.unit_id WHERE {$where} ORDER BY qty ASC, p.name",
-			$params
-		);
 		$counts = array( 'red' => 0, 'yellow' => 0, 'green' => 0 );
 		$want   = (string) ( $args['level'] ?? '' );
 		$limit  = max( 1, min( 2000, (int) ( $args['limit'] ?? 500 ) ) );
 		$items  = array();
-		foreach ( $rows as $r ) {
-			$qty   = Decimal::of( $r['qty'] );
-			$min   = Decimal::of( $r['min_stock'] );
+		foreach ( $this->stockItems( $ctx, $this->branchScope( $ctx, $args['branch_id'] ?? 0 ), (string) ( $args['search'] ?? '' ) ) as $r ) {
+			$qty   = $r['qty'];
+			$min   = $r['min_stock'];
 			$level = ( $qty <= $red || ( $min > 0 && $qty <= $min ) ) ? 'red' : ( $qty <= $yellow ? 'yellow' : 'green' );
 			++$counts[ $level ];
 			if ( ( '' === $want || $want === $level ) && count( $items ) < $limit ) {
 				$items[] = array(
-					'id'        => (int) $r['id'],
-					'name'      => (string) $r['name'],
-					'sku'       => (string) $r['sku'],
-					'unit'      => (string) ( $r['unit'] ?? '' ),
-					'qty'       => Decimal::toString( $qty ),
-					'min_stock' => Decimal::toString( $min ),
-					'level'     => $level,
+					'id'         => $r['product_id'],
+					'variant_id' => $r['variant_id'],
+					'name'       => $r['name'],
+					'loose'      => $r['loose'],
+					'sku'        => $r['sku'],
+					'unit'       => $r['unit'],
+					'qty'        => Decimal::toString( $qty ),
+					'min_stock'  => Decimal::toString( $min ),
+					'level'      => $level,
 				);
 			}
 		}
@@ -677,12 +788,25 @@ final class StockService extends Service {
 					'field'          => 'qty',
 				);
 				$item = array( 'product_id' => (int) $mv['product_id'], 'variant_id' => (int) $mv['variant_id'], 'qty' => abs( $qty ), 'value' => $value );
+				$variance = 0;
 				if ( $qty > 0 ) {
-					$this->out( $ctx, $item, $meta );
+					$variance = $this->out( $ctx, $item, $meta )['variance'];
 				} else {
 					$this->in( $ctx, $item, $meta );
 				}
 				$this->journal->reverseOne( $ctx, $entry_id, 'Cancelled: ' . $info['memo'] );
+				if ( 0 !== $variance ) {
+					// The stock left at today's average, not at the value it came in with: book the difference
+					// so the inventory account keeps matching the stock on the shelf.
+					$this->journal->post(
+						$ctx,
+						array( 'date' => $this->today( $ctx ), 'source' => 'stock_adjustment_void', 'source_id' => $entry_id, 'memo' => 'Cost difference on cancelled stock adjustment #' . $entry_id ),
+						array(
+							array( 'account' => 'inventory', 'debit' => max( 0, $variance ), 'credit' => max( 0, -$variance ) ),
+							array( 'account' => 'inventory_adjustment', 'credit' => max( 0, $variance ), 'debit' => max( 0, -$variance ) ),
+						)
+					);
+				}
 				$this->audit->log( $ctx, 'void', 'stock', $info['product_id'], 'Stock adjustment #' . $entry_id . ' cancelled' );
 			}
 		);
@@ -936,50 +1060,37 @@ final class StockService extends Service {
 	public function levels( BusinessContext $ctx, array $args ): array {
 		$ctx->authorize( 'inventory.view' );
 		list( $page, $per_page, $offset ) = $this->paging( $args );
-		$pt = $this->db->table( 'products' );
-		$st = $this->db->table( 'stock_levels' );
-
-		$branch_cond   = '';
-		$branch_params = array();
-		if ( 'all' !== ( $args['branch_id'] ?? '' ) ) {
-			$branch_cond     = ' AND s.branch_id = %d';
-			$branch_params[] = (int) ( $args['branch_id'] ?? $ctx->branch_id ) ?: $ctx->branch_id;
-		}
-		$qty_sql   = "COALESCE((SELECT SUM(s.qty) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$branch_cond}),0)";
-		$value_sql = "COALESCE((SELECT SUM(s.value) FROM {$st} s WHERE s.business_id = p.business_id AND s.product_id = p.id{$branch_cond}),0)";
-
-		$where  = array( 'p.business_id = %d', 'p.deleted_at IS NULL', 'p.track_stock = 1' );
-		$params = array( $ctx->business_id );
-		if ( ! empty( $args['search'] ) ) {
-			$like     = '%' . $this->db->escapeLike( Text::line( $args['search'] ) ) . '%';
-			$where[]  = '(p.name LIKE %s OR p.sku LIKE %s OR p.barcode LIKE %s)';
-			array_push( $params, $like, $like, $like );
-		}
+		$b     = $args['branch_id'] ?? $ctx->branch_id;
+		$scope = 'all' === $b ? $this->branchScope( $ctx, 0 ) : $this->branchScope( $ctx, (int) $b ?: $ctx->branch_id );
+		$items = $this->stockItems( $ctx, $scope, (string) ( $args['search'] ?? '' ) );
 		if ( ! empty( $args['category_id'] ) ) {
-			$where[]  = 'p.category_id = %d';
-			$params[] = (int) $args['category_id'];
+			$pt   = $this->db->table( 'products' );
+			$keep = array_flip( array_map( 'intval', $this->db->column( "SELECT id FROM {$pt} WHERE business_id = %d AND category_id = %d", array( $ctx->business_id, (int) $args['category_id'] ) ) ) );
+			$items = array_values( array_filter( $items, static fn( $i ) => isset( $keep[ $i['product_id'] ] ) ) );
 		}
 		if ( ! empty( $args['low'] ) ) {
-			$where[] = "{$qty_sql} <= p.min_stock";
-			$params  = array_merge( $params, $branch_params );
+			$items = array_values( array_filter( $items, array( self::class, 'isLow' ) ) );
 		}
-		$w     = implode( ' AND ', $where );
-		$total = (int) $this->db->value( "SELECT COUNT(*) FROM {$pt} p WHERE {$w}", $params );
-		$rows  = $this->db->rows(
-			"SELECT p.id AS product_id, p.name, p.sku, p.barcode, p.min_stock, p.selling_price, {$qty_sql} AS qty, {$value_sql} AS value
-			FROM {$pt} p WHERE {$w} ORDER BY p.name LIMIT %d OFFSET %d",
-			array_merge( $branch_params, $branch_params, $params, array( $per_page, $offset ) )
-		);
+		usort( $items, static fn( $a, $b ) => strcmp( $a['name'], $b['name'] ) );
 		$show_cost = $ctx->can( 'products.cost' );
-		foreach ( $rows as &$r ) {
-			$qty  = Decimal::of( $r['qty'] );
-			$val  = Decimal::of( $r['value'] );
-			$r['qty']       = Decimal::toString( $qty );
-			$r['value']     = $show_cost ? Decimal::toString( $val ) : null;
-			$r['avg_cost']  = $show_cost ? Decimal::toString( $qty > 0 ? Decimal::div( $val, $qty ) : 0 ) : null;
-			$r['is_low']    = $qty <= Decimal::of( $r['min_stock'] );
-		}
-		return $this->paged( $rows, $total, $page, $per_page );
+		$rows      = array_map(
+			static fn( $i ) => array(
+				'product_id'    => $i['product_id'],
+				'variant_id'    => $i['variant_id'],
+				'name'          => $i['name'],
+				'loose'         => $i['loose'],
+				'sku'           => $i['sku'],
+				'barcode'       => $i['barcode'],
+				'min_stock'     => Decimal::toString( $i['min_stock'] ),
+				'selling_price' => Decimal::toString( $i['selling_price'] ),
+				'qty'           => Decimal::toString( $i['qty'] ),
+				'value'         => $show_cost ? Decimal::toString( $i['value'] ) : null,
+				'avg_cost'      => $show_cost ? Decimal::toString( $i['qty'] > 0 ? Decimal::div( $i['value'], $i['qty'] ) : 0 ) : null,
+				'is_low'        => self::isLow( $i ),
+			),
+			array_slice( $items, $offset, $per_page )
+		);
+		return $this->paged( $rows, count( $items ), $page, $per_page );
 	}
 
 	/**
@@ -1103,7 +1214,7 @@ final class StockService extends Service {
 		);
 	}
 
-	private function checkLow( BusinessContext $ctx, int $product_id, int $before, int $after, int $branch ): void {
+	private function checkLow( BusinessContext $ctx, int $product_id, int $variant_id, int $before, int $after, int $branch ): void {
 		$pt  = $this->db->table( 'products' );
 		$row = $this->db->row( "SELECT id, name, min_stock FROM {$pt} WHERE id = %d AND business_id = %d", array( $product_id, $ctx->business_id ) );
 		if ( null === $row ) {
@@ -1111,6 +1222,10 @@ final class StockService extends Service {
 		}
 		$min = Decimal::of( $row['min_stock'] );
 		if ( $min > 0 && $after <= $min && $before > $min ) {
+			// Each size is watched on its own and named in the alert.
+			$size = $variant_id ? (string) $this->db->value( 'SELECT name FROM ' . $this->db->table( 'product_variants' ) . ' WHERE id = %d', array( $variant_id ) ) : '';
+			$row['variant_id'] = $variant_id;
+			$row['name']       = $row['name'] . ( '' !== $size ? ' - ' . $size : '' );
 			$this->events->dispatch( 'goriber_hisab/stock/low', $ctx, $row, $after, $branch );
 		}
 	}

@@ -37,12 +37,12 @@ export default async function inventory(el, params, query) {
       fetch: (q) => api.get('stock', q),
       rowHref: (r) => `/products/${r.product_id}`,
       columns: [
-        { label: t('Product'), render: (r) => h('span', {}, h('strong', {}, r.name), h('small', { class: 'muted' }, ` ${r.sku || ''}`)) },
+        { label: t('Product'), render: (r) => h('span', {}, h('strong', {}, r.name, r.loose ? ` (${t('loose')})` : ''), h('small', { class: 'muted' }, ` ${r.sku || ''}`)) },
         { label: t('In stock'), align: 'right', render: (r) => h('strong', { class: r.is_low ? 'bad-text' : '' }, qty(r.qty)) },
         { label: t('Minimum'), align: 'right', hide: 'sm', render: (r) => qty(r.min_stock) },
         { label: t('Avg cost'), align: 'right', hide: 'sm', render: (r) => (r.avg_cost === null ? '—' : money(r.avg_cost)) },
         { label: t('Value'), align: 'right', render: (r) => (r.value === null ? '—' : money(r.value)) },
-        can('inventory.adjust') ? { label: '', render: (r) => h('button', { class: 'btn btn-sm', type: 'button', onclick: (e) => { e.stopPropagation(); stockAdjust({ id: r.product_id, name: r.name }, null, () => table.reload()); } }, t('Adjust')) } : null,
+        can('inventory.adjust') ? { label: '', render: (r) => h('button', { class: 'btn btn-sm', type: 'button', onclick: (e) => { e.stopPropagation(); stockAdjust({ id: r.product_id, name: r.name }, r.variant_id ? { id: r.variant_id, name: '' } : null, () => table.reload()); } }, t('Adjust')) } : null,
       ].filter(Boolean),
     });
     p.body.append(table.el);
@@ -97,7 +97,7 @@ export function stockAdjust(product, variant, onDone) {
   const sync = () => { hint.hidden = !['opening', 'add'].includes(mode.value); if (costField) costField.hidden = ['mistake', 'remove'].includes(mode.value); };
   mode.addEventListener('change', sync); sync();
   const m = modal({
-    title: t('Adjust stock: {p}', { p: product.name + (variant ? ` - ${variant.name}` : ((product.variants || []).length ? ` (${t('loose')})` : '')) }),
+    title: t('Adjust stock: {p}', { p: product.name + (variant ? (variant.name ? ` - ${variant.name}` : '') : ((product.variants || []).length ? ` (${t('loose')})` : '')) }),
     body: f,
     actions: [h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
       try {

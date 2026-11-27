@@ -345,8 +345,15 @@ final class AppRoute {
 <link rel="stylesheet" href="<?php echo $asset( 'css/app.css' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>">
 <script>window.BZL = <?php echo wp_json_encode( $config ); ?>;(function(){try{var m=localStorage.getItem('gh.theme');if(m==='dark'||m==='light')document.documentElement.dataset.theme=m;}catch(e){}})();</script>
 <script><?php echo self::bootGuard(); // phpcs:ignore WordPress.Security.EscapeOutput -- static script. ?></script>
+<script>/* Ask for the session while the app's code is still loading (saves a round trip). */(function(){try{var B=window.BZL;if(!B||!B.restUrl||!B.nonce)return;var b=localStorage.getItem('bzl.business')||'',r=localStorage.getItem('bzl.branch')||'',q=[];if(Number(b))q.push('business='+Number(b));if(Number(r))q.push('branch='+Number(r));var u=B.restUrl+'me'+(q.length?(B.restUrl.indexOf('?')>=0?'&':'?')+q.join('&'):'');var h={'X-WP-Nonce':B.nonce,Accept:'application/json'};if(Number(b))h['X-Hisab-Business']=String(Number(b));if(Number(r))h['X-Hisab-Branch']=String(Number(r));window.__ghMe={url:u,p:fetch(u,{headers:h,credentials:'same-origin'}).then(function(x){return x.ok?x.json():null;},function(){return null;})};}catch(e){}})();</script>
 <script type="importmap"><?php echo wp_json_encode( array( 'imports' => self::importMap() ), JSON_UNESCAPED_SLASHES ); ?></script>
 <script type="application/json" id="gh-offline-files"><?php echo wp_json_encode( array_map( static fn( $p ) => GORIBER_HISAB_URL . 'assets/' . $p . '?v=' . GORIBER_HISAB_VERSION, array( 'i18n/bn.json', 'vendor/zxing.min.js', 'vendor/html2canvas.min.js', 'img/icon.svg', 'img/mark.svg', 'img/nooriyah.jpg' ) ), JSON_UNESCAPED_SLASHES ); // The Android app keeps these for offline use. ?></script>
+<?php foreach ( self::preloads() as $url ) : // Fetch the app's code in parallel instead of one import at a time. ?>
+<link rel="modulepreload" href="<?php echo esc_url( $url ); ?>">
+<?php endforeach; ?>
+<?php if ( 'bn' === ( $config['lang'] ?? '' ) ) : ?>
+<link rel="preload" href="<?php echo $asset( 'i18n/bn.json' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>" as="fetch" crossorigin>
+<?php endif; ?>
 <script type="module" src="<?php echo $asset( 'js/app.js' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>"></script>
 </head>
 <body>
@@ -550,6 +557,24 @@ final class AppRoute {
 	 *
 	 * @return array<string,string>
 	 */
+	/**
+	 * Module files every screen needs (app.js imports them all), plus the
+	 * two screens most people open first.
+	 *
+	 * @return string[]
+	 */
+	public static function preloads(): array {
+		$base = GORIBER_HISAB_URL . 'assets/js/';
+		$out  = array( $base . 'app.js?v=' . GORIBER_HISAB_VERSION );
+		foreach ( glob( GORIBER_HISAB_DIR . 'assets/js/core/*.js' ) ?: array() as $f ) {
+			$out[] = $base . 'core/' . basename( $f ) . '?v=' . GORIBER_HISAB_VERSION;
+		}
+		foreach ( array( 'dashboard', 'pos' ) as $v ) {
+			$out[] = $base . 'views/' . $v . '.js?v=' . GORIBER_HISAB_VERSION;
+		}
+		return $out;
+	}
+
 	public static function importMap(): array {
 		$dir  = GORIBER_HISAB_DIR . 'assets/js/';
 		$base = GORIBER_HISAB_URL . 'assets/js/';
