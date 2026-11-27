@@ -141,7 +141,7 @@ export function input(name, value = '', props = {}) {
 }
 
 export function money_input(name, value = '', props = {}) {
-  return input(name, value, { inputmode: 'decimal', pattern: '[0-9]*[.,]?[0-9]*', ...props });
+  return input(name, value, { inputmode: 'decimal', pattern: '[0-9০-৯]*[.,]?[0-9০-৯]*', ...props });
 }
 
 export function textarea(name, value = '', props = {}) {

@@ -7,7 +7,7 @@ import { h, mount } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { can } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { money, date } from '../core/format.js';
+import { money, date, dec, str, today as localToday } from '../core/format.js';
 import { page, card, stat, dataTable, select, input, money_input, field, modal, toast, showError, showFieldErrors, values, badge, confirmDialog, empty, spinner } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 
@@ -63,7 +63,7 @@ function moveForm(kind, accounts, done) {
   const cashId = accounts.find((a) => a.subtype === 'cash')?.id || accounts[0]?.id || '';
   const other = accounts.find((a) => a.id !== cashId)?.id || '';
   const f = h('form', { class: 'form' });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday(); // the shop's date, not UTC (wrong between midnight and 6 am in Bangladesh)
   const rows = [];
   if (kind === 'count') {
     const acc = select('account_id', opts, cashId);
@@ -73,9 +73,9 @@ function moveForm(kind, accounts, done) {
     const paint = () => {
       const a = accounts.find((x) => String(x.id) === acc.value);
       bal.textContent = t('Books say: {x}', { x: money(a?.balance || 0) });
-      const d = Number(counted.value || 0) - Number(a?.balance || 0);
+      const d = dec(counted.value || 0) - dec(a?.balance || 0); // both scaled, like money() expects
       diff.className = `small ${d < 0 ? 'bad-text' : d > 0 ? 'ok-text' : ''}`;
-      diff.textContent = counted.value === '' ? '' : d === 0 ? t('Matches the books.') : d < 0 ? t('Short by {x}', { x: money(Math.abs(d)) }) : t('Extra {x}', { x: money(d) });
+      diff.textContent = counted.value === '' ? '' : d === 0 ? t('Matches the books.') : d < 0 ? t('Short by {x}', { x: money(str(Math.abs(d))) }) : t('Extra {x}', { x: money(str(d)) });
     };
     acc.addEventListener('change', paint); counted.addEventListener('input', paint); paint();
     rows.push(field(t('Account'), acc), bal, field(t('Money you counted'), counted, { required: true }), diff);

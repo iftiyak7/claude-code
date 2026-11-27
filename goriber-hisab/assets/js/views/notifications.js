@@ -89,7 +89,7 @@ async function syncQueue(el) {
   p.body.append(card(null, items.length ? h('ul', { class: 'list' }, items.map((q) => h('li', {},
     h('div', { class: 'grow' },
       h('strong', {}, KIND[q.kind || 'sale'] || q.kind), h('small', { class: 'muted' }, ` · ${new Date(q.created).toLocaleString()} · ${summary(q)}`),
-      q.error ? h('p', { class: 'bad-text' }, q.error) : null),
+      q.error ? h('p', { class: 'bad-text' }, t(q.error)) : null),
     h('button', { class: 'btn btn-sm btn-danger-ghost', type: 'button', onclick: async () => {
       if (!(await confirmDialog(t('Discard this? It will not be recorded.'), { danger: true, confirmText: t('Discard') }))) return;
       await discard(q.uuid); toast(t('Discarded')); syncQueue(el);

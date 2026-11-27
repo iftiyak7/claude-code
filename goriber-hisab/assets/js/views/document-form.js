@@ -190,7 +190,8 @@ export default async function documentForm(el, params) {
     api.get('staff').then((staff) => {
       if (!Array.isArray(staff) || !staff.length) return;
       mount(sellerSel, staff.map((u) => h('option', { value: u.id }, u.name)));
-      sellerSel.value = String(existing?.salesperson_id || state.me.user.id);
+      // Salespeople without a login come as "s12" (worker 12).
+      sellerSel.value = existing?.seller_id ? `s${existing.seller_id}` : String(existing?.salesperson_id || state.me.user.id);
     }).catch(() => {});
   }
 
@@ -223,7 +224,9 @@ export default async function documentForm(el, params) {
     const body = {
       [isSale ? 'customer_id' : 'supplier_id']: doc.party?.id || 0,
       [isSale ? 'sale_date' : 'purchase_date']: dateInput.value,
-      ...(sellerSel && sellerSel.value ? { salesperson_id: Number(sellerSel.value) } : {}),
+      ...(sellerSel && sellerSel.value ? (String(sellerSel.value).startsWith('s')
+        ? { seller_id: Number(String(sellerSel.value).slice(1)) }
+        : { salesperson_id: Number(sellerSel.value), seller_id: 0 }) : {}),
       due_date: dueInput.value,
       notes: notes.value,
       discount_type: discType.value,

@@ -98,10 +98,11 @@ function renewNonce() {
   return renewing;
 }
 
-export async function request(method, path, body, params, retried = false) {
+export async function request(method, path, body, params, retried = false, branch = 0) {
   const headers = { 'X-WP-Nonce': window.BZL.nonce, Accept: 'application/json' };
   if (state.businessId) headers['X-Hisab-Business'] = String(state.businessId);
-  if (state.branchId) headers['X-Hisab-Branch'] = String(state.branchId);
+  // A saved offline item goes to the branch it was made in, whichever branch is open now.
+  if (branch || state.branchId) headers['X-Hisab-Branch'] = String(branch || state.branchId);
   const init = { method, headers, credentials: 'same-origin' };
   if (body instanceof FormData) {
     init.body = body;
@@ -134,7 +135,7 @@ export async function request(method, path, body, params, retried = false) {
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
   if (!res.ok) {
     if (res.status === 403 && data?.code === 'rest_cookie_invalid_nonce') {
-      if (!retried && await renewNonce()) return request(method, path, body, params, true);
+      if (!retried && await renewNonce()) return request(method, path, body, params, true, branch);
       throw new ApiError('Your session has expired. Please reload the page.', { code: 'session', status: 403 });
     }
     if (res.status >= 500 && method === 'GET') {
@@ -173,6 +174,8 @@ export function clearSavedReads() {
 export const api = {
   get: (path, params) => request('GET', path, undefined, params),
   post: (path, body) => request('POST', path, body ?? {}),
+  /** POST as if from another branch of this shop (offline items made there). */
+  postFrom: (branch, path, body) => request('POST', path, body ?? {}, undefined, false, Number(branch) || 0),
   put: (path, body) => request('PUT', path, body ?? {}),
   del: (path) => request('DELETE', path),
   upload: (file, purpose) => {

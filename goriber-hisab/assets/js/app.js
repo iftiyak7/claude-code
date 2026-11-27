@@ -257,7 +257,11 @@ function subscriptionBanner() {
     owner ? h('a', { class: 'btn btn-sm', href: '#/subscription' }, sub.status === 'trial' ? t('Pay now') : t('Renew now')) : null);
 }
 
+// Listeners of the current shell; dropped when it is built again (settings saved, shop switched).
+let shellOff = [];
 function buildShell() {
+  shellOff.forEach((off) => off());
+  shellOff = [];
   shellBuilt = true;
   const ctx = state.ctx;
   main = h('main', { id: 'main', tabindex: -1 });
@@ -316,12 +320,12 @@ function buildShell() {
     h('div', { class: 'shell' }, topbar, subscriptionBanner(), main),
     bottom);
 
-  on('online', (isOnline) => { offline.hidden = isOnline; });
-  on('queue', (q) => {
+  shellOff.push(on('online', (isOnline) => { offline.hidden = isOnline; }));
+  shellOff.push(on('queue', (q) => {
     queueBadge.hidden = !q.length;
     queueBadge.textContent = t('{n} to sync', { n: q.length });
-  });
-  on('unread', (n) => { const d = $('.dot', bell); d.hidden = !n; d.textContent = String(n); });
+  }));
+  shellOff.push(on('unread', (n) => { const d = $('.dot', bell); d.hidden = !n; d.textContent = String(n); }));
   queued().then((q) => emit('queue', q));
   sidebar.addEventListener('click', (e) => { if (e.target.closest('a')) document.body.classList.remove('nav-open'); });
 }
@@ -425,9 +429,11 @@ function globalSearch() {
     } catch { run(); }
   });
   input.addEventListener('blur', () => setTimeout(() => { results.hidden = true; }, 200));
-  document.addEventListener('keydown', (e) => {
+  const slash = (e) => {
     if (e.key === '/' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); input.focus(); }
-  });
+  };
+  document.addEventListener('keydown', slash);
+  shellOff.push(() => document.removeEventListener('keydown', slash));
   return h('div', { class: 'global-search' }, icon('search', 18), input, results);
 }
 

@@ -165,15 +165,26 @@ async function run() {
       const body = { ...item.payload };
       // Point to customers made offline by their real id.
       let waiting = false;
+      const all = await queued();
       for (const [ref, field] of [['customer_uuid', 'customer_id'], ['contact_uuid', 'contact_id']]) {
         if (!body[ref]) continue;
-        if (!map[body[ref]]) { waiting = true; break; }
+        if (!map[body[ref]]) {
+          // Its customer is still waiting: try later. If that customer was discarded or failed,
+          // say so on this item too, so it can be fixed or discarded instead of waiting forever.
+          const cust = all.find((q) => q.uuid === body[ref]);
+          if (!cust || cust.error) {
+            item.error = cust?.error || 'The new customer of this entry could not be saved';
+            await tx('queue', 'readwrite', (s) => s.put(item));
+          }
+          waiting = true;
+          break;
+        }
         body[field] = map[body[ref]];
         delete body[ref];
       }
       if (waiting) continue; // its customer could not be sent yet
       try {
-        const res = await api.post(item.path || KINDS[kind] || 'sales', body);
+        const res = await api.postFrom(item.branch, item.path || KINDS[kind] || 'sales', body);
         if (kind === 'customer' && res?.id) { map[item.uuid] = res.id; await cacheSet('idmap', map); }
         await tx('queue', 'readwrite', (s) => s.delete(item.uuid));
         sent++;

@@ -268,6 +268,7 @@ export default async function pos(el) {
       }));
     }
     quote = null;
+    quoteSeq++; // any quote still on its way is for the old cart
     paintTotals();
     requestQuote();
   }
@@ -284,7 +285,9 @@ export default async function pos(el) {
     const canDisc = can('sales.discount');
     const work = { qty: isNew && l.loose ? 0 : l.qty, price: l.price, discount: l.discount };
 
-    const qtyIn = money_input('qty', work.qty ? fmtQty(work.qty) : '', { autofocus: !isKg, 'aria-label': t('Quantity') });
+    // Inputs hold plain digits (Bangla digits shown by fmtQty would not add up when typed after).
+    const plainQty = (n) => str(n).replace(/\.?0+$/, '');
+    const qtyIn = money_input('qty', work.qty ? plainQty(work.qty) : '', { autofocus: !isKg, 'aria-label': t('Quantity') });
     const gramIn = isKg || isLitre ? money_input('grams', work.qty ? String(Math.round(work.qty / 10)) : '', { autofocus: true, 'aria-label': isKg ? t('Grams') : t('ml') }) : null;
     const amountIn = money_input('amount', '', { placeholder: t('e.g. 50'), 'aria-label': t('Amount') });
     const priceIn = money_input('price', str(work.price, places()), { disabled: !canPrice });
@@ -293,7 +296,7 @@ export default async function pos(el) {
 
     const total = () => mul(work.qty, work.price) - work.discount;
     const paint = (from) => {
-      if (from !== 'qty') qtyIn.value = work.qty ? fmtQty(work.qty) : '';
+      if (from !== 'qty') qtyIn.value = work.qty ? plainQty(work.qty) : '';
       if (gramIn && from !== 'grams') gramIn.value = work.qty ? String(Math.round(work.qty / 10)) : '';
       if (from !== 'amount') amountIn.value = '';
       totalOut.textContent = money(str(Math.max(0, total())));
@@ -373,10 +376,15 @@ export default async function pos(el) {
     };
   }
 
+  // Each quote belongs to one version of the cart; a late answer for an older cart is thrown away.
+  let quoteSeq = 0;
   const requestQuote = debounce(async () => {
     if (!cart.lines.length || !navigator.onLine) return;
+    const mine = ++quoteSeq;
     try {
-      quote = await api.post('sales/quote', payload());
+      const q = await api.post('sales/quote', payload());
+      if (mine !== quoteSeq) return;
+      quote = q;
       paintTotals();
     } catch (err) {
       if (err.errors && Object.keys(err.errors).length) toast(Object.values(err.errors)[0], 'error');
@@ -485,7 +493,8 @@ export default async function pos(el) {
       return;
     }
     if (!quote && navigator.onLine) {
-      try { quote = await api.post('sales/quote', payload()); } catch (err) { showError(err); return; }
+      const mine = ++quoteSeq;
+      try { const q = await api.post('sales/quote', payload()); if (mine === quoteSeq) quote = q; } catch (err) { showError(err); return; }
     }
     const total = totals().total;
     const accounts = state.me.payment_accounts;

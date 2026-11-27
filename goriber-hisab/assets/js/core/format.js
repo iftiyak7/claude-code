@@ -13,7 +13,12 @@ export const SCALE = 10000;
 /** Decimal string → scaled integer. */
 export function dec(value) {
   if (value === null || value === undefined || value === '') return 0;
-  const s = String(value).replace(/[, ]/g, '');
+  // Bangla digits typed on a Bangla keyboard count like 0-9.
+  let s = String(value).replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d))).replace(/\s/g, '');
+  // A comma is the decimal mark when the shop uses it, or when it can't be a thousands
+  // separator ("1,5" = 1.5, "12,50" = 12.5; "1,500" stays 1500).
+  const commaDecimal = state.settings?.['general.decimal_sep'] === ',' || (!s.includes('.') && /^-?\d+,\d{1,2}$/.test(s));
+  s = commaDecimal ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
   if (!/^-?\d*\.?\d*$/.test(s) || s === '-' || s === '.') return 0;
   const neg = s.startsWith('-');
   const [i = '0', f = ''] = s.replace('-', '').split('.');

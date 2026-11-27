@@ -365,7 +365,11 @@ final class PurchaseService extends Service {
 			}
 			$rate      = 0;
 			$inclusive = false;
-			if ( $tax_enabled ) {
+			if ( isset( $item['tax_rate_kept'] ) ) {
+				// A saved line being edited keeps the tax it was bought with.
+				$rate      = Decimal::of( $item['tax_rate_kept'] );
+				$inclusive = ! empty( $item['tax_inclusive_kept'] );
+			} elseif ( $tax_enabled ) {
 				$row = 'invoice' === $tax_mode ? $doc_rate : ( isset( $item['tax_rate_id'] ) && '' !== $item['tax_rate_id'] ? $this->taxes->find( $ctx, (int) $item['tax_rate_id'] ) : ( (int) $product['tax_rate_id'] ? $this->taxes->find( $ctx, (int) $product['tax_rate_id'] ) : null ) );
 				if ( $row ) {
 					$rate      = Decimal::of( $row['rate'] );
@@ -731,6 +735,8 @@ final class PurchaseService extends Service {
 					'discount_value' => $i['discount_value'],
 					'batch_no'       => $i['batch_no'],
 					'expiry_date'    => $i['expiry_date'],
+					'tax_rate_kept'      => $i['tax_rate'],
+					'tax_inclusive_kept' => (bool) (int) $i['tax_inclusive'],
 				),
 				$items
 			),

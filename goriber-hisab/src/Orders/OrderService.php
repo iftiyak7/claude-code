@@ -925,6 +925,9 @@ final class OrderService extends Service {
 						continue;
 					}
 					$sale = $this->sales->get( $ctx, (int) $row['sale_id'] );
+					if ( 'completed' !== $sale['status'] ) {
+						continue; // its sale was cancelled: nothing to collect, no courier fee to book
+					}
 					$due  = Decimal::of( $sale['due_amount'] );
 					if ( $due > 0 ) {
 						$this->payments->receive(

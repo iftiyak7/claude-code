@@ -148,4 +148,19 @@ final class SweepTest extends IntegrationTestCase {
 		$this->assertSame( '0.0000', $this->qty( $q ), 'no stock appears from nowhere' );
 		$this->assertStockMatchesBooks( 'untracked then tracked' );
 	}
+
+	public function testEditKeepsTaxAndSeller(): void {
+		$tax  = $this->k->taxes->save( $this->ctx, array( 'name' => 'VAT 10', 'rate' => '10' ) );
+		$this->k->settings->update( $this->ctx, array( 'tax.enabled' => true ) );
+		$p    = $this->product( 'Phone case', '1000', '600', '10', array( 'tax_rate_id' => $tax['id'] ) );
+		$w    = $this->k->workers->save( $this->ctx, array( 'role' => 'seller', 'name' => 'Rahim' ) );
+		$sale = $this->k->sales->create( $this->ctx, array( 'seller_id' => $w['id'], 'items' => array( array( 'product_id' => $p, 'qty' => '1' ) ), 'payments' => array( array( 'amount' => '1100' ) ) ) );
+		$this->assertMoney( '1100', $sale['total'] );
+		// The product's tax changes later; editing only the note keeps what was charged.
+		$this->k->products->update( $this->ctx, $p, array( 'tax_rate_id' => 0 ) );
+		$e = $this->k->sales->update( $this->ctx, $sale['id'], array( 'notes' => 'gift wrap' ) );
+		$this->assertMoney( '1100', $e['total'] );
+		$this->assertSame( $w['id'], $e['seller_id'], 'still Rahim\'s sale' );
+		$this->assertBooksBalanced( 'edit keeps tax' );
+	}
 }

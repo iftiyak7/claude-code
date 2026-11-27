@@ -110,19 +110,24 @@ function paymentForm(contact, isCustomer, { doc = null, onDone } = {}) {
       field(t('Reference / TrxID'), input('reference', '')),
       field(t('Note'), input('note', ''), { wide: true })),
     h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, icon('check'), isCustomer ? t('Receive') : t('Pay'))));
+  // One id per form: pressing twice (or a retry) can never record the payment twice.
+  const formId = uuid();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = form.querySelector('[type=submit]');
+    if (btn.disabled) return;
+    btn.disabled = true;
     const v = values(form);
     showFieldErrors(form, {});
     try {
-      const body = { ...v, contact_id: contact.id, uuid: uuid(), ...(contact._local ? { contact_uuid: contact.uuid } : {}) };
+      const body = { ...v, contact_id: contact.id, uuid: formId, ...(contact._local ? { contact_uuid: contact.uuid } : {}) };
       if (doc) body[isCustomer ? 'sale_id' : 'purchase_id'] = doc.id;
       // Without internet (in the app) the payment waits on the phone and is sent later.
       const pay = await postOrQueue(isCustomer ? 'payment' : 'supplier_payment', isCustomer ? 'payments/receive' : 'payments/pay', body);
       if (pay.queued) toast(t('Offline: saved on this device and will sync automatically.'), 'success', 5000);
       else toast(t('{x} recorded', { x: money(pay.amount) }));
       onDone?.(pay);
-    } catch (err) { showFieldErrors(form, err.errors || {}); showError(err); }
+    } catch (err) { showFieldErrors(form, err.errors || {}); showError(err); } finally { btn.disabled = false; }
   });
   return form;
 }

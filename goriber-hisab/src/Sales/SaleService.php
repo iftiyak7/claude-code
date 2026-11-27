@@ -132,7 +132,7 @@ final class SaleService extends Service {
 		if ( ! in_array( $sale['status'], array( 'held', 'draft' ), true ) ) {
 			throw new ConflictException( 'Only held or draft sales can be completed.' );
 		}
-		$doc = $this->prepare( $ctx, array_merge( $this->asInput( $ctx, $id, $sale ), $data ) );
+		$doc = $this->prepare( $ctx, array_merge( $this->asInput( $ctx, $id, $sale ), $data ), $id );
 		$this->db->transaction(
 			function () use ( $ctx, $id, $doc, $data ) {
 				$this->replaceContent( $ctx, $id, $doc, 'completed' );
@@ -284,7 +284,9 @@ final class SaleService extends Service {
 				$order = $this->db->row( "SELECT id, number, status, shipped_at, delivered_at FROM {$ot} WHERE business_id = %d AND sale_id = %d", array( $ctx->business_id, $id ) );
 				if ( $order && in_array( $order['status'], array( 'cancelled', 'returned' ), true ) ) {
 					$back = $order['delivered_at'] ? 'delivered' : ( $order['shipped_at'] ? 'shipped' : 'confirmed' );
-					$this->db->update( $ot, array( 'status' => $back, 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => (int) $order['id'] ) );
+					// Open again where it was, with what is left to collect from the restored sale.
+					$now_sale = (array) $this->db->row( 'SELECT total, paid_amount, due_amount FROM ' . $this->db->table( 'sales' ) . ' WHERE id = %d', array( $id ) );
+					$this->db->update( $ot, array( 'status' => $back, 'total' => $now_sale['total'], 'cod_amount' => $now_sale['due_amount'], 'advance' => $now_sale['paid_amount'], 'updated_at' => $this->now(), 'updated_by' => $ctx->user_id ), array( 'id' => (int) $order['id'] ) );
 					$this->audit->log( $ctx, 'update', 'order', (int) $order['id'], 'Order reopened ' . $order['number'] . ' (sale restored)' );
 				}
 				$this->audit->log( $ctx, 'update', 'sale', $id, 'Sale restored ' . $sale['number'] );
@@ -542,7 +544,9 @@ final class SaleService extends Service {
 
 		// Who made the sale (for commission / staff reports); defaults to whoever is logged in.
 		$salesperson = (int) ( $data['salesperson_id'] ?? 0 );
-		if ( $salesperson && $salesperson !== $ctx->user_id ) {
+		// The people already on a saved sale stay valid when it is edited, even if they left since.
+		$was = $sale_id ? $this->db->row( 'SELECT salesperson_id, seller_id FROM ' . $this->db->table( 'sales' ) . ' WHERE id = %d AND business_id = %d', array( $sale_id, $ctx->business_id ) ) : null;
+		if ( $salesperson && $salesperson !== $ctx->user_id && $salesperson !== (int) ( $was['salesperson_id'] ?? 0 ) ) {
 			$bu = $this->db->table( 'business_users' );
 			if ( ! $this->db->value( "SELECT id FROM {$bu} WHERE business_id = %d AND user_id = %d AND status = 'active'", array( $ctx->business_id, $salesperson ) ) ) {
 				$errors['salesperson_id'] = 'Choose a staff member of this shop.';
@@ -551,7 +555,7 @@ final class SaleService extends Service {
 		$salesperson = $salesperson ?: $ctx->user_id;
 		// Or a salesperson without a login, picked at the POS on a shared device.
 		$seller = (int) ( $data['seller_id'] ?? 0 );
-		if ( $seller > 0 && ! $this->db->value( 'SELECT id FROM ' . $this->db->table( 'workers' ) . " WHERE id = %d AND business_id = %d AND role = 'seller' AND status = 'active' AND deleted_at IS NULL", array( $seller, $ctx->business_id ) ) ) {
+		if ( $seller > 0 && $seller !== (int) ( $was['seller_id'] ?? 0 ) && ! $this->db->value( 'SELECT id FROM ' . $this->db->table( 'workers' ) . " WHERE id = %d AND business_id = %d AND role = 'seller' AND status = 'active' AND deleted_at IS NULL", array( $seller, $ctx->business_id ) ) ) {
 			$errors['seller_id'] = 'Choose a salesperson of this shop.';
 		}
 
@@ -618,7 +622,11 @@ final class SaleService extends Service {
 
 			$rate      = 0;
 			$inclusive = false;
-			if ( $tax_enabled ) {
+			if ( isset( $item['tax_rate_kept'] ) ) {
+				// A saved line being edited or restored keeps the tax it was sold with.
+				$rate      = Decimal::of( $item['tax_rate_kept'] );
+				$inclusive = ! empty( $item['tax_inclusive_kept'] );
+			} elseif ( $tax_enabled ) {
 				$rate_row = null;
 				if ( 'invoice' === $tax_mode ) {
 					$rate_row = $doc_rate;
@@ -1095,6 +1103,9 @@ final class SaleService extends Service {
 			'discount_value'  => $sale['discount_value'],
 			'shipping_amount' => $sale['shipping_amount'],
 			'notes'           => $sale['notes'],
+			// Keep who sold it: an edit by someone else must not move the sale to them.
+			'salesperson_id'  => (int) ( $sale['salesperson_id'] ?: $sale['created_by'] ),
+			'seller_id'       => (int) ( $sale['seller_id'] ?? 0 ),
 			'meta'            => Json::decode( $sale['meta'] ?? null ),
 			'items'           => array_map(
 				static fn( $i ) => array(
@@ -1105,6 +1116,8 @@ final class SaleService extends Service {
 					'unit_price'     => $i['unit_price'],
 					'discount_type'  => $i['discount_type'],
 					'discount_value' => $i['discount_value'],
+					'tax_rate_kept'      => $i['tax_rate'],
+					'tax_inclusive_kept' => (bool) (int) $i['tax_inclusive'],
 				),
 				$items
 			),

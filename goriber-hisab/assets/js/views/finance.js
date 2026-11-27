@@ -72,7 +72,11 @@ function formFields(kind, categories, row = {}) {
   const info = h('small', { class: 'muted' }, row.attachment_url ? h('a', { href: row.attachment_url, target: '_blank', rel: 'noopener' }, t('View receipt')) : '');
   file.addEventListener('change', async () => {
     if (!file.files[0]) return;
-    try { const r = await api.upload(file.files[0], 'receipt'); receipt.value = r.id; mount(info, h('a', { href: r.url, target: '_blank', rel: 'noopener' }, t('Uploaded — view'))); } catch (err) { showError(err); }
+    // Saving is held until the photo is up, or the entry would be saved without it.
+    const saveBtns = [...(file.closest('form, dialog')?.querySelectorAll('[type=submit], .btn-primary') || [])];
+    saveBtns.forEach((b) => { b.disabled = true; });
+    mount(info, t('Uploading…'));
+    try { const r = await api.upload(file.files[0], 'receipt'); receipt.value = r.id; mount(info, h('a', { href: r.url, target: '_blank', rel: 'noopener' }, t('Uploaded — view'))); } catch (err) { mount(info); showError(err); } finally { saveBtns.forEach((b) => { b.disabled = false; }); }
   });
   return h('div', { class: 'form-grid' },
     field(t('Category'), h('select', { class: 'input', name: 'account_id', required: true }, [h('option', { value: '' }, t('Choose…')), ...categories.map((c) => h('option', { value: c.id, selected: Number(row.account_id) === c.id }, c.name))]), { required: true }),

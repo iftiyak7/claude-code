@@ -2040,5 +2040,13 @@
 "Top 5 best-selling products": "সবচেয়ে বেশি বিক্রি হওয়া ৫টা পণ্য",
 "Shown once there is an earlier period to compare with.": "আগের সময়ের সাথে তুলনা করার ডেটা হলে এখানে দেখাবে।",
 "per order {c} vs before": "অর্ডার প্রতি আগের তুলনায় {c}",
-"Compared with {a}": "তুলনা: {a}"
+"Compared with {a}": "তুলনা: {a}",
+"Dues": "বাকি",
+"Adjustment": "স্টক সমন্বয়",
+"Sale void": "বিক্রি বাতিল",
+"Purchase void": "ক্রয় বাতিল",
+"Return void": "ফেরত বাতিল",
+"Uploading…": "আপলোড হচ্ছে…",
+"The new customer of this entry could not be saved": "এই এন্ট্রির নতুন কাস্টমার সেভ করা যায়নি",
+"Sales and cost are before returns; profit is after returns.": "বিক্রি আর খরচ ফেরতের আগের হিসাব; লাভ ফেরত বাদ দিয়ে।"
 }
