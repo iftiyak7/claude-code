@@ -63,6 +63,10 @@ const ADMIN = ['dashboard', 'listings', 'listings/h-general', 'listings/new', 's
   await ap.reload(); await ap.waitForTimeout(400);
   await visit(ap, base + '/app/#/post/listing?mode=free&cat=service&sub=electrician', '#app form');
   if (await ap.locator('select[name=catsub]').inputValue().catch(() => '') !== 'service|electrician') errors.push('add form: the category is not chosen');
+  // the example name follows the category
+  if (!(await ap.locator('input[name=name]').getAttribute('placeholder') || '').includes('ইলেকট্রিক')) errors.push('add form: example name is not for electricians');
+  await ap.selectOption('select[name=catsub]', 'religious|mosque');
+  if (!(await ap.locator('input[name=name]').getAttribute('placeholder') || '').includes('মসজিদ')) errors.push('add form: example name does not follow the category');
 
   // admin
   const a = await (await browser.newContext({ viewport: { width: 1280, height: 860 } })).newPage();

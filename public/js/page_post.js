@@ -22,6 +22,22 @@ function listingCats(mode) {
     return subs.length ? { c, subs } : null;
   }).filter(Boolean);
 }
+// Example names in the add form follow the chosen category (and type), e.g. a mosque for mosques, a shop for shops.
+const NAME_EX = {
+  emergency: ['কোতোয়ালি থানা', 'Kotwali Police Station'], hospital: ['যশোর ডায়াগনস্টিক সেন্টার', 'Jashore Diagnostic Centre'],
+  'hospital|doctor': ['ডা. রহমানের চেম্বার', "Dr Rahman's Chamber"], 'hospital|pharmacy': ['নিউ মেডিসিন কর্নার', 'New Medicine Corner'],
+  restaurant: ['যশোর কাচ্চি ঘর', 'Jashore Kacchi Ghor'], shop: ['রহমান স্টোর', 'Rahman Store'], place: ['চাঁচড়া রাজবাড়ি', 'Chanchra Rajbari'],
+  religious: ['বায়তুল আমান জামে মসজিদ', 'Baitul Aman Jame Masjid'], hotel: ['হোটেল সিটি প্লাজা', 'Hotel City Plaza'],
+  service: ['বিসমিল্লাহ ইলেকট্রিক', 'Bismillah Electric'], 'service|plumber': ['আলম প্লাম্বিং সার্ভিস', 'Alam Plumbing Service'],
+  'service|mobile': ['স্মার্ট মোবাইল সার্ভিসিং', 'Smart Mobile Servicing'], 'service|tailor': ['নিউ টেইলার্স', 'New Tailors'],
+  education: ['যশোর মডেল স্কুল', 'Jashore Model School'], 'education|coaching': ['মেধা কোচিং সেন্টার', 'Medha Coaching Centre'] };
+export function nameExample(value) {
+  const [cat, sub] = (value || '').split('|'), c = S.CAT[cat];
+  const ex = NAME_EX[cat + '|' + sub] || NAME_EX[cat];
+  if (ex) return [T('যেমন: {x}', { x: ex[0] }), 'e.g. ' + ex[1]];
+  const bn = c?.subs?.[sub] || c?.bn || '', en = c?.subsEn?.[sub] || c?.en || '';      // a category the admin added
+  return [bn ? T('{x}-এর নাম লিখুন', { x: bn }) : T('নাম লিখুন'), en ? `Name of the ${en.toLowerCase()}` : 'Name'];
+}
 const WDAYS = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
 const CROLES = ['ম্যানেজার', 'রিসেপশন', 'অফিস', 'জরুরি বিভাগ', 'অ্যাম্বুলেন্স', 'হোয়াটসঅ্যাপ', 'ওসি (অফিসার ইনচার্জ)', 'ডিউটি অফিসার'];
 export const contactRow = (c = {}) => `<div class="cedit"><input placeholder="${T('পদবি')}" list="croles" maxlength="60" value="${esc(c.role || '')}" data-cf="role">
@@ -98,19 +114,22 @@ export const termsHtml = () => legalHtml(S.D.terms);
 export function init() {
   /* ---------------- add / post ---------------- */
   pages.add = () => {
-    const opts = [['listing?mode=paid', 'sparkle', '#f59e0b', 'ব্যবসার প্রচার', 'প্যাকেজ নিলে হোমপেজে "জনপ্রিয়" অংশে দেখাবে, আগে যাচাই হবে', 'পেইড প্যাকেজ'],
-      ['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন', 'ফ্রি'],
-      ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট / দোকান ভাড়া', 'টু-লেট বিজ্ঞাপন দিন', 'ফ্রি'],
-      ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন', 'ফ্রি'],
-      ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন', 'ফ্রি']];
+    // One kind of card for everything that can be added: the categories first, then ads (and, on the website, promotion).
+    const card = (href, c, ic, title, sub, paid) => `<a href="${href}" style="--c:${esc(c)}"><span>${icon(ic, 24)}</span>
+        <b>${esc(title)}${paid ? ` <i class="tag ad">${T('পেইড')}</i>` : ''}</b><small>${esc(sub)}</small></a>`;
+    const ads = [['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন'],
+      ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট ভাড়া', 'টু-লেট বিজ্ঞাপন দিন'],
+      ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন'],
+      ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন']].filter(() => S.D.site?.classifieds !== 'hide');
     return `${topbar(T('কী যোগ করতে চান?'))}
       ${S.ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
       <h4 class="addhead">${T('কোন ক্যাটাগরিতে যোগ করবেন?')} <span class="tag ok">${T('ফ্রি')}</span></h4>
-      <div class="addcats">${S.D.categories.map(c => `<a href="#/post/listing?mode=free&cat=${esc(c.id)}" style="--c:${esc(c.color)}"><span>${icon(c.icon, 24)}</span>
-        <b>${esc(catName(c))}</b><small>${esc(Object.keys(c.subs || {}).slice(0, 3).map(k => subName(c, k)).join(', '))}</small></a>`).join('')}</div>
-      <h4 class="addhead">${T('বিজ্ঞাপন ও অন্যান্য')}</h4>
-      <div class="rows">${opts.filter(([to]) => (to.startsWith('listing') || S.D.site?.classifieds !== 'hide') && !(NO_PAY && to.endsWith('paid'))).map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
-        <span class="body"><b>${T(t)}</b><span class="sub" style="white-space:normal">${T(d)}</span><span class="meta"><span class="tag ${b === 'ফ্রি' ? 'ok' : 'ad'}">${T(b)}</span><span class="muted">${T('অ্যাডমিন যাচাইয়ের পর প্রকাশ')}</span></span></span>${icon('chevR', 18)}</a>`).join('')}</div>`;
+      <div class="addcats">${S.D.categories.map(c => card(`#/post/listing?mode=free&cat=${esc(c.id)}`, c.color, c.icon, catName(c),
+        Object.keys(c.subs || {}).slice(0, 3).map(k => subName(c, k)).join(', '))).join('')}</div>
+      ${ads.length || !NO_PAY ? `<h4 class="addhead">${T('বিজ্ঞাপন দিন')} <span class="tag ok">${T('ফ্রি')}</span></h4>
+      <div class="addcats">${ads.map(([to, ic, c, t, d]) => card('#/post/' + to, c, ic, T(t), T(d))).join('')}
+        ${NO_PAY ? '' : card('#/post/listing?mode=paid', '#f59e0b', 'sparkle', T('ব্যবসার প্রচার'), T('হোমপেজে "জনপ্রিয়" অংশে দেখান'), true)}</div>` : ''}
+      <p class="muted" style="font-size:12.5px;margin:12px 2px 0">${T('সব কিছু অ্যাডমিন যাচাইয়ের পর প্রকাশ হয়।')}</p>`;
   };
   pages.edit = ([type, id]) => {
     if (!S.ME) { go('#/login?next=' + encodeURIComponent('/edit/' + type + '/' + id)); return ''; }
@@ -136,12 +155,14 @@ export function init() {
     if (what === 'listing') {
       const mode = !edit && p.get('mode') === 'paid' && !NO_PAY ? 'paid' : 'free', groups = listingCats(mode);
       const pick = p.get('cat') && S.CAT[p.get('cat')] ? `${p.get('cat')}|${p.get('sub') || ''}` : '';      // opened from a category page
+      const first = groups.find(g => !pick || g.c.id === pick.split('|')[0]) || groups[0];
+      const ex = nameExample(edit ? `${edit.cat}|${edit.sub}` : pick && pick.split('|')[1] ? pick : first ? `${first.c.id}|${first.subs[0]}` : '');
       return `${topbar(T(edit ? 'তথ্য সম্পাদনা' : mode === 'paid' ? 'ব্যবসার প্রচার' : 'তথ্য যোগ করুন'))}
       ${editNote || `<div class="note">${icon(mode === 'paid' ? 'store' : 'landmark', 18)}<span>${T(mode === 'paid' ? 'তথ্য দিন, প্যাকেজ বাছুন, তারপর বিকাশ/নগদে পেমেন্ট করুন। যাচাইয়ের পর প্রকাশিত হবে।' : 'যেকোনো দোকান, সেবা বা প্রতিষ্ঠানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>`}
       <form class="form" data-addlisting="${mode}"${editAttr}>
         <h3 class="fsec">${T('মৌলিক তথ্য')}</h3>
-        <label class="field"><span>${T('নাম (বাংলা)')} *</span><input name="name" required maxlength="120" placeholder="${T('যেমন: যশোর কাচ্চি ঘর')}"></label>
-        <label class="field"><span>${T('নাম (English)')}</span><input name="nameEn" maxlength="120" placeholder="e.g. Jashore Kacchi Ghor" autocapitalize="words"><em>${T('ইংরেজি ভাষার অ্যাপে ও খোঁজায় দেখায়')}</em></label>
+        <label class="field"><span>${T('নাম (বাংলা)')} *</span><input name="name" required maxlength="120" placeholder="${esc(ex[0])}"></label>
+        <label class="field"><span>${T('নাম (English)')}</span><input name="nameEn" maxlength="120" placeholder="${esc(ex[1])}" autocapitalize="words"><em>${T('ইংরেজি ভাষার অ্যাপে ও খোঁজায় দেখায়')}</em></label>
         ${edit ? `<label class="field"><span>${T('ধরন')}</span><input value="${esc(subLabel(edit))}" disabled></label>`
           : `<label class="field"><span>${T('ধরন')} *</span><select name="catsub" required>${groups.map(g => `<optgroup label="${esc(catName(g.c))}">${g.subs.map((s, i) => `<option value="${g.c.id}|${s}" ${pick === `${g.c.id}|${s}` || (pick === `${g.c.id}|` && !i) ? 'selected' : ''}>${esc(subName(g.c, s))}</option>`).join('')}</optgroup>`).join('')}</select></label>`}
         <div class="two"><label class="field"><span>${T('এলাকা')} *</span>${areaSel}</label>

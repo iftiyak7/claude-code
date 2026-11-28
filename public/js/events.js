@@ -4,7 +4,7 @@ import { hardRefresh } from './boot.js';
 import { loadCoupons, saved } from './components.js';
 import { getItem, locate, nameOf, origin } from './data.js';
 import { cache } from './page_classifieds.js';
-import { MEDIA, contactRow, drawMedia, mediaBody, readCrows, setLoc } from './page_post.js';
+import { MEDIA, contactRow, drawMedia, mediaBody, nameExample, readCrows, setLoc } from './page_post.js';
 import { loadReviews, pages } from './pages.js';
 import { doLocate, go, render } from './router.js';
 import { areaSheet, closeSheet, filterSheet, noticesSheet, reportSheet, requireLogin, reviewSheet } from './sheets.js';
@@ -97,6 +97,7 @@ export function init() {
   });
   document.addEventListener('change', async e => {
     const el = e.target;
+    if (el.name === 'catsub' && el.form) { const [bn, en] = nameExample(el.value); el.form.name.placeholder = bn; el.form.nameEn.placeholder = en; }
     if (el.matches('[data-sort]')) {
       const [h, q = ''] = location.hash.split('?'), p = new URLSearchParams(q);
       el.value ? p.set('sort', el.value) : p.delete('sort');
