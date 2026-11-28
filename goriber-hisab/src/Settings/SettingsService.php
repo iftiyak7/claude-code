@@ -72,9 +72,15 @@ final class SettingsService extends Service {
 			'pos.show_images'                => true,
 			'pos.ask_seller'                 => false,
 
-			// SMS (gateway set by the site owner).
+			// SMS to customers (the shop's own SMS account, or the site's).
 			'sms.after_sale'                 => false,
 			'sms.sale_template'              => '',
+			'sms.order_placed'               => false,
+			'sms.order_template'             => '',
+			'sms.order_shipped'              => false,
+			'sms.shipped_template'           => '',
+			'sms.payment_received'           => false,
+			'sms.payment_template'           => '',
 
 			// Numbering.
 			'numbering.sale'                 => 'INV-{SEQ:6}',

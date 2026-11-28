@@ -27,11 +27,13 @@ final class Cron {
 	public function register(): void {
 		add_action( 'goriber_hisab_daily', array( $this, 'daily' ) );
 		add_action( 'goriber_hisab_repair_costs', array( $this, 'repairCosts' ) );
+		add_action( 'goriber_hisab_sms_queue', array( $this, 'smsQueue' ) );
 	}
 
 	public function daily(): void {
 		$bt  = $this->k->db->table( 'businesses' );
 		$ids = array_map( 'intval', $this->k->db->column( "SELECT id FROM {$bt} WHERE status = 'active' AND deleted_at IS NULL" ) );
+		$this->smsQueue();
 		foreach ( $ids as $id ) {
 			try {
 				$ctx = $this->k->businesses->systemContext( $id );
@@ -43,6 +45,17 @@ final class Cron {
 			} catch ( \Throwable $e ) {
 				error_log( 'Goriber Hisab daily job failed for business ' . $id . ': ' . $e->getMessage() ); // phpcs:ignore
 			}
+		}
+	}
+
+	/**
+	 * SMS a request queued but could not send (it ended early).
+	 */
+	public function smsQueue(): void {
+		try {
+			$this->k->sms->flush( true );
+		} catch ( \Throwable $e ) {
+			error_log( 'Goriber Hisab SMS queue failed: ' . $e->getMessage() ); // phpcs:ignore
 		}
 	}
 

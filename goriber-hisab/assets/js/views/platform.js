@@ -485,14 +485,14 @@ function dangerZone(shop, closed, refresh) {
 function smsCard(cfg) {
   const presets = cfg.sms_presets || {};
   const url = input('sms_url', cfg.sms_url || '', { placeholder: 'https://…{api_key}…{phone}…{message}' });
-  const pick = select('sms_preset', [['', t('Choose your SMS company…')], ['bulksmsbd', 'BulkSMSBD'], ['alpha', 'Alpha SMS (sms.net.bd)'], ['greenweb', 'GreenWeb'], ['custom', t('Other (paste the address)')]], Object.entries(presets).find(([, v]) => v === cfg.sms_url)?.[0] || (cfg.sms_url ? 'custom' : ''));
+  const pick = select('sms_preset', [['', t('Choose your SMS company…')], ['automas', 'Automas'], ['bulksmsbd', 'BulkSMSBD'], ['alpha', 'Alpha SMS (sms.net.bd)'], ['greenweb', 'GreenWeb'], ['custom', t('Other (paste the address)')]], Object.entries(presets).find(([, v]) => v === cfg.sms_url)?.[0] || (cfg.sms_url ? 'custom' : ''));
   pick.removeAttribute('name');
   pick.addEventListener('change', () => { if (presets[pick.value]) url.value = presets[pick.value]; });
   return card(t('SMS gateway'),
-    h('p', { class: 'muted small' }, t('Shops can send customers an SMS after each sale and due reminders. Buy SMS from a Bangladeshi SMS company and put its API key here. You pay the SMS company per message.')),
+    h('p', { class: 'muted small' }, t('Shops without their own SMS account use this one for customer SMS and due reminders. Shops can also connect their own account in Settings → SMS. You pay the SMS company per message.')),
     h('div', { class: 'form-grid' },
       field(t('SMS company'), pick),
       field(t('API key'), input('sms_key', cfg.sms_key || '', { autocomplete: 'off' })),
       field(t('Sender ID (optional)'), input('sms_sender', cfg.sms_sender || '', { placeholder: '8809XXXXXXXX' }), { hint: t('Masking name or number given by the SMS company') }),
-      field(t('Send address'), url, { wide: true, hint: t('Filled in when you choose the company. Words: {api_key} {sender} {phone} {phone_local} {message}') })));
+      field(t('Send address'), url, { wide: true, hint: t('Filled in when you choose the company. Words: {api_key} {sender} {phone} {phone_local} {message} {smsformat}') })));
 }

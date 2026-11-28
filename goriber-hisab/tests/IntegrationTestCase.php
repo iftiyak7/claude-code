@@ -52,6 +52,7 @@ abstract class IntegrationTestCase extends TestCase {
 		$this->owner = $this->users->add( 'Owner', 'owner@example.com' );
 		$this->k     = new Kernel( $this->db, new Clock( new \DateTimeImmutable( '2026-03-15 10:00:00', new \DateTimeZone( 'UTC' ) ) ), new Events(), $this->users );
 		$this->k->notifications->subscribe();
+		$this->k->sms->subscribe();
 		$business  = $this->k->businesses->create(
 			$this->owner,
 			array(

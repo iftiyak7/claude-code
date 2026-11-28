@@ -41,6 +41,7 @@ final class Plugin {
 
 		$kernel = self::kernel();
 		$kernel->notifications->subscribe();
+		$kernel->sms->subscribe();
 
 		( new Api( $kernel ) )->register();
 		( new AppRoute( $kernel ) )->register();

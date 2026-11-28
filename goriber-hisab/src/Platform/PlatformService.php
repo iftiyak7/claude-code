@@ -141,7 +141,7 @@ final class PlatformService extends Service {
 		}
 		if ( isset( $data['sms_url'] ) ) {
 			$url          = trim( (string) $data['sms_url'] );
-			$c['sms_url'] = preg_match( '#^https?://#i', $url ) && str_contains( $url, '{message}' ) && ( str_contains( $url, '{phone}' ) || str_contains( $url, '{phone_local}' ) ) ? substr( $url, 0, 500 ) : '';
+			$c['sms_url'] = \GoriberHisab\Notifications\SmsService::validTemplate( $url ) ? substr( $url, 0, 500 ) : '';
 			if ( '' !== $url && '' === $c['sms_url'] ) {
 				throw ValidationException::field( 'sms_url', 'The address must start with http(s):// and contain {phone} and {message}.' );
 			}

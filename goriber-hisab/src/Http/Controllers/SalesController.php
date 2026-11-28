@@ -28,6 +28,9 @@ final class SalesController extends Controller {
 			$this->route( 'POST', '/sales/(?P<id>\d+)/complete', fn( BusinessContext $c, array $a, $q ) => $this->withSms( $c, $s->complete( $c, self::id( $q ), $a ) ) ),
 			$this->route( 'POST', '/sms/send', array( $this, 'sendSms' ) ),
 			$this->route( 'GET', '/sms/usage', fn( BusinessContext $c ) => $this->k->sms->usage( $c ) ),
+			$this->route( 'GET', '/sms/settings', array( $this, 'smsSettings' ) ),
+			$this->route( 'PUT', '/sms/gateway', fn( BusinessContext $c, array $a ) => $this->k->sms->saveShopGateway( $c, $a ) ),
+			$this->route( 'POST', '/sms/test', array( $this, 'testSms' ) ),
 			$this->route( 'POST', '/sales/(?P<id>\d+)/restore', fn( BusinessContext $c, array $a, $q ) => $s->restore( $c, self::id( $q ), $a ) ),
 			$this->route( 'POST', '/sales/(?P<id>\d+)/void', fn( BusinessContext $c, array $a, $q ) => $s->void( $c, self::id( $q ), (string) ( $a['reason'] ?? '' ) ) ),
 
@@ -45,8 +48,38 @@ final class SalesController extends Controller {
 	 * @return array<string,mixed>
 	 */
 	private function withSms( BusinessContext $ctx, array $sale ): array {
-		$sale['sms_sent'] = $this->k->sms->afterSale( $ctx, $sale );
+		// The SMS itself is queued by the sale/completed listener and goes out once this request ends.
+		$sale['sms_sent'] = 'completed' === ( $sale['status'] ?? '' ) && $this->k->sms->queuedFor( $ctx, 'sale', (int) $sale['id'] );
 		return $sale;
+	}
+
+	/**
+	 * The SMS settings screen: own account, numbers, recent messages, standard texts.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function smsSettings( BusinessContext $ctx ): array {
+		$sms  = $this->k->sms;
+		$lang = (string) ( $this->k->settings->all( $ctx )['general.language'] ?? 'bn' );
+		$std  = array();
+		foreach ( array_keys( \GoriberHisab\Notifications\SmsService::EVENTS ) as $event ) {
+			$std[ $event ] = \GoriberHisab\Notifications\SmsService::defaultTemplate( $event, $lang );
+		}
+		return array(
+			'gateway'   => $sms->shopGateway( $ctx ),
+			'usage'     => $sms->usage( $ctx ),
+			'log'       => $sms->log( $ctx ),
+			'standard'  => $std,
+		);
+	}
+
+	/**
+	 * @param array<string,mixed> $a phone.
+	 * @return array{ok:bool,response:string}
+	 */
+	public function testSms( BusinessContext $ctx, array $a ): array {
+		$this->k->limiter->hit( 'sms-test:' . $ctx->business_id, 30, HOUR_IN_SECONDS );
+		return $this->k->sms->test( $ctx, (string) ( $a['phone'] ?? '' ) );
 	}
 
 	/**

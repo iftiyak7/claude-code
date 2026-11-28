@@ -1172,3 +1172,13 @@ button.kpi:active { transform: scale(.98); }
   .sr-side { display: flex; align-items: center; gap: 14px; }
   .sr-total { order: 9; min-width: 120px; text-align: right; }
 }
+
+/* SMS settings */
+.callout.ok { border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--border)); background: color-mix(in srgb, var(--ok) 8%, transparent); display: block; }
+.callout.bad { border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--border)); background: color-mix(in srgb, var(--bad) 8%, transparent); display: block; }
+.callout code { word-break: break-all; white-space: pre-wrap; }
+.sms-event { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); }
+.sms-event:first-of-type { border-top: 0; }
+.sms-advanced { margin: 4px 0 12px; }
+.sms-advanced summary { cursor: pointer; padding: 6px 0; }
+.sms-reply { max-width: 260px; word-break: break-all; }

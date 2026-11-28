@@ -17,6 +17,7 @@ const TABS = [
   ['business', 'Business', ['business.manage']],
   ['invoice', 'Invoice', ['settings.manage']],
   ['sales', 'Sales & POS', ['settings.manage']],
+  ['sms', 'SMS', ['settings.manage']],
   ['tax', 'Tax / VAT', ['settings.manage']],
   ['printer', 'Printer', ['settings.manage']],
   ['inventory', 'Products & stock', ['settings.manage']],
@@ -124,20 +125,10 @@ const RENDER = {
   },
 
   async sales(S) {
-    const usage = await api.get('sms/usage').catch(() => null);
-    const testPhone = input('test_phone', '', { type: 'tel', placeholder: '01XXXXXXXXX' });
     const smsCard = card(t('SMS to customers'),
-      usage?.available
-        ? h('p', { class: 'muted small' }, t('{n} SMS sent this month', { n: usage.month }), usage.failed ? h('span', { class: 'bad-text' }, ` · ${t('{n} failed', { n: usage.failed })}`) : null)
-        : h('p', { class: 'callout small' }, t('SMS is not set up yet. The site owner adds an SMS gateway (BulkSMSBD, Alpha SMS, GreenWeb…) in Shops (clients) → Settings.')),
-      h('p', { class: 'muted small' }, t('Message words you can use: {shop} {customer} {invoice} {total} {paid} {due} {total_due}. Leave empty for the standard message.')),
-      usage?.available ? h('div', { class: 'row wrap' }, testPhone, h('button', { class: 'btn btn-sm', type: 'button', onclick: async (e) => {
-        const b = e.currentTarget; b.disabled = true;
-        try { await api.post('sms/send', { phone: testPhone.value, message: `${state.business.name}: ${t('Test SMS from Goriber Hisab')}`, ref_type: 'test' }); toast(t('SMS sent')); } catch (err) { showError(err); } finally { b.disabled = false; }
-      } }, t('Send test SMS'))) : null);
+      h('p', { class: 'muted small' }, t('SMS after a sale, an online order, sending by courier and collecting dues are set in the SMS tab.')),
+      h('button', { class: 'btn btn-sm', type: 'button', onclick: () => navigate('/settings/sms') }, icon('send', 16), t('Open SMS settings')));
     return settingsForm(S, [
-      ['sms.after_sale', t('Send an SMS to the customer after every sale (needs the customer\'s phone)'), 'bool'],
-      ['sms.sale_template', t('SMS message (optional)'), 'textarea'],
       ['sales.default_payment_account', t('Default payment method'), 'select', { options: [['0', t('Cash')], ...state.me.payment_accounts.map((a) => [a.id, a.name])] }],
       ['sales.allow_credit_walkin', t('Allow due sales without a customer'), 'bool'],
       ['sales.enforce_credit_limit', t('Enforce customer credit limits'), 'bool'],
@@ -147,6 +138,10 @@ const RENDER = {
       ['pos.show_images', t('Show product images in POS'), 'bool'],
       ['pos.ask_seller', t('Ask who is selling on every sale'), 'bool', { hint: t('For one device shared by several staff: the POS asks to pick the salesperson before each sale. Add salespeople in Users.') }],
     ], { after: smsCard });
+  },
+
+  async sms(S) {
+    return smsSettings(S);
   },
 
   async tax(S) {
@@ -371,4 +366,123 @@ export function parseCsv(text) {
   if (!head) return out;
   for (const r of data) out.push(Object.fromEntries(head.map((k, i) => [k.trim(), (r[i] ?? '').trim()])));
   return out;
+}
+
+/* -------------------------------------------------------------- SMS */
+
+const SMS_COMPANIES = [['automas', 'Automas (asms.automas.com.bd)'], ['bulksmsbd', 'BulkSMSBD'], ['alpha', 'Alpha SMS (sms.net.bd)'], ['greenweb', 'GreenWeb'], ['custom', 'Other (paste the address)']];
+
+const SMS_EVENTS = [
+  ['sale', 'sms.after_sale', 'sms.sale_template', 'After a sale (POS or sale form)', '{shop} {customer} {invoice} {total} {paid} {due} {total_due} {due_text}'],
+  ['order', 'sms.order_placed', 'sms.order_template', 'When an online order is taken', '{shop} {customer} {order} {total} {advance} {cod}'],
+  ['shipped', 'sms.order_shipped', 'sms.shipped_template', 'When the order is sent by courier', '{shop} {customer} {order} {courier} {tracking} {tracking_url} {tracking_text} {cod} {cod_text} {rider}'],
+  ['payment', 'sms.payment_received', 'sms.payment_template', 'When a due payment is collected', '{shop} {customer} {amount} {receipt} {due} {due_text}'],
+];
+
+/** Characters per SMS: Bangla (unicode) 70, English 160; long messages split into parts. */
+export function smsParts(text) {
+  const unicode = /[^\x00-\x7F]/.test(text);
+  const n = [...text].length;
+  if (!n) return { parts: 0, n, unicode };
+  const one = unicode ? 70 : 160;
+  const each = unicode ? 67 : 153;
+  return { parts: n <= one ? 1 : Math.ceil(n / each), n, unicode };
+}
+
+async function smsSettings(S) {
+  const data = await api.get('sms/settings');
+  const g = data.gateway;
+  const reload = () => navigate('/settings/sms', true);
+
+  // 1. The shop's own SMS account.
+  const url = input('url', g.url || g.presets.automas, { placeholder: 'https://…{api_key}…{phone}…{message}' });
+  const pick = select('provider', SMS_COMPANIES.map(([k, l]) => [k, t(l)]), g.provider || 'automas');
+  const advanced = h('details', { class: 'sms-advanced' }, h('summary', { class: 'muted small' }, t('Advanced: send address')),
+    field(t('Send address'), url, { wide: true, hint: t('Filled in when you choose the company. Words: {api_key} {sender} {phone} (8801…) {phone_local} (01…) {message} {smsformat}. Start with "POST " if the company wants POST.') }));
+  const syncUrl = () => {
+    if (g.presets[pick.value]) url.value = g.presets[pick.value];
+    if (pick.value === 'custom') advanced.open = true;
+  };
+  pick.addEventListener('change', syncUrl);
+  const status = g.connected
+    ? h('p', { class: 'callout ok small' }, icon('check', 16), ' ', t('Connected. SMS go out from your own SMS account with the sender name {name}.', { name: g.sender || '—' }))
+    : (g.site ? h('p', { class: 'callout small' }, t('Using the SMS service of this site. Connect your own account to send with your own masking name.'))
+      : h('p', { class: 'callout warn small' }, t('Not connected yet. Enter the API key and sender ID (masking name) from your SMS company.')));
+  const gw = h('form', { class: 'form' },
+    card(t('Your SMS account'),
+      status,
+      h('div', { class: 'form-grid' },
+        field(t('SMS company'), pick),
+        field(t('API key'), input('key', g.key || '', { autocomplete: 'off', required: !g.connected }), { hint: t('From your SMS company\'s panel (API / Developer page)') }),
+        field(t('Sender ID (masking name)'), input('sender', g.sender || '', { placeholder: 'NOORIYAH' }), { hint: t('The masking name or number approved by the SMS company') })),
+      advanced,
+      h('div', { class: 'row wrap' },
+        h('button', { class: 'btn btn-primary', type: 'submit' }, t(g.connected ? 'Save' : 'Connect')),
+        g.connected ? h('button', { class: 'btn btn-danger-ghost', type: 'button', onclick: async () => {
+          if (!(await confirmDialog(t('Disconnect your SMS account? Customers will stop getting SMS from it.'), { danger: true }))) return;
+          try { await api.put('sms/gateway', { remove: true }); toast(t('Disconnected')); reload(); } catch (err) { showError(err); }
+        } }, t('Disconnect')) : null)));
+  gw.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const b = gw.querySelector('button[type=submit]'); b.disabled = true;
+    try { await api.put('sms/gateway', values(gw)); toast(t('Saved')); reload(); } catch (err) { showFieldErrors(gw, err.errors || {}); showError(err); } finally { b.disabled = false; }
+  });
+
+  // 2. Test.
+  const testPhone = input('test_phone', '', { type: 'tel', placeholder: '01XXXXXXXXX', inputmode: 'numeric' });
+  const testOut = h('div', {});
+  const test = card(t('Send a test SMS'),
+    h('p', { class: 'muted small' }, t('Send one SMS to your own phone to check that everything works. The SMS company\'s reply is shown below.')),
+    h('div', { class: 'row wrap' }, testPhone, h('button', { class: 'btn', type: 'button', disabled: !data.usage.available, onclick: async (e) => {
+      const b = e.currentTarget; b.disabled = true; mount(testOut, spinner());
+      try {
+        const r = await api.post('sms/test', { phone: testPhone.value });
+        mount(testOut, h('p', { class: `callout small ${r.ok ? 'ok' : 'bad'}` }, r.ok ? t('The SMS company accepted the SMS. It should reach the phone in a few seconds.') : t('The SMS company did not accept the SMS.'), h('br'), h('code', { class: 'small' }, r.response || '')));
+      } catch (err) { mount(testOut, ''); showError(err); } finally { b.disabled = false; }
+    } }, icon('send', 16), t('Send test SMS'))),
+    testOut);
+
+  // 3. When to send.
+  const rows = SMS_EVENTS.map(([event, on, tpl, label, words]) => {
+    const box = textarea(tpl, S[tpl] || '', { rows: 2, placeholder: data.standard[event] });
+    const count = h('small', { class: 'hint' });
+    const upd = () => {
+      const p = smsParts(box.value || data.standard[event]);
+      count.textContent = `${t('{n} characters · {p} SMS each', { n: p.n, p: p.parts })}${p.unicode ? ` · ${t('Bangla: 70 characters per SMS')}` : ''}`;
+    };
+    box.addEventListener('input', upd); upd();
+    return h('div', { class: 'sms-event' },
+      h('div', { class: 'field', dataset: { field: on } }, checkbox(on, !!S[on], t(label))),
+      field(t('Message (leave empty for the standard message)'), box, { wide: true }),
+      count,
+      h('small', { class: 'hint' }, `${t('Words you can use:')} ${words}`));
+  });
+  const when = h('form', { class: 'form' },
+    card(t('When customers get an SMS'),
+      h('p', { class: 'muted small' }, t('The customer\'s phone number is needed. SMS go out right after saving, in the background, so selling is not slowed down. Each bill or order gets each SMS only once.')),
+      rows),
+    h('div', { class: 'form-actions sticky' }, h('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, t('Save settings'))));
+  when.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = values(when);
+    const out = {};
+    SMS_EVENTS.forEach(([, on, tpl]) => { out[on] = !!v[on]; out[tpl] = v[tpl] || ''; });
+    try { await api.put('settings', { settings: out }); toast(t('Settings saved')); emit('session:reload', {}); } catch (err) { showFieldErrors(when, err.errors || {}); showError(err); }
+  });
+
+  // 4. Recent SMS.
+  const u = data.usage;
+  const kinds = { sale: t('Sale'), order: t('Online order'), shipped: t('Sent by courier'), payment: t('Dues'), due: t('Due reminder'), test: t('Test'), manual: t('Message') };
+  const badge = (st) => h('span', { class: `badge ${st === 'sent' ? 'badge-ok' : st === 'failed' ? 'badge-bad' : 'badge-muted'}` }, t({ sent: 'Sent', failed: 'Failed', queued: 'Waiting', sending: 'Sending' }[st] || st));
+  const log = card(t('Recent SMS'),
+    h('p', { class: 'muted small' }, t('{n} SMS sent this month', { n: u.month }), u.failed ? h('span', { class: 'bad-text' }, ` · ${t('{n} failed', { n: u.failed })}`) : null, u.queued ? ` · ${t('{n} waiting', { n: u.queued })}` : ''),
+    data.log.length ? simpleTable([
+      { label: t('Time'), render: (r) => String(r.created_at).slice(5, 16) },
+      { label: t('Phone'), key: 'phone' },
+      { label: t('Type'), render: (r) => kinds[r.ref_type] || r.ref_type },
+      { label: t('Status'), render: (r) => h('span', { title: r.response || '' }, badge(r.status), r.status === 'failed' && r.response ? h('div', { class: 'muted small sms-reply' }, r.response) : null) },
+      { label: t('Message'), render: (r) => h('span', { class: 'small' }, r.message) },
+    ], data.log) : empty(t('No SMS yet.')));
+
+  return h('div', {}, gw, test, when, log);
 }
