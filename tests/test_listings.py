@@ -44,7 +44,16 @@ class ListingTest(ServerTest):
     def test_paid_listing_needs_payment(self):
         u = self.srv.client()
         u.register()
-        self.assertEqual(u.post('/my/listings', {'name': 'ক্লিনিক', 'cat': 'hospital', 'sub': 'clinic'})[0], 400)   # no plan
+        # without a package it is a free submission in any category, checked by an admin
+        free = self.ok(u.post('/my/listings', {'name': 'বিসমিল্লাহ ইলেকট্রিক', 'cat': 'service', 'sub': 'electrician'}))
+        self.assertFalse(free['needsPayment'])
+        self.assertEqual(self.ok(u.get('/my/listings/' + free['id']))['review'], 'pending')
+        # from the Android app a package is never sold, even if one is asked for
+        st, raw, _ = u.raw('POST', '/api/my/listings', json.dumps({'name': 'দোকান', 'cat': 'shop', 'sub': 'grocery', 'plan': 'basic'}).encode(),
+                           {'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 Jashore360App/7'})
+        self.assertFalse(json.loads(raw)['needsPayment'])
+        # on the website a business may choose a package
+        self.assertEqual(u.post('/my/listings', {'name': 'ক্লিনিক', 'cat': 'hospital', 'sub': 'clinic', 'plan': 'nope'})[0], 400)
         r = self.ok(u.post('/my/listings', {'name': 'ক্লিনিক', 'cat': 'hospital', 'sub': 'clinic', 'plan': 'basic'}))
         self.assertTrue(r['needsPayment'])
         self.assertEqual(u.post('/my/payments', {'listing': r['id'], 'method': 'bkash', 'trx': '1', 'sender': u.phone})[0], 400)

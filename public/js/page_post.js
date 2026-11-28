@@ -14,9 +14,11 @@ const planCards = sel => `<div class="plans">${(S.D.plans || []).map(pl => `<lab
   <div class="ph"><b>${esc(planName(pl))}</b>${pl.featured ? `<span class="tag ad">${T('জনপ্রিয়')}</span>` : ''}</div>
   <div class="pp"><b>${money(pl.price)}</b><small>/ ${T('{n} দিন', { n: num(pl.days) })}</small></div>
   <ul>${(LANG() === 'en' && pl.perksEn ? pl.perksEn : pl.perks || []).map(x => `<li>${icon('check', 14)}${esc(x)}</li>`).join('')}</ul></label>`).join('')}</div>`;
+// Anyone can add a place in any category for free (an admin checks it first). On the website a business can also pick a
+// paid package for extra visibility; that form lists the categories that have packages.
 function listingCats(mode) {
   return S.D.categories.map(c => {
-    const subs = Object.keys(c.subs || {}).filter(s => (mode === 'paid') === (!!c.paid && !(c.freeSubs || []).includes(s)));
+    const subs = Object.keys(c.subs || {}).filter(s => mode !== 'paid' || (!!c.paid && !(c.freeSubs || []).includes(s)));
     return subs.length ? { c, subs } : null;
   }).filter(Boolean);
 }
@@ -38,7 +40,6 @@ export function setLoc(f, lat, lng, msg) {
   const st = f.querySelector('[data-locstatus]');
   if (st) { st.classList.toggle('ok', lat != null && lat !== ''); st.innerHTML = lat != null && lat !== '' ? `${icon('check', 14)} ${T('লোকেশন যোগ হয়েছে')} (${num(Number(lat).toFixed(4))}, ${num(Number(lng).toFixed(4))})${msg ? ' · ' + msg : ''}` : esc(msg || ''); }
 }
-const needsPay = l => { const c = S.CAT[l.cat]; return !!c?.paid && !(c.freeSubs || []).includes(l.sub); };
 /* photos & videos: uploaded one by one as soon as they are picked */
 export const MEDIA = { images: [], videos: [] }, MAXM = { images: 10, videos: 2 };
 const mediaField = () => `<div class="field"><span>${T('ছবি (সর্বোচ্চ {n}টি)', { n: num(MAXM.images) })}</span><div class="photos" data-media="images"></div></div>
@@ -97,8 +98,8 @@ export const termsHtml = () => legalHtml(S.D.terms);
 export function init() {
   /* ---------------- add / post ---------------- */
   pages.add = () => {
-    const opts = [['listing?mode=paid', 'store', '#0e9f6e', 'ব্যবসা যুক্ত করুন', 'প্রাইভেট হাসপাতাল, ক্লিনিক, ডাক্তার ও হোমিও চেম্বার, রেস্টুরেন্ট, দোকান, হোটেল, কোচিং', 'পেইড প্যাকেজ'],
-      ['listing?mode=free', 'landmark', '#7c5cff', 'ফ্রি তথ্য যোগ করুন', 'সরকারি হাসপাতাল, দর্শনীয় স্থান, জরুরি নম্বর, স্কুল-কলেজ, স্বেচ্ছাসেবী সংগঠন', 'ফ্রি'],
+    const opts = [['listing?mode=free', 'store', '#0e9f6e', 'তথ্য বা ব্যবসা যোগ করুন', 'দোকান, রেস্টুরেন্ট, ইলেকট্রিশিয়ান-মিস্ত্রি, হাসপাতাল-ডাক্তার, হোটেল, কোচিং, মসজিদ, স্কুল, দর্শনীয় স্থান — যেকোনো ক্যাটাগরি', 'ফ্রি'],
+      ['listing?mode=paid', 'sparkle', '#f59e0b', 'ব্যবসার প্রচার', 'প্যাকেজ নিলে হোমপেজে "জনপ্রিয়" অংশে দেখাবে, আগে যাচাই হবে', 'পেইড প্যাকেজ'],
       ['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন', 'ফ্রি'],
       ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট / দোকান ভাড়া', 'টু-লেট বিজ্ঞাপন দিন', 'ফ্রি'],
       ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন', 'ফ্রি'],
@@ -130,15 +131,16 @@ export function init() {
     const editNote = edit ? `<div class="note warn">${icon('edit', 18)}<span>${T(edit.review === 'approved' || edit.review === 'rejected' ? 'পরিবর্তন জমা দিলে অ্যাডমিন আবার যাচাই করবেন, ততক্ষণ এটি অ্যাপে দেখাবে না।' : 'পরিবর্তন জমা দিন — অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>` : '';
     const editAttr = edit ? ` data-edit="${esc(edit.id)}"` : '';
     if (what === 'listing') {
-      const mode = edit ? (needsPay(edit) ? 'paid' : 'free') : p.get('mode') === 'paid' && !NO_PAY ? 'paid' : 'free', groups = listingCats(mode);
-      return `${topbar(T(edit ? 'তথ্য সম্পাদনা' : mode === 'paid' ? 'ব্যবসা যুক্ত করুন' : 'ফ্রি তথ্য যোগ করুন'))}
-      ${editNote || `<div class="note">${icon(mode === 'paid' ? 'store' : 'landmark', 18)}<span>${T(mode === 'paid' ? 'তথ্য দিন, প্যাকেজ বাছুন, তারপর বিকাশ/নগদে পেমেন্ট করুন। যাচাইয়ের পর প্রকাশিত হবে।' : 'সরকারি, জনসেবামূলক বা দর্শনীয় স্থানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>`}
+      const mode = !edit && p.get('mode') === 'paid' && !NO_PAY ? 'paid' : 'free', groups = listingCats(mode);
+      const pick = p.get('cat') && S.CAT[p.get('cat')] ? `${p.get('cat')}|${p.get('sub') || ''}` : '';      // opened from a category page
+      return `${topbar(T(edit ? 'তথ্য সম্পাদনা' : mode === 'paid' ? 'ব্যবসার প্রচার' : 'তথ্য যোগ করুন'))}
+      ${editNote || `<div class="note">${icon(mode === 'paid' ? 'store' : 'landmark', 18)}<span>${T(mode === 'paid' ? 'তথ্য দিন, প্যাকেজ বাছুন, তারপর বিকাশ/নগদে পেমেন্ট করুন। যাচাইয়ের পর প্রকাশিত হবে।' : 'যেকোনো দোকান, সেবা বা প্রতিষ্ঠানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।')}</span></div>`}
       <form class="form" data-addlisting="${mode}"${editAttr}>
         <h3 class="fsec">${T('মৌলিক তথ্য')}</h3>
         <label class="field"><span>${T('নাম (বাংলা)')} *</span><input name="name" required maxlength="120" placeholder="${T('যেমন: যশোর কাচ্চি ঘর')}"></label>
         <label class="field"><span>${T('নাম (English)')}</span><input name="nameEn" maxlength="120" placeholder="e.g. Jashore Kacchi Ghor" autocapitalize="words"><em>${T('ইংরেজি ভাষার অ্যাপে ও খোঁজায় দেখায়')}</em></label>
         ${edit ? `<label class="field"><span>${T('ধরন')}</span><input value="${esc(subLabel(edit))}" disabled></label>`
-          : `<label class="field"><span>${T('ধরন')} *</span><select name="catsub" required>${groups.map(g => `<optgroup label="${esc(catName(g.c))}">${g.subs.map(s => `<option value="${g.c.id}|${s}">${esc(subName(g.c, s))}</option>`).join('')}</optgroup>`).join('')}</select></label>`}
+          : `<label class="field"><span>${T('ধরন')} *</span><select name="catsub" required>${groups.map(g => `<optgroup label="${esc(catName(g.c))}">${g.subs.map((s, i) => `<option value="${g.c.id}|${s}" ${pick === `${g.c.id}|${s}` || (pick === `${g.c.id}|` && !i) ? 'selected' : ''}>${esc(subName(g.c, s))}</option>`).join('')}</optgroup>`).join('')}</select></label>`}
         <div class="two"><label class="field"><span>${T('এলাকা')} *</span>${areaSel}</label>
           <label class="field"><span>${T('ফোন')}</span><input name="phone" inputmode="tel" placeholder="01XXXXXXXXX" value="${mode === 'paid' ? esc(S.ME.phone) : ''}"></label></div>
         <label class="field"><span>${T('বিবরণ')}</span><textarea name="about" maxlength="3000" placeholder="${T('সেবা, বিশেষত্ব, সুবিধা…')}"></textarea></label>

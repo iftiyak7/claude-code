@@ -128,14 +128,16 @@ def my_add_listing(h):
         raise ApiError(429, 'আজ অনেক তথ্য জমা হয়েছে, পরে চেষ্টা করুন')
     doc = clean_listing(b, admin=False)
     cat = categories()[doc['cat']]
-    paid = needs_payment(cat, doc.get('sub'))
+    # Anyone may add a place in any category for free; an admin checks it before it shows. On the website a business in a
+    # category with packages may also choose one (it is then published after payment). Nothing is sold inside the app.
     plan = None
-    if paid:
+    if b.get('plan') and needs_payment(cat, doc.get('sub')) and 'Jashore360App/' not in h.headers.get('User-Agent', ''):
         with db() as c:
             plans = {p['id']: p for p in get_setting(c, 'plans') or []}
         plan = plans.get(b.get('plan'))
         if not plan:
             raise ApiError(400, 'একটি প্যাকেজ বেছে নিন')
+    paid = bool(plan)
     doc.update(user_media(h, b))
     doc = {k: v for k, v in doc.items() if v is not None}
     lid, now = new_id('u'), int(time.time())

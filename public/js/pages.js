@@ -123,6 +123,9 @@ export function init() {
     <a class="bizcta" href="#/add"><span>${icon('store', 24)}</span><div><b>${esc(loc(S.D.site, 'bizCtaTitle') || T('আপনার ব্যবসা যুক্ত করুন'))}</b><small>${esc(loc(S.D.site, 'bizCtaText') || T('যশোরের মানুষ সহজে আপনাকে খুঁজে পাবে — অ্যাকাউন্ট খুলে শুরু করুন'))}</small></div>${icon('chevR', 18)}</a>
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
+  // Every category page ends with a way to add what is missing there (free; checked by an admin before it shows).
+  const addHere = (cat, sub) => `<a class="bizcta" style="margin-top:18px" href="#/post/listing?mode=free&cat=${esc(cat)}${sub ? '&sub=' + esc(sub) : ''}"><span>${icon('plus', 22)}</span>
+    <div><b>${T('এখানে যোগ করুন')}</b><small>${T('{c}-এ কিছু নেই? ফ্রিতে যোগ করুন — যাচাইয়ের পর দেখাবে', { c: esc(catName(S.CAT[cat])) })}</small></div>${icon('chevR', 18)}</a>`;
   pages.emergency = p => {
     const c = S.CAT.emergency || { subs: {}, subIcons: {} }, sub = p.get('sub') || '', site = S.D.site || {};
     let list = items().filter(i => i.cat === 'emergency' && (!sub || i.sub === sub || (i.pin && ['ambulance', 'police', 'fire'].includes(sub))));
@@ -136,6 +139,7 @@ export function init() {
     ${sub === 'blood' ? `<div class="note">${icon('droplet', 16)}<span>${T('রক্তদাতা নেটওয়ার্ক শীঘ্রই আসছে। এখন প্রয়োজনে নিকটস্থ সরকারি হাসপাতালের ব্লাড ব্যাংকে যোগাযোগ করুন।')}</span></div>` : ''}
     ${sub === 'police' ? `<div class="note">${icon('shield', 16)}<span>${T('প্রতিটি থানার ওসি ও অন্যান্য কর্মকর্তার নম্বর — সরাসরি কল করুন। জরুরি হলে আগে ৯৯৯।')}</span></div>` : ''}
     <div class="rows">${list.map(i => i.contacts?.length ? ecard(i) : row(i)).join('') || empty(T('এখনো তথ্য যুক্ত হয়নি'), T('যাচাই করে শীঘ্রই যুক্ত করা হবে।'))}</div>
+    ${addHere('emergency', sub)}
     <p class="foot">${esc(loc(site, 'disclaimer'))}</p>`;
   };
   pages.browse = p => {
@@ -197,7 +201,8 @@ export function init() {
         .map(([k, v]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${T(v)}</option>`).join('')}</select></div>
       ${nearMode ? nearList(list) : `<div class="rows">${withListAd(list.map(row), cat) || (kindHit || rest.length ? '' : empty(T('কিছু পাওয়া যায়নি'), T('অন্য শব্দে খুঁজুন বা ফিল্টার বদলান।'), `<a class="btn sm" href="#/add">${T('নতুন তথ্য যোগ করুন')}</a>`))}</div>
         ${rest.length ? `<div class="sechead" style="margin-top:18px"><h2 style="font-size:15px">${T(list.length ? 'অন্য এলাকার' : '{a}-তে নেই — অন্য এলাকার', { a: esc(areaName(area)) })}</h2></div>
-          <div class="rows">${rest.map(row).join('')}</div>` : ''}`}` : ''}`;
+          <div class="rows">${rest.map(row).join('')}</div>` : ''}`}` : ''}
+      ${c ? addHere(cat, sub) : ''}`;
   };
   pages.item = ([id]) => {
     const it = getItem(id);

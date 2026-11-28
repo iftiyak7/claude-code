@@ -55,6 +55,14 @@ const ADMIN = ['dashboard', 'listings', 'listings/h-general', 'listings/new', 's
   if (await ap.locator('[data-ad][href="#/add"]').count()) errors.push('android app: a package banner is shown');
   await visit(p, base + '/app/#/add', '#app > *');
   if (!(await p.locator('a[href="#/post/listing?mode=paid"]').count())) errors.push('website: the add page lost the paid package');
+  // every category page offers to add what is missing, and the form opens with that category chosen
+  await visit(ap, base + '/app/#/c/service', '#app > *');
+  if (!(await ap.locator('a[href="#/post/listing?mode=free&cat=service"]').count())) errors.push('category page: no add button');
+  await ap.evaluate(async () => fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'UI', phone: '0181' + String(Date.now()).slice(-7), password: 'Jsr#2026ui', terms: true }) }));
+  await ap.reload(); await ap.waitForTimeout(400);
+  await visit(ap, base + '/app/#/post/listing?mode=free&cat=service&sub=electrician', '#app form');
+  if (await ap.locator('select[name=catsub]').inputValue().catch(() => '') !== 'service|electrician') errors.push('add form: the category is not chosen');
 
   // admin
   const a = await (await browser.newContext({ viewport: { width: 1280, height: 860 } })).newPage();
