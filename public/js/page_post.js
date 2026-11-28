@@ -98,14 +98,17 @@ export const termsHtml = () => legalHtml(S.D.terms);
 export function init() {
   /* ---------------- add / post ---------------- */
   pages.add = () => {
-    const opts = [['listing?mode=free', 'store', '#0e9f6e', 'তথ্য বা ব্যবসা যোগ করুন', 'দোকান, রেস্টুরেন্ট, ইলেকট্রিশিয়ান-মিস্ত্রি, হাসপাতাল-ডাক্তার, হোটেল, কোচিং, মসজিদ, স্কুল, দর্শনীয় স্থান — যেকোনো ক্যাটাগরি', 'ফ্রি'],
-      ['listing?mode=paid', 'sparkle', '#f59e0b', 'ব্যবসার প্রচার', 'প্যাকেজ নিলে হোমপেজে "জনপ্রিয়" অংশে দেখাবে, আগে যাচাই হবে', 'পেইড প্যাকেজ'],
+    const opts = [['listing?mode=paid', 'sparkle', '#f59e0b', 'ব্যবসার প্রচার', 'প্যাকেজ নিলে হোমপেজে "জনপ্রিয়" অংশে দেখাবে, আগে যাচাই হবে', 'পেইড প্যাকেজ'],
       ['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন', 'ফ্রি'],
       ['rent', 'home', '#4f6bed', 'বাসা / ফ্ল্যাট / দোকান ভাড়া', 'টু-লেট বিজ্ঞাপন দিন', 'ফ্রি'],
       ['mess', 'bed', '#0f9fa8', 'মেস / সিট ভাড়া', 'খালি সিটের খবর দিন', 'ফ্রি'],
       ['tuition', 'cap', '#7c5cff', 'টিউশন', 'গৃহশিক্ষক খুঁজুন বা টিউশনি দিন', 'ফ্রি']];
     return `${topbar(T('কী যোগ করতে চান?'))}
       ${S.ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
+      <h4 class="addhead">${T('কোন ক্যাটাগরিতে যোগ করবেন?')} <span class="tag ok">${T('ফ্রি')}</span></h4>
+      <div class="addcats">${S.D.categories.map(c => `<a href="#/post/listing?mode=free&cat=${esc(c.id)}" style="--c:${esc(c.color)}"><span>${icon(c.icon, 24)}</span>
+        <b>${esc(catName(c))}</b><small>${esc(Object.keys(c.subs || {}).slice(0, 3).map(k => subName(c, k)).join(', '))}</small></a>`).join('')}</div>
+      <h4 class="addhead">${T('বিজ্ঞাপন ও অন্যান্য')}</h4>
       <div class="rows">${opts.filter(([to]) => (to.startsWith('listing') || S.D.site?.classifieds !== 'hide') && !(NO_PAY && to.endsWith('paid'))).map(([to, ic, c, t, d, b]) => `<a class="row choose" href="#/post/${to}"><span class="media" style="--c:${c};width:60px;height:60px"><span class="gen"><span class="ring" style="width:72%">${icon(ic, 26)}</span></span></span>
         <span class="body"><b>${T(t)}</b><span class="sub" style="white-space:normal">${T(d)}</span><span class="meta"><span class="tag ${b === 'ফ্রি' ? 'ok' : 'ad'}">${T(b)}</span><span class="muted">${T('অ্যাডমিন যাচাইয়ের পর প্রকাশ')}</span></span></span>${icon('chevR', 18)}</a>`).join('')}</div>`;
   };

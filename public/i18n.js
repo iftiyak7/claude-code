@@ -385,6 +385,7 @@ Object.assign(window.I18N_EN, {
   'ব্যবসার প্রচার': 'Promote a business', 'প্যাকেজ নিলে হোমপেজে "জনপ্রিয়" অংশে দেখাবে, আগে যাচাই হবে': 'With a package it shows under "Popular" on the home page and is checked first',
   'তথ্য যোগ করুন': 'Add information', 'যেকোনো দোকান, সেবা বা প্রতিষ্ঠানের তথ্য ফ্রিতে যোগ করুন। অ্যাডমিন যাচাই করে প্রকাশ করবেন।': 'Add any shop, service or organisation for free. An admin checks it before it is published.',
   'এখানে যোগ করুন': 'Add here', '{c}-এ কিছু নেই? ফ্রিতে যোগ করুন — যাচাইয়ের পর দেখাবে': 'Something missing in {c}? Add it for free — it shows after a check',
+  'কোন ক্যাটাগরিতে যোগ করবেন?': 'Which category?', 'বিজ্ঞাপন ও অন্যান্য': 'Ads and more',
   'যশোর শহর': 'Jashore town', 'শহরের কেন্দ্র': 'Town centre', 'উত্তর দিক': 'North side', 'পূর্ব দিক': 'East side', 'দক্ষিণ দিক': 'South side',
   'পশ্চিম দিক': 'West side', 'অন্যান্য এলাকা': 'Other areas',
   'উপজেলা': 'Upazilas',

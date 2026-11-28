@@ -50,7 +50,7 @@ const ADMIN = ['dashboard', 'listings', 'listings/h-general', 'listings/new', 's
   if (await ap.locator('[data-agree]').count()) { await ap.locator('[data-agree]').check(); await ap.click('[data-start]'); }
   await visit(ap, base + '/app/#/add', '#app > *');
   if (await ap.locator('a[href="#/post/listing?mode=paid"]').count()) errors.push('android app: the add page offers a paid package');
-  if (!(await ap.locator('a[href="#/post/listing?mode=free"]').count())) errors.push('android app: the free option is missing');
+  if (!(await ap.locator('a[href="#/post/listing?mode=free&cat=service"]').count())) errors.push('android app: no button for the service category');
   await visit(ap, base + '/app/#/', '#app > *');
   if (await ap.locator('[data-ad][href="#/add"]').count()) errors.push('android app: a package banner is shown');
   await visit(p, base + '/app/#/add', '#app > *');
