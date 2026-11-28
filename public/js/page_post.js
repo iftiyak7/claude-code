@@ -114,7 +114,7 @@ export const termsHtml = () => legalHtml(S.D.terms);
 export function init() {
   /* ---------------- add / post ---------------- */
   pages.add = () => {
-    // One kind of card for everything that can be added: the categories first, then ads (and, on the website, promotion).
+    // One grid of cards for everything that can be added: the categories, then ads (and, on the website, promotion).
     const card = (href, c, ic, title, sub, paid) => `<a href="${href}" style="--c:${esc(c)}"><span>${icon(ic, 24)}</span>
         <b>${esc(title)}${paid ? ` <i class="tag ad">${T('পেইড')}</i>` : ''}</b><small>${esc(sub)}</small></a>`;
     const ads = [['job', 'briefcase', '#f2711c', 'চাকরির বিজ্ঞাপন', 'আপনার প্রতিষ্ঠানে লোক নিন'],
@@ -125,10 +125,9 @@ export function init() {
       ${S.ME ? '' : `<div class="note">${icon('user', 18)}<span>${T('যোগ করতে অ্যাকাউন্ট লাগবে।')} <a href="#/login?next=/add" style="font-weight:700;color:var(--brand)">${T('লগইন / অ্যাকাউন্ট খুলুন')}</a></span></div>`}
       <h4 class="addhead">${T('কোন ক্যাটাগরিতে যোগ করবেন?')} <span class="tag ok">${T('ফ্রি')}</span></h4>
       <div class="addcats">${S.D.categories.map(c => card(`#/post/listing?mode=free&cat=${esc(c.id)}`, c.color, c.icon, catName(c),
-        Object.keys(c.subs || {}).slice(0, 3).map(k => subName(c, k)).join(', '))).join('')}</div>
-      ${ads.length || !NO_PAY ? `<h4 class="addhead">${T('বিজ্ঞাপন দিন')} <span class="tag ok">${T('ফ্রি')}</span></h4>
-      <div class="addcats">${ads.map(([to, ic, c, t, d]) => card('#/post/' + to, c, ic, T(t), T(d))).join('')}
-        ${NO_PAY ? '' : card('#/post/listing?mode=paid', '#f59e0b', 'sparkle', T('ব্যবসার প্রচার'), T('হোমপেজে "জনপ্রিয়" অংশে দেখান'), true)}</div>` : ''}
+        Object.keys(c.subs || {}).slice(0, 3).map(k => subName(c, k)).join(', '))).join('')}
+        ${ads.map(([to, ic, c, t, d]) => card('#/post/' + to, c, ic, T(t), T(d))).join('')}
+        ${NO_PAY ? '' : card('#/post/listing?mode=paid', '#f59e0b', 'sparkle', T('ব্যবসার প্রচার'), T('হোমপেজে "জনপ্রিয়" অংশে দেখান'), true)}</div>
       <p class="muted" style="font-size:12.5px;margin:12px 2px 0">${T('সব কিছু অ্যাডমিন যাচাইয়ের পর প্রকাশ হয়।')}</p>`;
   };
   pages.edit = ([type, id]) => {
